@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<!-- @dsCard group="UI Kit — Commercial" name="Commercial Portal UI Kit" subtitle="Interactive EPEC commercial management portal — supply list, detail, GD config, billing" viewport="1280x720" -->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPEC — Sistema Comercial</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Roboto', sans-serif; background: #f5f7f6; color: #111614; height: 100vh; overflow: hidden; }
+  #root { height: 100vh; display: flex; flex-direction: column; }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d5ddd9; border-radius: 3px; }
+
+  /* Lucide icon helper */
+  .icon { display: inline-flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+/* ── INLINE SVG ICONS ────────────────────────────────── */
+const ICON_PATHS = {
+  'zap':          <><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>,
+  'gauge':        <><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><path d="M2 12h2"/><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/></>,
+  'receipt':      <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8H8"/><path d="M16 12H8"/><path d="M12 16H8"/></>,
+  'sun':          <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></>,
+  'file-text':    <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></>,
+  'users':        <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+  'settings':     <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>,
+  'log-out':      <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
+  'search':       <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></>,
+  'download':     <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+  'plus':         <><path d="M5 12h14"/><path d="M12 5v14"/></>,
+  'chevron-right':<><path d="m9 18 6-6-6-6"/></>,
+  'arrow-left':   <><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></>,
+  'printer':      <><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></>,
+  'save':         <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
+  'info':         <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>,
+  'construction': <><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></>,
+};
+
+function Icon({ name, size = 16, color = 'currentColor', strokeWidth = 1.75 }) {
+  const paths = ICON_PATHS[name] || ICON_PATHS['info'];
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+      style={{display:'inline-block',verticalAlign:'middle',flexShrink:0}}>
+      {paths}
+    </svg>
+  );
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+const navItems = [
+  { id:'supplies', label:'Suministros', icon:'zap' },
+  { id:'reading',  label:'Lecturas',    icon:'gauge' },
+  { id:'billing',  label:'Facturación', icon:'receipt' },
+  { id:'gd',       label:'Gen. Distribuida', icon:'sun' },
+  { id:'contracts',label:'Contratos',   icon:'file-text' },
+  { id:'customers',label:'Clientes',    icon:'users' },
+];
+
+function Sidebar({ active, onNav }) {
+  const s = sidebarStyles;
+  return (
+    <aside style={s.sidebar}>
+      <div style={s.logo}>
+        <img src="../../assets/epec-logo-transparent.png" height={32} alt="EPEC" style={{display:'block'}} />
+      </div>
+      <nav style={s.nav}>
+        {navItems.map(item => (
+          <button key={item.id} style={{...s.navItem, ...(active===item.id ? s.navItemActive : {})}}
+            onClick={() => onNav(item.id)}>
+            <Icon name={item.icon} size={17} color={active===item.id ? '#124e2f' : '#6dbf97'} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+      <div style={s.bottom}>
+        <button style={s.navItem}>
+          <Icon name="settings" size={17} color="#6dbf97" />
+          <span>Configuración</span>
+        </button>
+        <button style={s.navItem}>
+          <Icon name="log-out" size={17} color="#6dbf97" />
+          <span>Salir</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+const sidebarStyles = {
+  sidebar: { width:212, background:'#124e2f', display:'flex', flexDirection:'column', height:'100%', flexShrink:0 },
+  logo: { display:'flex', alignItems:'center', gap:10, padding:'18px 16px 14px', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  nav: { flex:1, padding:'8px 8px', display:'flex', flexDirection:'column', gap:1, overflowY:'auto' },
+  navItem: { display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:4, border:'none', background:'transparent', color:'rgba(255,255,255,0.85)', fontSize:13, fontFamily:'inherit', fontWeight:500, cursor:'pointer', textAlign:'left', width:'100%', transition:'background 0.12s' },
+  navItemActive: { background:'white', color:'#124e2f' },
+  bottom: { padding:'8px 8px 16px', borderTop:'1px solid rgba(255,255,255,0.1)', display:'flex', flexDirection:'column', gap:1 },
+};
+
+/* ── TOP BAR ─────────────────────────────────────────── */
+function TopBar({ title, subtitle, onSearch }) {
+  const [q, setQ] = useState('');
+  return (
+    <div style={topBarStyles.bar}>
+      <div>
+        <div style={topBarStyles.title}>{title}</div>
+        {subtitle && <div style={topBarStyles.sub}>{subtitle}</div>}
+      </div>
+      <div style={topBarStyles.right}>
+        <div style={topBarStyles.searchWrap}>
+          <Icon name="search" size={14} color="#8f9c97" />
+          <input style={topBarStyles.search} placeholder="Buscar suministro, tarifa…"
+            value={q} onChange={e=>{setQ(e.target.value); onSearch&&onSearch(e.target.value)}} />
+        </div>
+        <div style={topBarStyles.user}>
+          <div style={topBarStyles.avatar}>GC</div>
+          <div>
+            <div style={{fontSize:12,fontWeight:600,color:'#2f3733'}}>Ger. Comercial</div>
+            <div style={{fontSize:11,color:'#8f9c97'}}>Operador</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+const topBarStyles = {
+  bar: { height:58, background:'white', borderBottom:'1px solid #eaeeec', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 24px', flexShrink:0 },
+  title: { fontSize:16, fontWeight:700, color:'#111614' },
+  sub: { fontSize:12, color:'#6b7772', marginTop:1 },
+  right: { display:'flex', alignItems:'center', gap:16 },
+  searchWrap: { display:'flex', alignItems:'center', gap:7, background:'#f5f7f6', border:'1px solid #d5ddd9', borderRadius:4, padding:'6px 10px', width:220 },
+  search: { border:'none', background:'transparent', outline:'none', fontSize:12, fontFamily:'inherit', color:'#111614', width:'100%' },
+  user: { display:'flex', alignItems:'center', gap:8, cursor:'pointer' },
+  avatar: { width:32, height:32, borderRadius:4, background:'#124e2f', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 },
+};
+
+/* ── SUPPLY TABLE ─────────────────────────────────────── */
+const SUPPLIES = [
+  { id:'708751', tarifa:'T1410-9', fuente:'Solar',  cuadrantes:7, estado:'Activo',    lectura:'12/04/2025', kWh:'1.024,50', inyeccion:'88,20' },
+  { id:'503214', tarifa:'T2BT-GD', fuente:'Eólica', cuadrantes:2, estado:'Pendiente', lectura:'08/04/2025', kWh:'342,10',   inyeccion:'12,40' },
+  { id:'921073', tarifa:'T1410-9', fuente:'Solar',  cuadrantes:7, estado:'Activo',    lectura:'12/04/2025', kWh:'2.310,80', inyeccion:'196,50'},
+  { id:'417882', tarifa:'T3MT',    fuente:'Solar',  cuadrantes:2, estado:'Inactivo',  lectura:'01/04/2025', kWh:'890,00',   inyeccion:'0,00'  },
+  { id:'634521', tarifa:'T1410-9', fuente:'Solar',  cuadrantes:7, estado:'Activo',    lectura:'12/04/2025', kWh:'588,30',   inyeccion:'44,70' },
+  { id:'215904', tarifa:'T2BT-GD', fuente:'Eólica', cuadrantes:2, estado:'Revisión',  lectura:'10/04/2025', kWh:'1.140,00', inyeccion:'204,10'},
+  { id:'763341', tarifa:'T1410-9', fuente:'Solar',  cuadrantes:7, estado:'Activo',    lectura:'12/04/2025', kWh:'456,90',   inyeccion:'31,80' },
+];
+
+const ESTADO_STYLE = {
+  'Activo':    { bg:'#d4edda', color:'#155a2e' },
+  'Inactivo':  { bg:'#fde8e8', color:'#7a1c1c' },
+  'Pendiente': { bg:'#fff3cd', color:'#7a4a00' },
+  'Revisión':  { bg:'#dbeafe', color:'#0d4272' },
+};
+
+function SupplyTable({ onSelect, filter }) {
+  const rows = SUPPLIES.filter(s =>
+    !filter || s.id.includes(filter) || s.tarifa.toLowerCase().includes(filter.toLowerCase()) || s.fuente.toLowerCase().includes(filter.toLowerCase())
+  );
+  const s = tableStyles;
+  return (
+    <div style={s.wrap}>
+      <div style={s.toolbar}>
+        <span style={s.count}>{rows.length} suministros</span>
+        <button style={s.btn}>
+          <Icon name="download" size={13} /> Exportar
+        </button>
+        <button style={s.btnPrimary}>
+          <Icon name="plus" size={13} /> Nuevo
+        </button>
+      </div>
+      <table style={s.table}>
+        <thead>
+          <tr>
+            {['N.° Suministro','Clase Tarifa','Fuente','Cuadrantes','Importado (kWh)','Exportado (kWh)','Última Lectura','Estado',''].map(h=>(
+              <th key={h} style={s.th}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => {
+            const est = ESTADO_STYLE[r.estado] || {bg:'#eaeeec',color:'#4a5550'};
+            return (
+              <tr key={r.id} style={s.tr} onClick={()=>onSelect(r)}
+                onMouseEnter={e=>e.currentTarget.style.background='#edf5f0'}
+                onMouseLeave={e=>e.currentTarget.style.background=''}>
+                <td style={{...s.td,...s.mono, color:'#124e2f', fontWeight:600}}>{r.id}</td>
+                <td style={{...s.td,...s.mono}}>{r.tarifa}</td>
+                <td style={s.td}>{r.fuente}</td>
+                <td style={{...s.td, textAlign:'center'}}><span style={{...s.badge, background:'#edf5f0', color:'#124e2f', border:'1px solid #a8d9c0'}}>{r.cuadrantes}</span></td>
+                <td style={{...s.td,...s.mono, textAlign:'right'}}>{r.kWh}</td>
+                <td style={{...s.td,...s.mono, textAlign:'right', color:'#1a6640'}}>{r.inyeccion}</td>
+                <td style={s.td}>{r.lectura}</td>
+                <td style={s.td}><span style={{...s.badge, background:est.bg, color:est.color}}>{r.estado}</span></td>
+                <td style={s.td}><button style={s.rowBtn} onClick={e=>{e.stopPropagation();onSelect(r)}}><Icon name="chevron-right" size={14}/></button></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div style={s.pagination}>
+        <span style={{fontSize:12,color:'#6b7772'}}>Página 1 de 3</span>
+        <div style={{display:'flex',gap:4}}>
+          {[1,2,3].map(p=>(
+            <button key={p} style={{...s.pageBtn, ...(p===1?s.pageBtnActive:{})}}>{p}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+const tableStyles = {
+  wrap: { background:'white', borderRadius:6, border:'1px solid #eaeeec', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,0.07)' },
+  toolbar: { display:'flex', alignItems:'center', gap:8, padding:'10px 16px', borderBottom:'1px solid #eaeeec' },
+  count: { fontSize:13, color:'#6b7772', fontWeight:500, flex:1 },
+  btn: { display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', border:'1px solid #d5ddd9', borderRadius:4, background:'white', fontSize:12, fontWeight:600, color:'#2f3733', cursor:'pointer', fontFamily:'inherit' },
+  btnPrimary: { display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', border:'none', borderRadius:4, background:'#124e2f', fontSize:12, fontWeight:600, color:'white', cursor:'pointer', fontFamily:'inherit' },
+  table: { width:'100%', borderCollapse:'collapse', fontSize:12 },
+  th: { padding:'9px 12px', textAlign:'left', background:'#124e2f', color:'white', fontWeight:600, fontSize:11, letterSpacing:'0.03em', whiteSpace:'nowrap' },
+  tr: { cursor:'pointer', transition:'background 0.1s' },
+  td: { padding:'8px 12px', borderBottom:'1px solid #eaeeec', color:'#2f3733', whiteSpace:'nowrap' },
+  mono: { fontFamily:"'JetBrains Mono', monospace", fontSize:11 },
+  badge: { display:'inline-block', padding:'2px 8px', borderRadius:3, fontSize:10, fontWeight:600 },
+  rowBtn: { border:'none', background:'transparent', cursor:'pointer', color:'#8f9c97', display:'flex', padding:2 },
+  pagination: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 16px', borderTop:'1px solid #eaeeec' },
+  pageBtn: { width:28, height:28, border:'1px solid #d5ddd9', borderRadius:4, background:'white', fontSize:12, cursor:'pointer', fontFamily:'inherit', color:'#4a5550' },
+  pageBtnActive: { background:'#124e2f', color:'white', border:'1px solid #124e2f' },
+};
+
+/* ── SUPPLY DETAIL ───────────────────────────────────── */
+function SupplyDetail({ supply, onBack }) {
+  const [tab, setTab] = useState('datos');
+  const s = detailStyles;
+  const tabs = [{id:'datos',label:'Datos del Suministro'},{id:'gd',label:'E. Distribuida'},{id:'lecturas',label:'Lecturas'},{id:'facturacion',label:'Facturación'}];
+
+  return (
+    <div style={s.wrap}>
+      {/* Header */}
+      <div style={s.header}>
+        <button style={s.back} onClick={onBack}><Icon name="arrow-left" size={15}/> Volver</button>
+        <div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={s.supId}>Suministro N.° {supply.id}</span>
+            <span style={{...tableStyles.badge, background:ESTADO_STYLE[supply.estado]?.bg||'#eaeeec', color:ESTADO_STYLE[supply.estado]?.color||'#4a5550', fontSize:11}}>{supply.estado}</span>
+          </div>
+          <div style={{fontSize:12,color:'#6b7772',marginTop:2}}>Tarifa: <b style={{fontFamily:'JetBrains Mono',color:'#2f3733'}}>{supply.tarifa}</b> · Fuente: {supply.fuente}</div>
+        </div>
+        <div style={s.actions}>
+          <button style={tableStyles.btn}><Icon name="printer" size={13}/> Imprimir</button>
+          <button style={tableStyles.btnPrimary}><Icon name="save" size={13}/> Guardar</button>
+        </div>
+      </div>
+      {/* Tabs */}
+      <div style={s.tabBar}>
+        {tabs.map(t=>(
+          <button key={t.id} style={{...s.tabBtn,...(tab===t.id?s.tabActive:{})}} onClick={()=>setTab(t.id)}>{t.label}</button>
+        ))}
+      </div>
+      {/* Content */}
+      <div style={s.content}>
+        {tab==='datos' && <DatosTab supply={supply}/>}
+        {tab==='gd' && <GDTab supply={supply}/>}
+        {tab==='lecturas' && <LecturasTab supply={supply}/>}
+        {tab==='facturacion' && <FacturacionTab supply={supply}/>}
+      </div>
+    </div>
+  );
+}
+const detailStyles = {
+  wrap: { background:'white', borderRadius:6, border:'1px solid #eaeeec', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', height:'100%' },
+  header: { display:'flex', alignItems:'center', gap:16, padding:'14px 20px', borderBottom:'1px solid #eaeeec', background:'#fafbfa' },
+  back: { display:'flex', alignItems:'center', gap:5, padding:'6px 10px', border:'1px solid #d5ddd9', borderRadius:4, background:'white', fontSize:12, fontWeight:600, color:'#2f3733', cursor:'pointer', fontFamily:'inherit', flexShrink:0 },
+  supId: { fontSize:17, fontWeight:700, color:'#111614', fontFamily:"'JetBrains Mono',monospace" },
+  actions: { display:'flex', gap:8, marginLeft:'auto' },
+  tabBar: { display:'flex', borderBottom:'1px solid #eaeeec', padding:'0 20px', gap:0 },
+  tabBtn: { padding:'10px 16px', border:'none', background:'transparent', fontSize:13, fontWeight:500, color:'#6b7772', cursor:'pointer', borderBottom:'2px solid transparent', fontFamily:'inherit', marginBottom:-1 },
+  tabActive: { color:'#124e2f', fontWeight:700, borderBottom:'2px solid #124e2f' },
+  content: { flex:1, overflowY:'auto', padding:'20px' },
+};
+
+function FieldRow({ label, value, mono }) {
+  return (
+    <div style={{display:'flex',gap:16,padding:'7px 0',borderBottom:'1px solid #eaeeec'}}>
+      <span style={{minWidth:200,fontSize:12,color:'#6b7772',fontWeight:500}}>{label}</span>
+      <span style={{fontSize:13,color:'#111614',fontFamily:mono?"'JetBrains Mono',monospace":'inherit',fontWeight:mono?400:500}}>{value}</span>
+    </div>
+  );
+}
+
+function DatosTab({ supply }) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
+      <div>
+        <div style={{fontSize:11,fontWeight:700,color:'#124e2f',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Identificación</div>
+        <FieldRow label="N.° Suministro" value={supply.id} mono />
+        <FieldRow label="Clase de Tarifa" value={supply.tarifa} mono />
+        <FieldRow label="Atributo GD (cla_energia_dist)" value="S" mono />
+        <FieldRow label="Grupo Tarifario" value="1" />
+        <FieldRow label="Estado" value={supply.estado} />
+      </div>
+      <div>
+        <div style={{fontSize:11,fontWeight:700,color:'#124e2f',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Medición</div>
+        <FieldRow label="Tipo de Medidor" value="Bidireccional" />
+        <FieldRow label="Cuadrantes Requeridos" value={supply.cuadrantes} />
+        <FieldRow label="Discriminación Horaria" value={supply.cuadrantes===7?'Sí (Resto/Pico/Valle)':'No'} />
+        <FieldRow label="Última Lectura" value={supply.lectura} />
+        <FieldRow label="Energía Importada" value={`${supply.kWh} kWh`} mono />
+      </div>
+    </div>
+  );
+}
+
+function GDTab({ supply }) {
+  return (
+    <div>
+      <div style={{background:'#edf5f0',border:'1px solid #a8d9c0',borderRadius:4,padding:'10px 14px',marginBottom:16,fontSize:12,color:'#124e2f',display:'flex',alignItems:'center',gap:8}}>
+        <Icon name="info" size={14} color="#124e2f" />
+        Solapa "E. Distribuida" — datos técnicos del inversor y fuente renovable
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:700,color:'#124e2f',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Equipamiento</div>
+          <FieldRow label="Fuente de Energía" value={supply.fuente} />
+          <FieldRow label="Marca Inversor" value="Fronius Symo 5.0-3-M" />
+          <FieldRow label="Potencia Instalada" value="5,00 kWp" mono />
+          <FieldRow label="Fecha Alta GD" value="15/01/2024" />
+          <FieldRow label="N.° Resolución EPEC" value="RES-2024-00412" mono />
+        </div>
+        <div>
+          <div style={{fontSize:11,fontWeight:700,color:'#124e2f',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Cuadrantes OBIS configurados</div>
+          {supply.cuadrantes===7 ? (
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              {[['EAR','1.8.1','Importada Resto'],['EAP','1.8.2','Importada Pico'],['EAV','1.8.3','Importada Valle'],['IER','2.8.1','Exportada Resto'],['IEP','2.8.2','Exportada Pico'],['IEV','2.8.3','Exportada Valle'],['ERT','5.8.0','Reactiva Total']].map(([c,o,d])=>(
+                <div key={c} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',background:'#f5f7f6',borderRadius:3}}>
+                  <span style={{fontFamily:'JetBrains Mono',fontSize:11,fontWeight:600,color:'#124e2f',minWidth:36}}>{c}</span>
+                  <span style={{fontFamily:'JetBrains Mono',fontSize:11,color:'#4a5550',minWidth:52}}>{o}</span>
+                  <span style={{fontSize:11,color:'#6b7772'}}>{d}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              {[['E','1.8.0','Energía importada'],['IE','2.8.0','Energía exportada']].map(([c,o,d])=>(
+                <div key={c} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',background:'#f5f7f6',borderRadius:3}}>
+                  <span style={{fontFamily:'JetBrains Mono',fontSize:11,fontWeight:600,color:'#124e2f',minWidth:36}}>{c}</span>
+                  <span style={{fontFamily:'JetBrains Mono',fontSize:11,color:'#4a5550',minWidth:52}}>{o}</span>
+                  <span style={{fontSize:11,color:'#6b7772'}}>{d}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LecturasTab({ supply }) {
+  const readings = [
+    { fecha:'12/04/2025', ear:'1.024,50', eap:'312,80', eav:'88,30', ier:'88,20', iep:'14,10', iev:'0,00', ert:'45,60' },
+    { fecha:'12/03/2025', ear:'988,20',  eap:'298,40', eav:'76,10', ier:'72,30', iep:'11,90', iev:'0,00', ert:'42,10' },
+    { fecha:'12/02/2025', ear:'901,60',  eap:'280,10', eav:'69,80', ier:'60,10', iep:'9,40',  iev:'0,00', ert:'39,80' },
+  ];
+  return (
+    <div>
+      <div style={{...tableStyles.toolbar, padding:'0 0 10px', borderBottom:'none', marginBottom:8}}>
+        <span style={{...tableStyles.count}}>Historial de lecturas</span>
+        <button style={tableStyles.btn}><Icon name="plus" size={13}/> Nueva Lectura</button>
+      </div>
+      <table style={{...tableStyles.table, fontSize:11}}>
+        <thead>
+          <tr>
+            {['Fecha','EAR','EAP','EAV','IER','IEP','IEV','ERT'].map(h=>(
+              <th key={h} style={{...tableStyles.th, fontSize:10}}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {readings.map((r,i)=>(
+            <tr key={i} onMouseEnter={e=>e.currentTarget.style.background='#edf5f0'} onMouseLeave={e=>e.currentTarget.style.background=''} style={{cursor:'default'}}>
+              <td style={tableStyles.td}>{r.fecha}</td>
+              {['ear','eap','eav','ier','iep','iev','ert'].map(k=>(
+                <td key={k} style={{...tableStyles.td,...tableStyles.mono,textAlign:'right'}}>{r[k]}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function FacturacionTab({ supply }) {
+  const invoices = [
+    { periodo:'Marzo 2025', importado:'1.362,30', exportado:'98,20', saldo:'$ 48.210,40', estado:'Emitida' },
+    { periodo:'Febrero 2025', importado:'1.251,50', exportado:'81,50', saldo:'$ 43.890,20', estado:'Pagada' },
+    { periodo:'Enero 2025', importado:'1.190,00', exportado:'74,30', saldo:'$ 41.320,00', estado:'Pagada' },
+  ];
+  return (
+    <div>
+      <table style={{...tableStyles.table}}>
+        <thead>
+          <tr>
+            {['Período','Importado (kWh)','Exportado (kWh)','Importe','Estado',''].map(h=>(
+              <th key={h} style={tableStyles.th}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {invoices.map((inv,i)=>(
+            <tr key={i} onMouseEnter={e=>e.currentTarget.style.background='#edf5f0'} onMouseLeave={e=>e.currentTarget.style.background=''}>
+              <td style={tableStyles.td}>{inv.periodo}</td>
+              <td style={{...tableStyles.td,...tableStyles.mono,textAlign:'right'}}>{inv.importado}</td>
+              <td style={{...tableStyles.td,...tableStyles.mono,textAlign:'right',color:'#1a6640'}}>{inv.exportado}</td>
+              <td style={{...tableStyles.td,fontWeight:600}}>{inv.saldo}</td>
+              <td style={tableStyles.td}><span style={{...tableStyles.badge,background:inv.estado==='Pagada'?'#d4edda':'#dbeafe',color:inv.estado==='Pagada'?'#155a2e':'#0d4272'}}>{inv.estado}</span></td>
+              <td style={tableStyles.td}><button style={tableStyles.rowBtn}><Icon name="download" size={13}/></button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── APP SHELL ───────────────────────────────────────── */
+function App() {
+  const [section, setSection] = useState('supplies');
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState('');
+
+  const titles = {
+    supplies:'Suministros', reading:'Lecturas', billing:'Facturación',
+    gd:'Generación Distribuida', contracts:'Contratos', customers:'Clientes',
+  };
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden'}}>
+      <Sidebar active={section} onNav={s=>{setSection(s);setSelected(null);}} />
+      <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <TopBar
+          title={titles[section]}
+          subtitle={selected ? `Detalle · Suministro N.° ${selected.id}` : 'Gerencia Comercial — EPEC'}
+          onSearch={setFilter}
+        />
+        <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
+          {section==='supplies' && !selected && (
+            <SupplyTable onSelect={setSelected} filter={filter} />
+          )}
+          {section==='supplies' && selected && (
+            <SupplyDetail supply={selected} onBack={()=>setSelected(null)} />
+          )}
+          {section!=='supplies' && (
+            <div style={{background:'white',borderRadius:6,border:'1px solid #eaeeec',padding:32,textAlign:'center',color:'#8f9c97',boxShadow:'0 1px 4px rgba(0,0,0,0.07)'}}>
+              <Icon name="construction" size={32} color="#d5ddd9" />
+              <div style={{marginTop:12,fontSize:14,fontWeight:600,color:'#b5bfbb'}}>Módulo en construcción</div>
+              <div style={{marginTop:4,fontSize:12}}>Esta sección no está incluida en esta versión del kit.</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

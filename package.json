@@ -1,0 +1,15 @@
+{
+  "name": "plataforma-clientes-epec",
+  "version": "0.1.0",
+  "description": "Plataforma de Clientes EPEC — tooling de commitlint y git hooks (lefthook)",
+  "private": true,
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "lefthook": "^1.6.0"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "commitlint": "commitlint --edit"
+  }
+}

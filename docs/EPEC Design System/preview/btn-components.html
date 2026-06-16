@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Buttons" subtitle="Primary, secondary, ghost, danger, disabled — sm/md/lg + icon variants" viewport="700x160" -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 16px 20px; font-family: 'Roboto', sans-serif; background: #f5f7f6; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .section { font-size: 10px; font-weight: 700; color: #6b7772; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  button { font-family: inherit; cursor: pointer; font-weight: 600; border-radius: 4px; border: none; transition: background 0.15s; }
+  .btn-primary { background: #124e2f; color: white; padding: 8px 18px; font-size: 13px; }
+  .btn-primary:hover { background: #1a6640; }
+  .btn-secondary { background: #edf5f0; color: #124e2f; padding: 8px 18px; font-size: 13px; border: 1px solid #a8d9c0; }
+  .btn-ghost { background: transparent; color: #124e2f; padding: 8px 18px; font-size: 13px; border: 1px solid #d5ddd9; }
+  .btn-danger { background: #c0392b; color: white; padding: 8px 18px; font-size: 13px; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-lg { padding: 11px 24px; font-size: 15px; }
+  .btn-disabled { background: #eaeeec; color: #b5bfbb; padding: 8px 18px; font-size: 13px; cursor: not-allowed; }
+  .btn-icon { background: #124e2f; color: white; padding: 8px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+</style></head><body>
+  <div class="section">Variant</div>
+  <div class="row">
+    <button class="btn-primary">Primario</button>
+    <button class="btn-secondary">Secundario</button>
+    <button class="btn-ghost">Fantasma</button>
+    <button class="btn-danger">Eliminar</button>
+    <button class="btn-disabled" disabled>Deshabilitado</button>
+  </div>
+  <div class="section">Size</div>
+  <div class="row">
+    <button class="btn-primary btn-sm">Pequeño</button>
+    <button class="btn-primary">Mediano</button>
+    <button class="btn-primary btn-lg">Grande</button>
+  </div>
+  <div class="section">With icon</div>
+  <div class="row">
+    <button class="btn-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      Nuevo Suministro
+    </button>
+    <button class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Buscar
+    </button>
+  </div>
+</body></html>

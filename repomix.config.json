@@ -1,0 +1,17 @@
+{
+  "output": {
+    "filePath": "docs/codemap.xml",
+    "style": "xml",
+    "compress": true
+  },
+  "ignore": {
+    "useGitignore": true,
+    "customPatterns": [
+      "tests/**",
+      "**/*.lock",
+      ".venv/**",
+      "node_modules/**",
+      "docs/codemap.xml"
+    ]
+  }
+}

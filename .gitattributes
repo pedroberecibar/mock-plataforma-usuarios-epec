@@ -1,0 +1,32 @@
+# .gitattributes — normalización de line endings
+# Garantiza LF en el repo para compatibilidad cross-platform.
+# Windows convierte a CRLF en checkout, guarda LF en el repo.
+
+# Default: normalizar todo a LF en el repo
+* text=auto eol=lf
+
+# Scripts de shell: siempre LF (si se ejecutan en Linux/Mac/WSL)
+*.sh text eol=lf
+*.py text eol=lf
+
+# Config y markup
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+
+# Binarios — no tocar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary

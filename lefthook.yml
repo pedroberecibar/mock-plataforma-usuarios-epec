@@ -1,0 +1,50 @@
+# lefthook.yml — Git hooks automáticos
+#
+# Stack: Python 3.12+ (FastAPI) backend · React + TypeScript frontend.
+# Los hooks locales usan SOLO herramientas instaladas localmente (uv + npm),
+# así los commits funcionan sin descargas. El escaneo de secretos
+# (trufflehog + secretlint) corre en CI: .github/workflows/security.yml
+#
+# Cuando exista el frontend, agregar un bloque con eslint + tsc + vitest.
+
+pre-commit:
+  parallel: true
+  commands:
+
+    # --- Linter (ruff: reemplaza flake8 + isort) ---
+    ruff-lint:
+      glob: "*.py"
+      run: uv run ruff check {staged_files}
+
+    # --- Formato (ruff format: reemplaza black) ---
+    ruff-format:
+      glob: "*.py"
+      run: uv run ruff format --check {staged_files}
+
+    # --- Type check ---
+    typecheck:
+      glob: "src/**/*.py"
+      run: uv run mypy src/
+
+    # --- Reglas de arquitectura (fitness functions Clean Architecture) ---
+    arch:
+      glob: "*.py"
+      run: uv run pytest architecture/tests/ -q
+
+    # --- Frontend (descomentar al scaffoldear el front React/TS) ---
+    # eslint:
+    #   glob: "*.{ts,tsx}"
+    #   run: npm --prefix frontend run lint -- {staged_files}
+    # tsc:
+    #   glob: "*.{ts,tsx}"
+    #   run: npm --prefix frontend run typecheck
+
+    # --- Secrets scan: corre en CI. Para activarlo localmente, instalar
+    #     secretlint/trufflehog y descomentar. ---
+    # secretlint:
+    #   run: npx secretlint "**/*" --ignore-pattern ".git/**,node_modules/**,.venv/**"
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no-install commitlint --edit {1}

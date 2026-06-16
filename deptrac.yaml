@@ -1,0 +1,49 @@
+# deptrac.yaml — Configuración para proyectos PHP (Laravel/Symfony)
+# Si tu stack no es PHP, eliminá este archivo.
+# Para Python usá ArchUnitPython (architecture/tests/). Para JS/TS usá dependency-cruiser.
+
+deptrac_version: 1.0
+
+paths:
+  - src/
+
+layers:
+  - name: Domain
+    collectors:
+      - type: directory
+        value: src/domain
+  - name: Application
+    collectors:
+      - type: directory
+        value: src/application
+  - name: Infrastructure
+    collectors:
+      - type: directory
+        value: src/infrastructure
+  - name: Interface
+    collectors:
+      - type: directory
+        value: src/interface
+
+ruleset:
+  Domain:
+    access_level: private
+    allow:
+      - Domain
+
+  Application:
+    allow:
+      - Application
+      - Domain
+
+  Infrastructure:
+    allow:
+      - Infrastructure
+      - Application
+      - Domain
+
+  Interface:
+    allow:
+      - Interface
+      - Application
+      - Domain

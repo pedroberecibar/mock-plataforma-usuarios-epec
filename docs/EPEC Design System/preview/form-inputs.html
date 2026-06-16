@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Form Inputs" subtitle="Text inputs, selects, error states — with mono codes and hints" viewport="700x240" -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 16px 20px; font-family: 'Roboto', sans-serif; background: #f5f7f6; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+  .section { font-size: 10px; font-weight: 700; color: #6b7772; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 12px; font-weight: 600; color: #2f3733; }
+  input, select { font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid #d5ddd9; border-radius: 4px; background: white; color: #111614; outline: none; min-width: 160px; }
+  input:focus, select:focus { border-color: #124e2f; box-shadow: 0 0 0 2px rgba(18,78,47,0.12); }
+  input.error { border-color: #c0392b; }
+  input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .hint { font-size: 11px; color: #6b7772; margin-top: 2px; }
+  .error-msg { font-size: 11px; color: #c0392b; margin-top: 2px; }
+</style></head><body>
+  <div class="section">Text inputs</div>
+  <div class="row">
+    <div class="field">
+      <label>Número de Suministro</label>
+      <input type="text" placeholder="Ej: 708751" class="mono">
+      <span class="hint">Ingrese el N.° de suministro</span>
+    </div>
+    <div class="field">
+      <label>Clase de Tarifa</label>
+      <input type="text" value="T1410-9" class="mono">
+    </div>
+    <div class="field">
+      <label>Lectura (kWh)</label>
+      <input type="number" value="1024.50" class="mono">
+    </div>
+  </div>
+  <div class="section">Select</div>
+  <div class="row">
+    <div class="field">
+      <label>Fuente Renovable</label>
+      <select>
+        <option>Solar fotovoltaica</option>
+        <option>Eólica</option>
+        <option>Biomasa</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Franja Horaria</label>
+      <select>
+        <option>Resto (05:00–18:00)</option>
+        <option>Pico (18:00–23:00)</option>
+        <option>Valle (23:00–05:00)</option>
+      </select>
+    </div>
+  </div>
+  <div class="section">Error state</div>
+  <div class="row">
+    <div class="field">
+      <label>Código OBIS</label>
+      <input type="text" value="9.9.9" class="error mono">
+      <span class="error-msg">Código OBIS no reconocido</span>
+    </div>
+  </div>
+</body></html>

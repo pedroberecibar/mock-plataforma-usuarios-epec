@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Spacing" name="Shadows & Border Radii" subtitle="4-level shadow elevation + 5 radius tokens with usage context" viewport="700x180" -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 16px 20px; font-family: 'Roboto', sans-serif; background: #f5f7f6; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .shadow-card { background: white; border-radius: 6px; padding: 14px 12px; }
+  .shadow-label { font-size: 10px; font-weight: 600; color: #6b7772; margin-top: 8px; font-family: monospace; }
+  .shadow-name { font-size: 11px; font-weight: 700; color: #2f3733; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .rbox { background: white; border: 1px solid #d5ddd9; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+  .rlabel { font-size: 10px; color: #6b7772; font-family: monospace; }
+  .rname { font-size: 11px; font-weight: 600; color: #2f3733; }
+</style></head><body>
+  <div class="grid">
+    <div class="shadow-card" style="box-shadow:0 1px 2px rgba(0,0,0,0.06)">
+      <div class="shadow-name">xs</div>
+      <div class="shadow-label">0 1px 2px · 6%</div>
+    </div>
+    <div class="shadow-card" style="box-shadow:0 1px 4px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.05)">
+      <div class="shadow-name">sm</div>
+      <div class="shadow-label">0 1px 4px · 8%</div>
+    </div>
+    <div class="shadow-card" style="box-shadow:0 4px 12px rgba(0,0,0,0.10),0 1px 3px rgba(0,0,0,0.06)">
+      <div class="shadow-name">md</div>
+      <div class="shadow-label">0 4px 12px · 10%</div>
+    </div>
+    <div class="shadow-card" style="box-shadow:0 8px 24px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.07)">
+      <div class="shadow-name">lg</div>
+      <div class="shadow-label">0 8px 24px · 12%</div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="rbox" style="border-radius:2px"><div style="width:28px;height:28px;background:#124e2f;border-radius:2px"></div><div><div class="rname">xs · 2px</div><div class="rlabel">tags, badges</div></div></div>
+    <div class="rbox" style="border-radius:4px"><div style="width:28px;height:28px;background:#124e2f;border-radius:4px"></div><div><div class="rname">sm · 4px</div><div class="rlabel">buttons, inputs</div></div></div>
+    <div class="rbox" style="border-radius:6px"><div style="width:28px;height:28px;background:#124e2f;border-radius:6px"></div><div><div class="rname">md · 6px</div><div class="rlabel">cards, panels</div></div></div>
+    <div class="rbox" style="border-radius:8px"><div style="width:28px;height:28px;background:#124e2f;border-radius:8px"></div><div><div class="rname">lg · 8px</div><div class="rlabel">modals</div></div></div>
+    <div class="rbox" style="border-radius:9999px"><div style="width:28px;height:28px;background:#124e2f;border-radius:9999px"></div><div><div class="rname">full</div><div class="rlabel">pills</div></div></div>
+  </div>
+</body></html>

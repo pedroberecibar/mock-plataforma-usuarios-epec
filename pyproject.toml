@@ -1,0 +1,96 @@
+# pyproject.toml — Configuración para proyectos PYTHON
+# Si tu stack no es Python, eliminá este archivo.
+# Adaptará las versiones y dependencias según el proyecto real.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "plataforma-clientes-epec"
+version = "0.1.0"
+description = "Plataforma de Clientes EPEC — backend FastAPI"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+# Aplicación, no librería: no construir wheel (no hay paquete instalable todavía).
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "deptry>=0.16",
+]
+
+# =============================================================================
+# Ruff — linter + formatter (reemplaza flake8 + black + isort)
+# =============================================================================
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "N",   # pep8-naming
+]
+ignore = [
+    "E501",  # line too long (ya lo maneja line-length)
+    "B008",  # do not perform function calls in default arguments
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+# =============================================================================
+# mypy — type checker
+# =============================================================================
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+exclude = ["tests/", "scripts/", ".claude/"]
+
+# =============================================================================
+# pytest — test runner
+# =============================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--no-header",
+    "--strict-markers",
+]
+markers = [
+    "unit: pure unit tests, no I/O",
+    "integration: tests that touch DB or external services",
+    "slow: tests that take more than 1 second",
+]
+
+# Coverage
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "scripts/*", ".claude/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+# =============================================================================
+# deptry — detecta dependencias no declaradas y huérfanas
+# =============================================================================
+[tool.deptry]
+ignore = []
+ignore_notebooks = true

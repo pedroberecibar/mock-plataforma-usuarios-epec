@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "refactor/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    name: Tests + Linters + Arch checks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Ruff — lint
+        run: uv run ruff check src/ tests/
+
+      - name: Ruff — format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: mypy — type check
+        run: uv run mypy src/
+
+      - name: pytest — unit tests
+        run: uv run pytest tests/ -m "not integration" --cov=src --cov-report=xml --cov-fail-under=80
+
+      - name: ArchUnitPython — architecture rules
+        run: uv run pytest architecture/tests/ -v
+
+      - name: deptry — undeclared dependencies
+        run: uv run deptry src/
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Badges & Tags" subtitle="Status badges, energy type tags, OBIS cuadrante tags, tariff group chips" viewport="700x200" -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 16px 20px; font-family: 'Roboto', sans-serif; background: #f5f7f6; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .section { font-size: 10px; font-weight: 700; color: #6b7772; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; background: #eaeeec; color: #4a5550; font-family: 'JetBrains Mono', monospace; }
+  .tag-green { background: #edf5f0; color: #124e2f; border: 1px solid #a8d9c0; }
+</style></head><body>
+  <div class="section">Estado del Suministro</div>
+  <div class="row">
+    <span class="badge" style="background:#d4edda;color:#155a2e"><span class="dot" style="background:#1d8348"></span>Activo</span>
+    <span class="badge" style="background:#fde8e8;color:#7a1c1c"><span class="dot" style="background:#c0392b"></span>Inactivo</span>
+    <span class="badge" style="background:#fff3cd;color:#7a4a00"><span class="dot" style="background:#e6910a"></span>Pendiente</span>
+    <span class="badge" style="background:#dbeafe;color:#0d4272"><span class="dot" style="background:#1565c0"></span>En revisión</span>
+    <span class="badge" style="background:#eaeeec;color:#4a5550"><span class="dot" style="background:#8f9c97"></span>Suspendido</span>
+  </div>
+  <div class="section">Tipo de Energía</div>
+  <div class="row">
+    <span class="badge" style="background:#edf5f0;color:#124e2f;border:1px solid #a8d9c0">Solar</span>
+    <span class="badge" style="background:#edf5f0;color:#124e2f;border:1px solid #a8d9c0">Eólica</span>
+    <span class="badge" style="background:#edf5f0;color:#124e2f;border:1px solid #a8d9c0">GD</span>
+    <span class="badge" style="background:#fff3cd;color:#7a4a00;border:1px solid #f0c060">Movilidad</span>
+  </div>
+  <div class="section">Cuadrantes OBIS</div>
+  <div class="row">
+    <span class="tag tag-green">EAR</span>
+    <span class="tag tag-green">EAP</span>
+    <span class="tag tag-green">EAV</span>
+    <span class="tag" style="background:#fde8e8;color:#7a1c1c;border:1px solid #f5b7b1">IER</span>
+    <span class="tag" style="background:#fde8e8;color:#7a1c1c;border:1px solid #f5b7b1">IEP</span>
+    <span class="tag" style="background:#fde8e8;color:#7a1c1c;border:1px solid #f5b7b1">IEV</span>
+    <span class="tag" style="background:#dbeafe;color:#0d4272;border:1px solid #93c5fd">ERT</span>
+  </div>
+  <div class="section">Grupos Tarifarios</div>
+  <div class="row">
+    <span class="badge" style="background:#eaeeec;color:#2f3733">Grupo 1</span>
+    <span class="badge" style="background:#eaeeec;color:#2f3733">Grupo 2</span>
+    <span class="badge" style="background:#eaeeec;color:#2f3733">Grupo 3</span>
+    <span class="badge" style="background:#edf5f0;color:#124e2f">T1410-9</span>
+    <span class="badge" style="background:#edf5f0;color:#124e2f">T2BT-GD</span>
+  </div>
+</body></html>

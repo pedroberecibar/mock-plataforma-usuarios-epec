@@ -1,0 +1,60 @@
+# .gitignore — AI Dev Starter
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node
+node_modules/
+.npm/
+.pnpm-store/
+
+# Secrets y credenciales — NUNCA al repo
+.env
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.yaml
+secrets.json
+
+# Codemap generado por repomix (artefacto de trabajo, no fuente)
+docs/codemap.xml
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git worktrees (se manejan con scripts/new-worktree.sh)
+# No commitear worktrees adicionales
+
+# Logs
+*.log
+logs/
+
+# Claude Code (archivos internos del harness, no del proyecto)
+.claude/scheduled_tasks.lock
+.claude/settings.local.json

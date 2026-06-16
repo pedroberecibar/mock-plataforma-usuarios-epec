@@ -1,0 +1,35 @@
+# Configuración de Serena MCP
+#
+# Serena es el servidor MCP de code graph (navegación semántica via LSP).
+# Lee este archivo al arrancar el proyecto con `claude`.
+#
+# Documentación: https://github.com/oraios/serena
+#
+# Ajustar según el lenguaje del proyecto:
+#   - Python: pyright debe estar instalado (pip install pyright o uv add pyright --dev)
+#   - PHP: Intelephense debe estar instalado (npm install -g intelephense)
+#   - TypeScript/JS: tsserver (incluido en TypeScript)
+
+[language_servers]
+# Python — habilitar si el proyecto tiene código Python
+python = true
+
+# PHP — habilitar si el proyecto tiene código PHP
+php = false
+
+# TypeScript/JavaScript — habilitar si el proyecto tiene frontend TS/JS
+typescript = false
+
+[project]
+# Excluir directorios de la indexación de Serena
+exclude_dirs = [
+    ".venv",
+    "node_modules",
+    "__pycache__",
+    ".git",
+    "dist",
+    "build",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+]

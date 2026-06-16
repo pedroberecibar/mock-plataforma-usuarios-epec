@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Type" name="Monospace / Code" subtitle="JetBrains Mono for OBIS codes, tariff codes, supply numbers" viewport="700x180" -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 20px 24px; font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; }
+  .row { border-bottom: 1px solid #eaeeec; padding: 10px 0; display: flex; align-items: center; gap: 20px; }
+  .row:last-child { border-bottom: none; }
+  .meta { min-width: 130px; font-size: 10px; color: #8f9c97; line-height: 1.5; }
+  .specimen { flex: 1; background: #f5f7f6; padding: 7px 12px; border-radius: 4px; color: #0f3d24; font-family: 'Space Grotesk', sans-serif; }
+  .s-lg  { font-size: 17px; font-weight: 500; letter-spacing: 0.01em; }
+  .s-md  { font-size: 14px; font-weight: 500; letter-spacing: 0.01em; }
+  .s-sm  { font-size: 12px; font-weight: 400; color: #4a5550; }
+  .tag   { display: inline-block; background: #edf5f0; color: #124e2f; border: 1px solid #a8d9c0;
+           padding: 3px 9px; border-radius: 3px; font-size: 12px; font-weight: 600;
+           font-family: 'Space Grotesk', sans-serif; margin: 2px; letter-spacing: 0.02em; }
+</style></head><body>
+  <div class="row">
+    <div class="meta">Código OBIS<br>17px · 500</div>
+    <div class="specimen s-lg">1.8.1 · 2.8.3 · 5.8.0</div>
+  </div>
+  <div class="row">
+    <div class="meta">Clase de Tarifa<br>14px · 500</div>
+    <div class="specimen s-md">T1410-9 · T2BT-GD · T3MT</div>
+  </div>
+  <div class="row">
+    <div class="meta">N.° Suministro<br>14px · 500</div>
+    <div class="specimen s-md">Suministro N.° 708751</div>
+  </div>
+  <div class="row">
+    <div class="meta">Valores de lectura<br>12px · 400</div>
+    <div class="specimen s-sm">EAR 1024.50 kWh · EAP 312.80 kWh · IER 88.20 kWh</div>
+  </div>
+  <div class="row">
+    <div class="meta">Tags de cuadrante</div>
+    <div style="padding: 4px 0">
+      <span class="tag">EAR</span><span class="tag">EAP</span><span class="tag">EAV</span>
+      <span class="tag" style="background:#fde8e8;color:#7a1c1c;border-color:#f5b7b1">IER</span>
+      <span class="tag" style="background:#fde8e8;color:#7a1c1c;border-color:#f5b7b1">IEP</span>
+      <span class="tag" style="background:#fde8e8;color:#7a1c1c;border-color:#f5b7b1">IEV</span>
+      <span class="tag" style="background:#dbeafe;color:#0d4272;border-color:#93c5fd">ERT</span>
+    </div>
+  </div>
+</body></html>

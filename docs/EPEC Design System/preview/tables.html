@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Data Table" subtitle="Supply list table — green header, hover rows, status badges, mono codes" viewport="700x180" -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 16px 20px; font-family: 'Roboto', sans-serif; background: #f5f7f6; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 12px; }
+  thead { background: #124e2f; color: white; }
+  th { padding: 9px 12px; text-align: left; font-weight: 600; font-size: 11px; letter-spacing: 0.03em; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eaeeec; color: #2f3733; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #edf5f0; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+</style></head><body>
+  <table>
+    <thead>
+      <tr>
+        <th>N.° Suministro</th>
+        <th>Clase Tarifa</th>
+        <th>Fuente</th>
+        <th>Cuadrantes</th>
+        <th>Estado</th>
+        <th>Última Lectura</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="mono">708751</td>
+        <td class="mono">T1410-9</td>
+        <td>Solar</td>
+        <td class="mono">7</td>
+        <td><span class="badge" style="background:#d4edda;color:#155a2e">Activo</span></td>
+        <td>12/04/2025</td>
+      </tr>
+      <tr>
+        <td class="mono">503214</td>
+        <td class="mono">T2BT-GD</td>
+        <td>Eólica</td>
+        <td class="mono">2</td>
+        <td><span class="badge" style="background:#fff3cd;color:#7a4a00">Pendiente</span></td>
+        <td>08/04/2025</td>
+      </tr>
+      <tr>
+        <td class="mono">921073</td>
+        <td class="mono">T1410-9</td>
+        <td>Solar</td>
+        <td class="mono">7</td>
+        <td><span class="badge" style="background:#d4edda;color:#155a2e">Activo</span></td>
+        <td>12/04/2025</td>
+      </tr>
+      <tr>
+        <td class="mono">417882</td>
+        <td class="mono">T3MT</td>
+        <td>Solar</td>
+        <td class="mono">2</td>
+        <td><span class="badge" style="background:#fde8e8;color:#7a1c1c">Inactivo</span></td>
+        <td>01/04/2025</td>
+      </tr>
+    </tbody>
+  </table>
+</body></html>

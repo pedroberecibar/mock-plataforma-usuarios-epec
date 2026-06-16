@@ -1,0 +1,33 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Scan diario a las 2am UTC (corre aunque no haya commits)
+    - cron: "0 2 * * *"
+
+jobs:
+  secrets-scan:
+    name: Secrets & Credentials Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # historial completo para trufflehog
+
+      - name: TruffleHog — scan secrets in git history
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: secretlint — scan staged/committed files
+        run: |
+          npm install -g secretlint @secretlint/secretlint-rule-preset-recommend
+          secretlint "**/*" --ignore-pattern ".git/**,node_modules/**,.venv/**"
