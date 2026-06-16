@@ -1,47 +1,28 @@
-"""
-conftest.py — Shared pytest fixtures for the entire test suite.
+"""conftest.py — Shared pytest fixtures for the entire test suite."""
 
-Fixtures defined here are automatically available to all test files
-without needing to import them explicitly.
-"""
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
-
-# ---------------------------------------------------------------------------
-# Markers registration (avoids PytestUnknownMarkWarning)
-# ---------------------------------------------------------------------------
-# Markers are also declared in pyproject.toml [tool.pytest.ini_options].
-# This file documents them with examples for discoverability.
-
-# @pytest.mark.unit        → pure unit tests, no I/O
-# @pytest.mark.integration → tests that touch DB or external services
-# @pytest.mark.slow        → tests that take more than 1 second
+from infrastructure.sqlite.models import Base, Suministro
 
 
-# ---------------------------------------------------------------------------
-# Example shared fixtures (uncomment and adapt as needed)
-# ---------------------------------------------------------------------------
-
-# @pytest.fixture(scope="session")
-# def db_engine():
-#     """Create a test database engine (SQLite in-memory for unit tests)."""
-#     from sqlalchemy import create_engine
-#     engine = create_engine("sqlite:///:memory:", echo=False)
-#     yield engine
-#     engine.dispose()
-
-
-# @pytest.fixture(scope="function")
-# def db_session(db_engine):
-#     """Provide a transactional test session that rolls back after each test."""
-#     from sqlalchemy.orm import sessionmaker
-#     Session = sessionmaker(bind=db_engine)
-#     session = Session()
-#     yield session
-#     session.rollback()
-#     session.close()
+@pytest.fixture
+async def db_session() -> AsyncSession:
+    """Fresh in-memory SQLite per test — garantiza aislamiento total entre tests."""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as session:
+        yield session
+    await engine.dispose()
 
 
-# @pytest.fixture
-# def anyio_backend():
-#     """Use asyncio backend for async tests (requires anyio)."""
-#     return "asyncio"
+@pytest.fixture
+async def suministro_fixture(db_session: AsyncSession) -> str:
+    """Inserta un Suministro de prueba y devuelve su id (requerido por FK de consumo_diario)."""
+    sid = "S-TEST-001"
+    db_session.add(Suministro(id=sid, lat=-31.42, lon=-64.18, suministro_referencia="91013496"))
+    await db_session.flush()
+    return sid

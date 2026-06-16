@@ -20,6 +20,10 @@ htmlcov/
 .coverage
 coverage.xml
 
+# SQLite (datos locales de desarrollo, no son fuente)
+data/*.db
+data/*.db-journal
+
 # Node
 node_modules/
 .npm/
