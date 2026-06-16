@@ -54,7 +54,7 @@ Proyecto: **Plataforma de Clientes EPEC** (MVP).
 - **Backend:**  Python 3.12+ + FastAPI
 - **Frontend:** React + TypeScript (Vite)
 - **Tests:**    pytest (backend) · Vitest + React Testing Library (frontend)
-- **DB:**       PostgreSQL
+- **DB:**       SQLite (ver ADR-001)
 - **Otros:**    EPEC Design System (ver `docs/EPEC Design System/`), prompts de Stitch para UI (`docs/stitch-prompts-plataforma-clientes.md`)
 
 ## Idioma
@@ -70,8 +70,8 @@ Proyecto: **Plataforma de Clientes EPEC** (MVP).
 
 ## Architecture Rules (independiente del stack — enforced by CI)
 - Single Responsibility: una razón para cambiar por clase/función. Archivo > 300 líneas → flag para extracción.
-- Open/Closed: extendé con clases/funciones nuevas, no modificando existentes.
-- Dependency Inversion: dependé de abstracciones. La capa domain NO importa infraestructura.
+- Open/Closed: extendé con clases/funciones nuevas, no modificando existentes. Cambiar de tecnología externa (SQLite→Postgres, proveedor de cola/notificaciones/auth/fuente de datos) = agregar un adapter nuevo en infrastructure, NUNCA tocar casos de uso. Ver ADR-001.
+- Dependency Inversion: dependé de abstracciones. La capa domain NO importa infraestructura. application/domain definen los puertos (clases abstractas `abc.ABC`); infrastructure provee los adapters concretos. Ningún caso de uso importa una lib de infra concreta (sqlite3/SQLAlchemy, cliente Oracle, Redis/Celery, push/email, JWT) — siempre a través de su puerto. Puertos del proyecto: `ConsumoDiarioRepository`, `ObjetivoConsumoRepository`, `VecinosRepository`, `MedicionSourceReader` (Oracle), `TaskQueue`, `NotificationSender`, `AuthProvider`.
 - DRY: nada de bloques duplicados > 5 líneas.
 - YAGNI: implementá solo lo necesario AHORA. Sin generalización especulativa.
 
