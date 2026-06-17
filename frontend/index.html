@@ -22,7 +22,14 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
-      #root { min-height: 100vh; }
+      #root { height: 100vh; display: flex; flex-direction: column; }
+      /* AppShell responsive nav */
+      .app-sidebar   { display: flex; }
+      .app-bottomnav { display: none; }
+      @media (max-width: 767px) {
+        .app-sidebar   { display: none; }
+        .app-bottomnav { display: flex; }
+      }
     </style>
   </head>
   <body>

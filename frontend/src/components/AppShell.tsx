@@ -1,15 +1,6 @@
 import type React from "react";
 import { color, font, fontSize, fontWeight, space } from "../design-tokens";
 
-const RESPONSIVE_CSS = `
-  .app-sidebar   { display: flex !important; }
-  .app-bottomnav { display: none !important; }
-  @media (max-width: 767px) {
-    .app-sidebar   { display: none !important; }
-    .app-bottomnav { display: flex !important; }
-  }
-`;
-
 // ---------------------------------------------------------------------------
 // SVG icons — inline, no external dependency
 // ---------------------------------------------------------------------------
@@ -64,11 +55,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Inicio",        vista: "home",         icon: <IconHome />,     disabled: false },
-  { label: "Consumo",       vista: "consumo",      icon: <IconBarChart />, disabled: false },
-  { label: "Objetivos",     vista: null,           icon: <IconTarget />,   disabled: true },
-  { label: "Mi factura",    vista: null,           icon: <IconReceipt />,  disabled: true },
-  { label: "Configuración", vista: null,           icon: <IconSettings />, disabled: true },
+  { label: "Inicio",        vista: "home",    icon: <IconHome />,     disabled: false },
+  { label: "Consumo",       vista: "consumo", icon: <IconBarChart />, disabled: false },
+  { label: "Objetivos",     vista: null,      icon: <IconTarget />,   disabled: true  },
+  { label: "Mi factura",    vista: null,      icon: <IconReceipt />,  disabled: true  },
+  { label: "Configuración", vista: null,      icon: <IconSettings />, disabled: true  },
 ];
 
 interface AppShellProps {
@@ -79,12 +70,11 @@ interface AppShellProps {
 }
 
 // ---------------------------------------------------------------------------
-// Color constants used in this component
+// Color constants
 // ---------------------------------------------------------------------------
 const C = {
   bg:           color.green700,
   activeItem:   color.green600,
-  hoverItem:    color.green800,
   textActive:   color.white,
   textEnabled:  color.green200,
   textDisabled: color.green300,
@@ -92,66 +82,57 @@ const C = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// AppShell component
+// AppShell
+// Responsive behavior via CSS in index.html <head>:
+//   .app-sidebar   { display:flex }  →  none on <768px
+//   .app-bottomnav { display:none }  →  flex on <768px
 // ---------------------------------------------------------------------------
 export function AppShell({ vistaActiva, onNavegar, usuarioNombre, children }: AppShellProps) {
   return (
-    <>
-    <style>{RESPONSIVE_CSS}</style>
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: font.sans }}>
-      {/* Header */}
-      <header
-        style={{
-          background:     C.bg,
-          height:         56,
-          display:        "flex",
-          alignItems:     "center",
-          padding:        `0 ${space[6]}px`,
-          flexShrink:     0,
-          justifyContent: "space-between",
-          zIndex:         10,
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, fontFamily: font.sans, overflow: "hidden" }}>
+
+      {/* ── Header ── */}
+      <header style={{
+        background:     C.bg,
+        height:         56,
+        minHeight:      56,
+        display:        "flex",
+        alignItems:     "center",
+        padding:        `0 ${space[6]}px`,
+        justifyContent: "space-between",
+        flexShrink:     0,
+        zIndex:         10,
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: space[3] }}>
           <img src="/epec-logo-white.png" alt="EPEC" height={32} />
-          <span
-            style={{
-              color:      color.green200,
-              fontSize:   fontSize.xs,
-              fontWeight: fontWeight.medium,
-              letterSpacing: "0.03em",
-            }}
-          >
+          <span style={{ color: color.green200, fontSize: fontSize.xs, fontWeight: fontWeight.medium, letterSpacing: "0.03em" }}>
             Plataforma de Clientes
           </span>
         </div>
-        <span
-          style={{
-            color:      color.white,
-            fontSize:   fontSize.sm,
-            fontWeight: fontWeight.regular,
-          }}
-        >
+        <span style={{ color: color.white, fontSize: fontSize.sm, fontWeight: fontWeight.regular }}>
           {usuarioNombre ?? "Mi cuenta"}
         </span>
       </header>
 
-      {/* Body: sidebar + content (desktop) / content + bottom-nav (mobile) */}
+      {/* ── Body row: sidebar + content ── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Desktop sidebar — CSS hides it on mobile */}
+
+        {/* Desktop sidebar — CSS hides on mobile */}
         <nav
           className="app-sidebar"
           aria-label="Navegación principal"
           style={{
             width:         220,
+            minWidth:      220,
             background:    C.bg,
             flexDirection: "column",
             padding:       `${space[4]}px 0`,
             flexShrink:    0,
+            overflowY:     "auto",
           }}
         >
           {NAV_ITEMS.map((item) => (
-            <NavLink
+            <SidebarItem
               key={item.label}
               item={item}
               isActive={item.vista === vistaActiva}
@@ -160,25 +141,20 @@ export function AppShell({ vistaActiva, onNavegar, usuarioNombre, children }: Ap
           ))}
         </nav>
 
-        {/* Main content */}
-        <main
-          style={{
-            flex:       1,
-            background: C.content,
-            overflowY:  "auto",
-          }}
-        >
+        {/* Main content area */}
+        <main style={{ flex: 1, background: C.content, overflowY: "auto" }}>
           {children}
         </main>
       </div>
 
-      {/* Mobile bottom navigation — CSS hides it on desktop */}
+      {/* ── Mobile bottom nav — CSS hides on desktop ── */}
       <nav
         className="app-bottomnav"
         aria-label="Navegación inferior"
         style={{
           background:     C.bg,
           height:         60,
+          minHeight:      60,
           alignItems:     "center",
           justifyContent: "space-around",
           flexShrink:     0,
@@ -193,34 +169,26 @@ export function AppShell({ vistaActiva, onNavegar, usuarioNombre, children }: Ap
           />
         ))}
       </nav>
+
     </div>
-    </>
   );
 }
 
 // ---------------------------------------------------------------------------
-// NavLink — sidebar item
+// SidebarItem
 // ---------------------------------------------------------------------------
-interface NavLinkProps {
+interface SidebarItemProps {
   item: NavItem;
   isActive: boolean;
   onNavegar: (vista: Vista) => void;
 }
 
-function NavLink({ item, isActive, onNavegar }: NavLinkProps) {
-  const textColor = item.disabled
-    ? C.textDisabled
-    : isActive
-      ? C.textActive
-      : C.textEnabled;
-
-  const bg = isActive ? C.activeItem : "transparent";
+function SidebarItem({ item, isActive, onNavegar }: SidebarItemProps) {
+  const textColor = item.disabled ? C.textDisabled : isActive ? C.textActive : C.textEnabled;
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
-    if (!item.disabled && item.vista) {
-      onNavegar(item.vista);
-    }
+    if (!item.disabled && item.vista) onNavegar(item.vista);
   }
 
   return (
@@ -236,13 +204,12 @@ function NavLink({ item, isActive, onNavegar }: NavLinkProps) {
         gap:            space[3],
         padding:        `${space[3]}px ${space[5]}px`,
         color:          textColor,
-        background:     bg,
+        background:     isActive ? C.activeItem : "transparent",
         fontWeight:     isActive ? fontWeight.semibold : fontWeight.regular,
         fontSize:       fontSize.sm,
         textDecoration: "none",
         cursor:         item.disabled ? "not-allowed" : "pointer",
         pointerEvents:  item.disabled ? "none" : "auto",
-        transition:     "background 0.15s",
         userSelect:     "none",
       }}
     >
@@ -253,7 +220,7 @@ function NavLink({ item, isActive, onNavegar }: NavLinkProps) {
 }
 
 // ---------------------------------------------------------------------------
-// BottomNavItem — mobile bottom bar item
+// BottomNavItem
 // ---------------------------------------------------------------------------
 interface BottomNavItemProps {
   item: NavItem;
@@ -262,17 +229,11 @@ interface BottomNavItemProps {
 }
 
 function BottomNavItem({ item, isActive, onNavegar }: BottomNavItemProps) {
-  const textColor = item.disabled
-    ? C.textDisabled
-    : isActive
-      ? C.textActive
-      : C.textEnabled;
+  const textColor = item.disabled ? C.textDisabled : isActive ? C.textActive : C.textEnabled;
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
-    if (!item.disabled && item.vista) {
-      onNavegar(item.vista);
-    }
+    if (!item.disabled && item.vista) onNavegar(item.vista);
   }
 
   return (
