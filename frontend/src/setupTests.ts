@@ -1,1 +1,11 @@
-// vitest globals: expect, describe, it, vi — no extra setup needed
+import { vi } from "vitest";
+
+// Recharts' ResponsiveContainer uses ResizeObserver which jsdom doesn't implement
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
