@@ -5,6 +5,7 @@ Mockean oracledb a nivel de módulo para verificar:
 - Que la query emitida es parametrizada (no interpolada).
 - Normalización de decimal coma y filtrado de nulos.
 - Lógica de ancla (última lectura antes de `desde` por equipo).
+- Mapeo medidor → suministro vía srv_codigo (JOIN con XXSIGEC.EQUIPOS).
 """
 
 from datetime import date
@@ -24,8 +25,11 @@ def env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OR_SERVICE_NAME", "SIGEC")
 
 
-def _make_row(equipo: str, fecha: date, valor: str | float | None, cdr: str = "E") -> MagicMock:
+def _make_row(
+    srv: str, equipo: str, fecha: date, valor: str | float | None, cdr: str = "E"
+) -> MagicMock:
     row = MagicMock()
+    row.srv_codigo = srv
     row.med_numero_equipo = equipo
     row.cdr_codigo = cdr
     row.fecha = fecha
@@ -46,11 +50,17 @@ async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connecti
     conn, cursor = mock_connection
     cursor.fetchall.side_effect = [
         # primera query: rango principal
-        [_make_row("91013496", date(2026, 6, 1), 13773.0)],
+        [_make_row("SRV-001", "91013496", date(2026, 6, 1), 13773.0)],
         # segunda query: anclas
         [],
     ]
-    cursor.description = [("med_numero_equipo",), ("cdr_codigo",), ("fecha",), ("lec_valor_leido",)]
+    cursor.description = [
+        ("srv_codigo",),
+        ("med_numero_equipo",),
+        ("cdr_codigo",),
+        ("fecha",),
+        ("lec_valor_leido",),
+    ]
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -62,6 +72,7 @@ async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connecti
 
     assert len(result) == 1
     assert result[0].equipo == "91013496"
+    assert result[0].srv_codigo == "SRV-001"
     assert result[0].fecha == date(2026, 6, 1)
     assert result[0].valor_kwh == 13773.0
 
@@ -69,10 +80,16 @@ async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connecti
 async def test_leer_lecturas_normaliza_coma_decimal(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
     cursor.fetchall.side_effect = [
-        [_make_row("91013496", date(2026, 6, 1), "13773,50")],
+        [_make_row("SRV-001", "91013496", date(2026, 6, 1), "13773,50")],
         [],
     ]
-    cursor.description = [("med_numero_equipo",), ("cdr_codigo",), ("fecha",), ("lec_valor_leido",)]
+    cursor.description = [
+        ("srv_codigo",),
+        ("med_numero_equipo",),
+        ("cdr_codigo",),
+        ("fecha",),
+        ("lec_valor_leido",),
+    ]
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -89,12 +106,18 @@ async def test_leer_lecturas_descarta_nulos(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
     cursor.fetchall.side_effect = [
         [
-            _make_row("91013496", date(2026, 6, 1), None),  # nulo → descartado
-            _make_row("91013496", date(2026, 6, 2), 100.0),  # válido
+            _make_row("SRV-001", "91013496", date(2026, 6, 1), None),  # nulo → descartado
+            _make_row("SRV-001", "91013496", date(2026, 6, 2), 100.0),  # válido
         ],
         [],
     ]
-    cursor.description = [("med_numero_equipo",), ("cdr_codigo",), ("fecha",), ("lec_valor_leido",)]
+    cursor.description = [
+        ("srv_codigo",),
+        ("med_numero_equipo",),
+        ("cdr_codigo",),
+        ("fecha",),
+        ("lec_valor_leido",),
+    ]
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -112,11 +135,17 @@ async def test_leer_lecturas_incluye_ancla_de_segunda_query(env_vars, mock_conne
     conn, cursor = mock_connection
     cursor.fetchall.side_effect = [
         # rango principal
-        [_make_row("91013496", date(2026, 6, 1), 13773.0)],
+        [_make_row("SRV-001", "91013496", date(2026, 6, 1), 13773.0)],
         # anclas (última lectura por equipo antes de desde)
-        [_make_row("91013496", date(2026, 5, 27), 13721.0)],
+        [_make_row("SRV-001", "91013496", date(2026, 5, 27), 13721.0)],
     ]
-    cursor.description = [("med_numero_equipo",), ("cdr_codigo",), ("fecha",), ("lec_valor_leido",)]
+    cursor.description = [
+        ("srv_codigo",),
+        ("med_numero_equipo",),
+        ("cdr_codigo",),
+        ("fecha",),
+        ("lec_valor_leido",),
+    ]
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)

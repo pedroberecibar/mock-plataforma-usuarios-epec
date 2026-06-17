@@ -11,8 +11,16 @@ from infrastructure.fakes.consumo_diario_repository import FakeConsumoDiarioRepo
 from infrastructure.fakes.medicion_source_reader import SEED_LECTURAS_EPEC, FakeMedicionSourceReader
 
 
-def _lectura(equipo: str, fecha: date, valor: float, cdr: str = "E") -> LecturaTelemedida:
-    return LecturaTelemedida(equipo=equipo, cdr_codigo=cdr, fecha=fecha, valor_kwh=valor)
+def _lectura(
+    equipo: str, fecha: date, valor: float, cdr: str = "E", srv: str | None = None
+) -> LecturaTelemedida:
+    return LecturaTelemedida(
+        equipo=equipo,
+        srv_codigo=srv if srv is not None else f"SRV-{equipo}",
+        cdr_codigo=cdr,
+        fecha=fecha,
+        valor_kwh=valor,
+    )
 
 
 async def test_dos_lecturas_consecutivas_generan_tasa_uniforme() -> None:
@@ -26,7 +34,7 @@ async def test_dos_lecturas_consecutivas_generan_tasa_uniforme() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
 
-    serie = await repo.get_serie("E1", d0, d1)
+    serie = await repo.get_serie("SRV-E1", d0, d1)
     assert len(serie) == 5
     assert all(kwh == 10.0 for _, kwh in serie)
     fechas = [f for f, _ in serie]
@@ -44,7 +52,7 @@ async def test_ultimo_dia_lectura_no_genera_consumo() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
 
-    serie = await repo.get_serie("E1", d0, d1)
+    serie = await repo.get_serie("SRV-E1", d0, d1)
     fechas = {f for f, _ in serie}
     assert d1 not in fechas
 
@@ -58,7 +66,7 @@ async def test_hueco_distribuye_tasa_uniformemente() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
 
-    serie = await repo.get_serie("E1", d0, d1)
+    serie = await repo.get_serie("SRV-E1", d0, d1)
     assert len(serie) == 10
     assert all(kwh == 10.0 for _, kwh in serie)
 
@@ -77,7 +85,7 @@ async def test_delta_negativo_se_omite() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d2)
 
-    serie = await repo.get_serie("E1", d0, d2)
+    serie = await repo.get_serie("SRV-E1", d0, d2)
     # El intervalo d0→d1 tiene delta negativo: no se persiste
     assert not any(
         f in {d0, date(2026, 6, 2), date(2026, 6, 3), date(2026, 6, 4)} for f, _ in serie
@@ -101,8 +109,8 @@ async def test_dos_equipos_se_procesan_independientemente() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
 
-    serie_e1 = await repo.get_serie("E1", d0, d1)
-    serie_e2 = await repo.get_serie("E2", d0, d1)
+    serie_e1 = await repo.get_serie("SRV-E1", d0, d1)
+    serie_e2 = await repo.get_serie("SRV-E2", d0, d1)
 
     assert all(kwh == 12.0 for _, kwh in serie_e1)
     assert all(kwh == 2.0 for _, kwh in serie_e2)
@@ -122,7 +130,7 @@ async def test_cdr_no_e_se_ignora() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
 
-    serie = await repo.get_serie("E1", d0, d1)
+    serie = await repo.get_serie("SRV-E1", d0, d1)
     assert all(kwh == 10.0 for _, kwh in serie)
 
 
@@ -140,7 +148,7 @@ async def test_dedupe_por_equipo_fecha() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
 
-    serie = await repo.get_serie("E1", d0, d1)
+    serie = await repo.get_serie("SRV-E1", d0, d1)
     assert len(serie) == 3
     assert all(kwh == 10.0 for _, kwh in serie)
 
@@ -161,10 +169,31 @@ async def test_ancla_fuera_de_rango_permite_calcular_primer_dia() -> None:
 
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(desde, hasta)
 
-    serie = await repo.get_serie("E1", desde, hasta)
+    serie = await repo.get_serie("SRV-E1", desde, hasta)
     # El intervalo ancla→desde (4 días) da rate=10 kWh/día → desde asignado con 10.0
     primer_dia = dict(serie).get(desde)
     assert primer_dia is not None
+
+
+async def test_consumo_atribuido_al_suministro_no_al_medidor() -> None:
+    """El consumo se persiste con srv_codigo (SRV_CODIGO), no con el número de medidor."""
+    d0, d1 = date(2026, 6, 1), date(2026, 6, 4)
+    reader = FakeMedicionSourceReader(
+        lecturas=[
+            _lectura("MEDIDOR-99", d0, 1000.0, srv="SRV-XYZ"),
+            _lectura("MEDIDOR-99", d1, 1030.0, srv="SRV-XYZ"),
+        ]
+    )
+    repo = FakeConsumoDiarioRepository()
+
+    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+
+    # La serie debe estar bajo el SRV_CODIGO, NO bajo el número de medidor
+    serie_por_suministro = await repo.get_serie("SRV-XYZ", d0, d1)
+    serie_por_medidor = await repo.get_serie("MEDIDOR-99", d0, d1)
+
+    assert len(serie_por_suministro) > 0, "Consumo debe estar bajo SRV-XYZ"
+    assert len(serie_por_medidor) == 0, "No debe haber datos bajo el número de medidor"
 
 
 async def test_integracion_semilla_completa() -> None:
@@ -178,8 +207,9 @@ async def test_integracion_semilla_completa() -> None:
     desde, hasta = date(2026, 6, 1), date(2026, 6, 30)
     await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(desde, hasta)
 
-    serie_e1 = await repo.get_serie("91013496", desde, hasta)
-    serie_e2 = await repo.get_serie("91013497", desde, hasta)
+    # El SEED asigna: equipo "91013496" → srv "SRV-91013496"
+    serie_e1 = await repo.get_serie("SRV-91013496", desde, hasta)
+    serie_e2 = await repo.get_serie("SRV-91013497", desde, hasta)
 
     assert len(serie_e1) > 0, "Equipo 91013496 debe tener serie en junio"
     assert len(serie_e2) > 0, "Equipo 91013497 debe tener serie en junio"

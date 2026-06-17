@@ -9,35 +9,42 @@ from domain.ports.medicion_source_reader import MedicionSourceReader
 
 _THIN_CLIENT_INITIALIZED = False
 
+# JOIN con XXSIGEC.EQUIPOS resuelve el mapeo medidor (STE_NUMERO) -> suministro (SRV_CODIGO).
+# Lecturas sin entrada en EQUIPOS son descartadas por el INNER JOIN (medidor no registrado).
 _QUERY_RANGO = """
-SELECT med_numero_equipo, cdr_codigo,
-       TRUNC(lec_fecha_lectura) AS fecha,
-       lec_valor_leido
-FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS
-WHERE cdr_codigo = 'E'
-  AND lec_valor_leido IS NOT NULL
-  AND lec_fecha_lectura >= :desde
-  AND lec_fecha_lectura <= :hasta
+SELECT e.SRV_CODIGO AS srv_codigo,
+       l.med_numero_equipo, l.cdr_codigo,
+       TRUNC(l.lec_fecha_lectura) AS fecha,
+       l.lec_valor_leido
+FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS l
+JOIN xxsigec.EQUIPOS e ON e.STE_NUMERO = l.med_numero_equipo
+WHERE l.cdr_codigo = 'E'
+  AND l.lec_valor_leido IS NOT NULL
+  AND l.lec_fecha_lectura >= :desde
+  AND l.lec_fecha_lectura <= :hasta
 UNION ALL
-SELECT med_numero_equipo, cdr_codigo,
-       TRUNC(lec_fecha_lectura) AS fecha,
-       lec_valor_leido
-FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS_H
-WHERE cdr_codigo = 'E'
-  AND lec_valor_leido IS NOT NULL
-  AND lec_fecha_lectura >= :desde
-  AND lec_fecha_lectura <= :hasta
+SELECT e.SRV_CODIGO AS srv_codigo,
+       l.med_numero_equipo, l.cdr_codigo,
+       TRUNC(l.lec_fecha_lectura) AS fecha,
+       l.lec_valor_leido
+FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS_H l
+JOIN xxsigec.EQUIPOS e ON e.STE_NUMERO = l.med_numero_equipo
+WHERE l.cdr_codigo = 'E'
+  AND l.lec_valor_leido IS NOT NULL
+  AND l.lec_fecha_lectura >= :desde
+  AND l.lec_fecha_lectura <= :hasta
 """
 
 _QUERY_ANCLAS = """
-SELECT med_numero_equipo, cdr_codigo, fecha, lec_valor_leido
+SELECT srv_codigo, med_numero_equipo, cdr_codigo, fecha, lec_valor_leido
 FROM (
-    SELECT med_numero_equipo, cdr_codigo,
-           TRUNC(lec_fecha_lectura) AS fecha,
-           lec_valor_leido,
+    SELECT e.SRV_CODIGO AS srv_codigo,
+           l.med_numero_equipo, l.cdr_codigo,
+           TRUNC(l.lec_fecha_lectura) AS fecha,
+           l.lec_valor_leido,
            ROW_NUMBER() OVER (
-               PARTITION BY med_numero_equipo
-               ORDER BY lec_fecha_lectura DESC
+               PARTITION BY l.med_numero_equipo
+               ORDER BY l.lec_fecha_lectura DESC
            ) AS rn
     FROM (
         SELECT med_numero_equipo, cdr_codigo, lec_fecha_lectura, lec_valor_leido
@@ -51,7 +58,8 @@ FROM (
         WHERE cdr_codigo = 'E'
           AND lec_valor_leido IS NOT NULL
           AND lec_fecha_lectura < :desde
-    )
+    ) l
+    JOIN xxsigec.EQUIPOS e ON e.STE_NUMERO = l.med_numero_equipo
 )
 WHERE rn = 1
 """
@@ -89,6 +97,7 @@ def _rows_a_lecturas(cursor: Any) -> list[LecturaTelemedida]:
         resultado.append(
             LecturaTelemedida(
                 equipo=str(row.med_numero_equipo),
+                srv_codigo=str(row.srv_codigo),
                 cdr_codigo=row.cdr_codigo,
                 fecha=row.fecha,
                 valor_kwh=kwh,

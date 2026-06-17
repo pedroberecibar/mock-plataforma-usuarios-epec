@@ -19,9 +19,10 @@ class IngestarConsumoDiarioUseCase:
         lecturas = self._filtrar_y_deduplicar(lecturas)
         por_equipo = self._agrupar_por_equipo(lecturas)
 
-        for equipo, serie in por_equipo.items():
+        for _equipo, serie in por_equipo.items():
             serie_ordenada = sorted(serie, key=lambda lect: lect.fecha)
-            await self._persistir_serie(equipo, serie_ordenada)
+            srv_codigo = serie_ordenada[0].srv_codigo
+            await self._persistir_serie(srv_codigo, serie_ordenada)
 
     # ------------------------------------------------------------------
     # helpers privados
@@ -48,7 +49,7 @@ class IngestarConsumoDiarioUseCase:
             grupos.setdefault(lect.equipo, []).append(lect)
         return grupos
 
-    async def _persistir_serie(self, equipo: str, serie: list[LecturaTelemedida]) -> None:
+    async def _persistir_serie(self, srv_codigo: str, serie: list[LecturaTelemedida]) -> None:
         """Para cada par consecutivo de lecturas acumulativas calcula la tasa
         diaria uniforme y persiste un registro por cada día del intervalo
         [fecha_curr, fecha_next)."""
@@ -66,4 +67,4 @@ class IngestarConsumoDiarioUseCase:
 
             for offset in range(delta_days):
                 dia = curr.fecha + timedelta(days=offset)
-                await self._repo.upsert_consumo(equipo, dia, rate)
+                await self._repo.upsert_consumo(srv_codigo, dia, rate)

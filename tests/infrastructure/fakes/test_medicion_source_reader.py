@@ -5,7 +5,13 @@ from infrastructure.fakes.medicion_source_reader import SEED_LECTURAS_EPEC, Fake
 
 
 def _lectura(equipo: str, fecha: date, valor_kwh: float, cdr: str = "E") -> LecturaTelemedida:
-    return LecturaTelemedida(equipo=equipo, cdr_codigo=cdr, fecha=fecha, valor_kwh=valor_kwh)
+    return LecturaTelemedida(
+        equipo=equipo,
+        srv_codigo=f"SRV-{equipo}",
+        cdr_codigo=cdr,
+        fecha=fecha,
+        valor_kwh=valor_kwh,
+    )
 
 
 async def test_leer_lecturas_devuelve_rango_solicitado() -> None:
