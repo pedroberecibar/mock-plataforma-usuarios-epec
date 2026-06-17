@@ -2,7 +2,9 @@ from fastapi import Depends, Header, HTTPException
 
 from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
+from domain.ports.medicion_source_reader import MedicionSourceReader
 from domain.ports.proyeccion_repository import ProyeccionRepository
+from domain.ports.suministro_repository import SuministroRepository
 from domain.ports.vecinos_repository import VecinosRepository
 
 
@@ -25,6 +27,18 @@ def get_vecinos_repo() -> VecinosRepository:
 def get_proyeccion_repo() -> ProyeccionRepository:
     raise NotImplementedError(
         "ProyeccionRepository debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_medicion_reader() -> MedicionSourceReader:
+    raise NotImplementedError(
+        "MedicionSourceReader debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_suministro_repo() -> SuministroRepository:
+    raise NotImplementedError(
+        "SuministroRepository debe ser wireado en el composition root (src/main.py)"
     )
 
 

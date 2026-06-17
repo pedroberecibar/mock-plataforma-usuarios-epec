@@ -9,6 +9,7 @@ from application.use_cases.ingestar_consumo_diario import IngestarConsumoDiarioU
 from domain.lecturas import LecturaTelemedida
 from infrastructure.fakes.consumo_diario_repository import FakeConsumoDiarioRepository
 from infrastructure.fakes.medicion_source_reader import SEED_LECTURAS_EPEC, FakeMedicionSourceReader
+from infrastructure.fakes.suministro_repository import FakeSuministroRepository
 
 
 def _lectura(
@@ -32,7 +33,7 @@ async def test_dos_lecturas_consecutivas_generan_tasa_uniforme() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     serie = await repo.get_serie("SRV-E1", d0, d1)
     assert len(serie) == 5
@@ -50,7 +51,7 @@ async def test_ultimo_dia_lectura_no_genera_consumo() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     serie = await repo.get_serie("SRV-E1", d0, d1)
     fechas = {f for f, _ in serie}
@@ -64,7 +65,7 @@ async def test_hueco_distribuye_tasa_uniformemente() -> None:
     reader = FakeMedicionSourceReader(lecturas=[_lectura("E1", d0, 0.0), _lectura("E1", d1, 100.0)])
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     serie = await repo.get_serie("SRV-E1", d0, d1)
     assert len(serie) == 10
@@ -83,7 +84,7 @@ async def test_delta_negativo_se_omite() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d2)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d2)
 
     serie = await repo.get_serie("SRV-E1", d0, d2)
     # El intervalo d0→d1 tiene delta negativo: no se persiste
@@ -107,7 +108,7 @@ async def test_dos_equipos_se_procesan_independientemente() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     serie_e1 = await repo.get_serie("SRV-E1", d0, d1)
     serie_e2 = await repo.get_serie("SRV-E2", d0, d1)
@@ -128,7 +129,7 @@ async def test_cdr_no_e_se_ignora() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     serie = await repo.get_serie("SRV-E1", d0, d1)
     assert all(kwh == 10.0 for _, kwh in serie)
@@ -146,7 +147,7 @@ async def test_dedupe_por_equipo_fecha() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     serie = await repo.get_serie("SRV-E1", d0, d1)
     assert len(serie) == 3
@@ -167,7 +168,9 @@ async def test_ancla_fuera_de_rango_permite_calcular_primer_dia() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(desde, hasta)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(
+        desde, hasta
+    )
 
     serie = await repo.get_serie("SRV-E1", desde, hasta)
     # El intervalo ancla→desde (4 días) da rate=10 kWh/día → desde asignado con 10.0
@@ -186,7 +189,7 @@ async def test_consumo_atribuido_al_suministro_no_al_medidor() -> None:
     )
     repo = FakeConsumoDiarioRepository()
 
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(d0, d1)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(d0, d1)
 
     # La serie debe estar bajo el SRV_CODIGO, NO bajo el número de medidor
     serie_por_suministro = await repo.get_serie("SRV-XYZ", d0, d1)
@@ -194,6 +197,23 @@ async def test_consumo_atribuido_al_suministro_no_al_medidor() -> None:
 
     assert len(serie_por_suministro) > 0, "Consumo debe estar bajo SRV-XYZ"
     assert len(serie_por_medidor) == 0, "No debe haber datos bajo el número de medidor"
+
+
+async def test_suministro_placeholder_se_crea_antes_de_persistir_consumo() -> None:
+    """Para un srv_codigo nuevo, crear_placeholder debe invocarse durante la ingesta."""
+    d0, d1 = date(2026, 6, 1), date(2026, 6, 3)
+    reader = FakeMedicionSourceReader(
+        lecturas=[
+            _lectura("E1", d0, 100.0, srv="SRV-NUEVO"),
+            _lectura("E1", d1, 120.0, srv="SRV-NUEVO"),
+        ]
+    )
+    repo = FakeConsumoDiarioRepository()
+    suministro_repo = FakeSuministroRepository()
+
+    assert not await suministro_repo.existe("SRV-NUEVO")
+    await IngestarConsumoDiarioUseCase(reader, repo, suministro_repo).ejecutar(d0, d1)
+    assert await suministro_repo.existe("SRV-NUEVO")
 
 
 async def test_integracion_semilla_completa() -> None:
@@ -205,7 +225,9 @@ async def test_integracion_semilla_completa() -> None:
     repo = FakeConsumoDiarioRepository()
 
     desde, hasta = date(2026, 6, 1), date(2026, 6, 30)
-    await IngestarConsumoDiarioUseCase(reader, repo).ejecutar(desde, hasta)
+    await IngestarConsumoDiarioUseCase(reader, repo, FakeSuministroRepository()).ejecutar(
+        desde, hasta
+    )
 
     # El SEED asigna: equipo "91013496" → srv "SRV-91013496"
     serie_e1 = await repo.get_serie("SRV-91013496", desde, hasta)

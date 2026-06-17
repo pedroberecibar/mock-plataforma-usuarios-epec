@@ -1,3 +1,4 @@
+import collections
 import os
 from datetime import date
 from typing import Any
@@ -88,6 +89,12 @@ def _normalizar_valor(val: object) -> float | None:
         return None
 
 
+def _set_rowfactory(cursor: Any) -> None:
+    """Convierte las filas del cursor de tuplas a namedtuples con acceso por atributo."""
+    col_names = [d[0].lower() for d in cursor.description]
+    cursor.rowfactory = collections.namedtuple("OracleRow", col_names)  # type: ignore[misc]
+
+
 def _rows_a_lecturas(cursor: Any) -> list[LecturaTelemedida]:
     resultado: list[LecturaTelemedida] = []
     for row in cursor.fetchall():
@@ -132,10 +139,12 @@ class OracleMedicionReader(MedicionSourceReader):
 
             with conn.cursor() as cur:
                 cur.execute(_QUERY_RANGO, {"desde": desde, "hasta": hasta})
+                _set_rowfactory(cur)
                 en_rango = _rows_a_lecturas(cur)
 
             with conn.cursor() as cur:
                 cur.execute(_QUERY_ANCLAS, {"desde": desde})
+                _set_rowfactory(cur)
                 anclas = _rows_a_lecturas(cur)
 
             conn.rollback()

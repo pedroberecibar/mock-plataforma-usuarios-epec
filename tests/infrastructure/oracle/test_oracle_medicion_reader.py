@@ -8,6 +8,7 @@ Mockean oracledb a nivel de módulo para verificar:
 - Mapeo medidor → suministro vía srv_codigo (JOIN con XXSIGEC.EQUIPOS).
 """
 
+import collections as _collections
 from datetime import date
 from unittest.mock import MagicMock, patch
 
@@ -25,16 +26,25 @@ def env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OR_SERVICE_NAME", "SIGEC")
 
 
+_OracleRow = _collections.namedtuple(
+    "OracleRow", ["srv_codigo", "med_numero_equipo", "cdr_codigo", "fecha", "lec_valor_leido"]
+)
+
+_DESCRIPTION = [
+    ("srv_codigo",),
+    ("med_numero_equipo",),
+    ("cdr_codigo",),
+    ("fecha",),
+    ("lec_valor_leido",),
+]
+
+
 def _make_row(
     srv: str, equipo: str, fecha: date, valor: str | float | None, cdr: str = "E"
-) -> MagicMock:
-    row = MagicMock()
-    row.srv_codigo = srv
-    row.med_numero_equipo = equipo
-    row.cdr_codigo = cdr
-    row.fecha = fecha
-    row.lec_valor_leido = valor
-    return row
+) -> _OracleRow:
+    return _OracleRow(
+        srv_codigo=srv, med_numero_equipo=equipo, cdr_codigo=cdr, fecha=fecha, lec_valor_leido=valor
+    )
 
 
 @pytest.fixture

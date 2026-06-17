@@ -63,7 +63,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src"]
+known-first-party = ["src", "application", "domain", "infrastructure", "interface"]
 
 # =============================================================================
 # mypy — type checker
