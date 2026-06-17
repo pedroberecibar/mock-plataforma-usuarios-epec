@@ -63,13 +63,20 @@ class FakeMedicionSourceReader(MedicionSourceReader):
     def __init__(self, lecturas: list[LecturaTelemedida] | None = None) -> None:
         self._lecturas = lecturas if lecturas is not None else list(SEED_LECTURAS_EPEC)
 
-    async def leer_lecturas(self, desde: date, hasta: date) -> list[LecturaTelemedida]:
-        """Devuelve lecturas en [desde, hasta] más la última lectura por equipo
-        anterior a `desde` (ancla), replicando el comportamiento de OracleMedicionReader."""
-        en_rango = [lect for lect in self._lecturas if desde <= lect.fecha <= hasta]
+    async def leer_lecturas(
+        self,
+        desde: date,
+        hasta: date,
+        equipos: list[str] | None = None,
+    ) -> list[LecturaTelemedida]:
+        fuente = self._lecturas
+        if equipos is not None:
+            fuente = [lect for lect in fuente if lect.equipo in equipos]
+
+        en_rango = [lect for lect in fuente if desde <= lect.fecha <= hasta]
 
         anclas: dict[str, LecturaTelemedida] = {}
-        for lect in self._lecturas:
+        for lect in fuente:
             if lect.fecha < desde and (
                 lect.equipo not in anclas or lect.fecha > anclas[lect.equipo].fecha
             ):

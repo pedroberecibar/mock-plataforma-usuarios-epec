@@ -24,8 +24,13 @@ class IngestarConsumoDiarioUseCase:
         self._repo = repo
         self._suministro_repo = suministro_repo
 
-    async def ejecutar(self, desde: date, hasta: date) -> IngestaResultado:
-        lecturas = await self._reader.leer_lecturas(desde, hasta)
+    async def ejecutar(
+        self,
+        desde: date,
+        hasta: date,
+        equipos: list[str] | None = None,
+    ) -> IngestaResultado:
+        lecturas = await self._reader.leer_lecturas(desde, hasta, equipos=equipos)
         lecturas = self._filtrar_y_deduplicar(lecturas)
         por_equipo = self._agrupar_por_equipo(lecturas)
 

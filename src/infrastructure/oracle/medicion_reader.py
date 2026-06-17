@@ -10,11 +10,11 @@ from domain.ports.medicion_source_reader import MedicionSourceReader
 
 _THIN_CLIENT_INITIALIZED = False
 
-# JOIN con XXSIGEC.EQUIPOS resuelve el mapeo medidor (STE_NUMERO) -> suministro (SRV_CODIGO).
-# GROUP BY (equipo, cdr_codigo, fecha) + KEEP LAST devuelve 1 fila por equipo por día
-# (la lectura acumulada más reciente del día), reduciendo ~384K filas brutas a ~15K.
-# El scheduler llama con rango (D, D+1): D+1 actúa como lectura siguiente para _persistir_serie.
-_QUERY_RANGO = """
+# Plantilla de query RANGO. {equipo_filter} se reemplaza en tiempo de ejecución
+# con un IN clause cuando se proveen equipos específicos, o con "" para todos.
+# GROUP BY + KEEP LAST: 1 fila por equipo por día (última lectura acumulada del día).
+# El scheduler usa rango (D, D+1): D+1 actúa como lectura siguiente en _persistir_serie.
+_QUERY_RANGO_TMPL = """
 SELECT MAX(e.SRV_CODIGO) AS srv_codigo,
        l.med_numero_equipo, l.cdr_codigo,
        TRUNC(l.lec_fecha_lectura) AS fecha,
@@ -26,6 +26,7 @@ WHERE l.cdr_codigo = 'E'
   AND l.lec_valor_leido IS NOT NULL
   AND l.lec_fecha_lectura >= :desde
   AND l.lec_fecha_lectura <= :hasta
+  {equipo_filter}
 GROUP BY l.med_numero_equipo, l.cdr_codigo, TRUNC(l.lec_fecha_lectura)
 UNION ALL
 SELECT MAX(e.SRV_CODIGO) AS srv_codigo,
@@ -39,6 +40,7 @@ WHERE l.cdr_codigo = 'E'
   AND l.lec_valor_leido IS NOT NULL
   AND l.lec_fecha_lectura >= :desde
   AND l.lec_fecha_lectura <= :hasta
+  {equipo_filter}
 GROUP BY l.med_numero_equipo, l.cdr_codigo, TRUNC(l.lec_fecha_lectura)
 """
 
@@ -107,15 +109,30 @@ class OracleMedicionReader(MedicionSourceReader):
         self._user = os.environ["OR_USER"]
         self._password = os.environ["OR_PASS"]
 
-    async def leer_lecturas(self, desde: date, hasta: date) -> list[LecturaTelemedida]:
+    async def leer_lecturas(
+        self,
+        desde: date,
+        hasta: date,
+        equipos: list[str] | None = None,
+    ) -> list[LecturaTelemedida]:
+        params: dict[str, object] = {"desde": desde, "hasta": hasta}
+        if equipos:
+            placeholders = ", ".join(f":eq{i}" for i in range(len(equipos)))
+            equipo_filter = f"AND l.med_numero_equipo IN ({placeholders})"
+            params.update({f"eq{i}": eq for i, eq in enumerate(equipos)})
+        else:
+            equipo_filter = ""
+
+        query = _QUERY_RANGO_TMPL.format(equipo_filter=equipo_filter)
+
         with oracledb.connect(user=self._user, password=self._password, dsn=self._dsn) as conn:
             conn.autocommit = False
             with conn.cursor() as cur:
                 cur.execute("SET TRANSACTION READ ONLY")
 
             with conn.cursor() as cur:
-                cur.arraysize = 10_000  # reduce round-trips: 384K filas / 10K = ~39 fetches
-                cur.execute(_QUERY_RANGO, {"desde": desde, "hasta": hasta})
+                cur.arraysize = 10_000
+                cur.execute(query, params)
                 _set_rowfactory(cur)
                 lecturas = _rows_a_lecturas(cur)
 

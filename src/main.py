@@ -59,6 +59,20 @@ def _parse_env_date(name: str, default: date) -> date:
 def create_app() -> FastAPI:
     db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///epec.db")
     engine = create_async_engine(db_url, echo=False)
+
+    if db_url.startswith("sqlite"):
+        from sqlalchemy import event
+
+        @event.listens_for(engine.sync_engine, "connect")
+        def _set_sqlite_pragmas(dbapi_conn: object, _: object) -> None:
+            import sqlite3
+
+            assert isinstance(dbapi_conn, sqlite3.Connection)
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.close()
+
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     oracle_available = all(os.environ.get(v) for v in _ORACLE_VARS)
@@ -74,6 +88,12 @@ def create_app() -> FastAPI:
 
         oracle_reader = OracleMedicionReader()
 
+    def _parse_env_equipos(name: str) -> list[str] | None:
+        raw = os.environ.get(name, "").strip()
+        if not raw:
+            return None
+        return [e.strip() for e in raw.split(",") if e.strip()]
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         scheduler_task: asyncio.Task[None] | None = None
@@ -85,6 +105,7 @@ def create_app() -> FastAPI:
             )
             lookback_dias = _parse_env_int("INGEST_LOOKBACK_DIAS", 3)
             interval_horas = _parse_env_int("INGEST_INTERVAL_HORAS", 6)
+            equipos = _parse_env_equipos("INGEST_EQUIPOS")
 
             scheduler_task = asyncio.create_task(
                 run_scheduler(
@@ -93,6 +114,7 @@ def create_app() -> FastAPI:
                     desde_inicial=desde_inicial,
                     lookback_dias=lookback_dias,
                     interval_horas=interval_horas,
+                    equipos=equipos,
                 )
             )
         yield
