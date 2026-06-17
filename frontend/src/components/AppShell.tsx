@@ -1,16 +1,14 @@
 import type React from "react";
-import { useEffect, useState } from "react";
 import { color, font, fontSize, fontWeight, space } from "../design-tokens";
 
-function useIsMobile(breakpoint = 768): boolean {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, [breakpoint]);
-  return isMobile;
-}
+const RESPONSIVE_CSS = `
+  .app-sidebar   { display: flex !important; }
+  .app-bottomnav { display: none !important; }
+  @media (max-width: 767px) {
+    .app-sidebar   { display: none !important; }
+    .app-bottomnav { display: flex !important; }
+  }
+`;
 
 // ---------------------------------------------------------------------------
 // SVG icons — inline, no external dependency
@@ -97,9 +95,9 @@ const C = {
 // AppShell component
 // ---------------------------------------------------------------------------
 export function AppShell({ vistaActiva, onNavegar, usuarioNombre, children }: AppShellProps) {
-  const isMobile = useIsMobile();
-
   return (
+    <>
+    <style>{RESPONSIVE_CSS}</style>
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: font.sans }}>
       {/* Header */}
       <header
@@ -140,29 +138,27 @@ export function AppShell({ vistaActiva, onNavegar, usuarioNombre, children }: Ap
 
       {/* Body: sidebar + content (desktop) / content + bottom-nav (mobile) */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Desktop sidebar — hidden on mobile */}
-        {!isMobile && (
-          <nav
-            aria-label="Navegación principal"
-            style={{
-              width:         220,
-              background:    C.bg,
-              display:       "flex",
-              flexDirection: "column",
-              padding:       `${space[4]}px 0`,
-              flexShrink:    0,
-            }}
-          >
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.label}
-                item={item}
-                isActive={item.vista === vistaActiva}
-                onNavegar={onNavegar}
-              />
-            ))}
-          </nav>
-        )}
+        {/* Desktop sidebar — CSS hides it on mobile */}
+        <nav
+          className="app-sidebar"
+          aria-label="Navegación principal"
+          style={{
+            width:         220,
+            background:    C.bg,
+            flexDirection: "column",
+            padding:       `${space[4]}px 0`,
+            flexShrink:    0,
+          }}
+        >
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.label}
+              item={item}
+              isActive={item.vista === vistaActiva}
+              onNavegar={onNavegar}
+            />
+          ))}
+        </nav>
 
         {/* Main content */}
         <main
@@ -176,30 +172,29 @@ export function AppShell({ vistaActiva, onNavegar, usuarioNombre, children }: Ap
         </main>
       </div>
 
-      {/* Mobile bottom navigation — hidden on desktop */}
-      {isMobile && (
-        <nav
-          aria-label="Navegación inferior"
-          style={{
-            background:     C.bg,
-            height:         60,
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "space-around",
-            flexShrink:     0,
-          }}
-        >
-          {NAV_ITEMS.map((item) => (
-            <BottomNavItem
-              key={item.label}
-              item={item}
-              isActive={item.vista === vistaActiva}
-              onNavegar={onNavegar}
-            />
-          ))}
-        </nav>
-      )}
+      {/* Mobile bottom navigation — CSS hides it on desktop */}
+      <nav
+        className="app-bottomnav"
+        aria-label="Navegación inferior"
+        style={{
+          background:     C.bg,
+          height:         60,
+          alignItems:     "center",
+          justifyContent: "space-around",
+          flexShrink:     0,
+        }}
+      >
+        {NAV_ITEMS.map((item) => (
+          <BottomNavItem
+            key={item.label}
+            item={item}
+            isActive={item.vista === vistaActiva}
+            onNavegar={onNavegar}
+          />
+        ))}
+      </nav>
     </div>
+    </>
   );
 }
 
