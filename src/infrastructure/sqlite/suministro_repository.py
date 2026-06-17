@@ -23,4 +23,3 @@ class SQLiteSuministroRepository(SuministroRepository):
             .on_conflict_do_nothing(index_elements=["id"])
         )
         await self._session.execute(stmt)
-        await self._session.flush()

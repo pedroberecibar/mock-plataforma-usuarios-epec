@@ -34,7 +34,6 @@ class SQLiteConsumoDiarioRepository(ConsumoDiarioRepository):
             )
         )
         await self._session.execute(stmt)
-        await self._session.flush()
 
     async def get_ultima_fecha(self, suministro_id: str) -> date | None:
         result = await self._session.execute(
