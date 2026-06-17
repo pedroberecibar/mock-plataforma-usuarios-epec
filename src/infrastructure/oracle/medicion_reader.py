@@ -11,31 +11,35 @@ from domain.ports.medicion_source_reader import MedicionSourceReader
 _THIN_CLIENT_INITIALIZED = False
 
 # JOIN con XXSIGEC.EQUIPOS resuelve el mapeo medidor (STE_NUMERO) -> suministro (SRV_CODIGO).
-# Lecturas sin entrada en EQUIPOS son descartadas por el INNER JOIN (medidor no registrado).
-# El scheduler llama con rango (D, D+1): el día D+1 actúa como lectura siguiente para
-# calcular consumo de D en _persistir_serie, sin necesidad de una query ANCLAS separada.
+# GROUP BY (equipo, cdr_codigo, fecha) + KEEP LAST devuelve 1 fila por equipo por día
+# (la lectura acumulada más reciente del día), reduciendo ~384K filas brutas a ~15K.
+# El scheduler llama con rango (D, D+1): D+1 actúa como lectura siguiente para _persistir_serie.
 _QUERY_RANGO = """
-SELECT e.SRV_CODIGO AS srv_codigo,
+SELECT MAX(e.SRV_CODIGO) AS srv_codigo,
        l.med_numero_equipo, l.cdr_codigo,
        TRUNC(l.lec_fecha_lectura) AS fecha,
-       l.lec_valor_leido
+       MAX(l.lec_valor_leido) KEEP (DENSE_RANK LAST ORDER BY l.lec_fecha_lectura)
+           AS lec_valor_leido
 FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS l
 JOIN xxsigec.EQUIPOS e ON e.STE_NUMERO = l.med_numero_equipo
 WHERE l.cdr_codigo = 'E'
   AND l.lec_valor_leido IS NOT NULL
   AND l.lec_fecha_lectura >= :desde
   AND l.lec_fecha_lectura <= :hasta
+GROUP BY l.med_numero_equipo, l.cdr_codigo, TRUNC(l.lec_fecha_lectura)
 UNION ALL
-SELECT e.SRV_CODIGO AS srv_codigo,
+SELECT MAX(e.SRV_CODIGO) AS srv_codigo,
        l.med_numero_equipo, l.cdr_codigo,
        TRUNC(l.lec_fecha_lectura) AS fecha,
-       l.lec_valor_leido
+       MAX(l.lec_valor_leido) KEEP (DENSE_RANK LAST ORDER BY l.lec_fecha_lectura)
+           AS lec_valor_leido
 FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS_H l
 JOIN xxsigec.EQUIPOS e ON e.STE_NUMERO = l.med_numero_equipo
 WHERE l.cdr_codigo = 'E'
   AND l.lec_valor_leido IS NOT NULL
   AND l.lec_fecha_lectura >= :desde
   AND l.lec_fecha_lectura <= :hasta
+GROUP BY l.med_numero_equipo, l.cdr_codigo, TRUNC(l.lec_fecha_lectura)
 """
 
 
