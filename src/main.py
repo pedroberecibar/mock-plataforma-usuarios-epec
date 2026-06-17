@@ -65,10 +65,10 @@ def create_app() -> FastAPI:
 
         @event.listens_for(engine.sync_engine, "connect")
         def _set_sqlite_pragmas(dbapi_conn: object, _: object) -> None:
-            import sqlite3
+            from typing import Any
 
-            assert isinstance(dbapi_conn, sqlite3.Connection)
-            cursor = dbapi_conn.cursor()
+            conn: Any = dbapi_conn
+            cursor = conn.cursor()
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA busy_timeout=30000")
             cursor.close()
