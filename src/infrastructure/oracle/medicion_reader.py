@@ -138,11 +138,13 @@ class OracleMedicionReader(MedicionSourceReader):
                 cur.execute("SET TRANSACTION READ ONLY")
 
             with conn.cursor() as cur:
+                cur.arraysize = 10_000  # reduce round-trips: 384K filas / 10K = ~39 fetches
                 cur.execute(_QUERY_RANGO, {"desde": desde, "hasta": hasta})
                 _set_rowfactory(cur)
                 en_rango = _rows_a_lecturas(cur)
 
             with conn.cursor() as cur:
+                cur.arraysize = 10_000
                 cur.execute(_QUERY_ANCLAS, {"desde": desde})
                 _set_rowfactory(cur)
                 anclas = _rows_a_lecturas(cur)

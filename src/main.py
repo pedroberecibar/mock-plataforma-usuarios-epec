@@ -132,7 +132,10 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_suministro_repo] = _get_suministro_repo
 
     if oracle_reader is not None:
-        app.dependency_overrides[get_medicion_reader] = lambda: oracle_reader
+        from infrastructure.ingestion_scheduler import _NonBlockingReader
+
+        _non_blocking_reader = _NonBlockingReader(oracle_reader)
+        app.dependency_overrides[get_medicion_reader] = lambda: _non_blocking_reader
     else:
 
         def _oracle_no_configurado() -> None:

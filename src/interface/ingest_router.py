@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -32,11 +32,20 @@ async def ingestar_consumo(
     consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
     suministro_repo: SuministroRepository = Depends(get_suministro_repo),
 ) -> IngestaResponse:
-    resultado = await IngestarConsumoDiarioUseCase(reader, consumo_repo, suministro_repo).ejecutar(
-        desde, hasta
-    )
+    # El reader inyectado ya está envuelto en _NonBlockingReader por main.py (composition root).
+    # Itera de a 1 día: ~380K filas/día es manejable en memoria; el rango completo no lo es.
+    suministros_total = 0
+    dias_total = 0
+    dia = desde
+    while dia <= hasta:
+        resultado = await IngestarConsumoDiarioUseCase(
+            reader, consumo_repo, suministro_repo
+        ).ejecutar(dia, dia)
+        suministros_total = max(suministros_total, resultado.suministros_procesados)
+        dias_total += resultado.dias_procesados
+        dia += timedelta(days=1)
     return IngestaResponse(
         ok=True,
-        suministros_procesados=resultado.suministros_procesados,
-        dias_procesados=resultado.dias_procesados,
+        suministros_procesados=suministros_total,
+        dias_procesados=dias_total,
     )

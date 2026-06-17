@@ -74,17 +74,28 @@ async def run_scheduler(
     lookback_dias: int,
     interval_horas: int,
 ) -> None:
-    """Backfill inicial + loop periódico. Diseñado para cancelarse limpiamente con asyncio."""
+    """Backfill inicial + loop periódico. Diseñado para cancelarse limpiamente con asyncio.
+
+    Procesa de a 1 día para evitar fetchall de millones de filas (EPEC tiene ~380K lecturas/día).
+    """
     non_blocking = _NonBlockingReader(reader)
 
     _log.info(
         "Scheduler iniciado — backfill desde %s, intervalo %dh", desde_inicial, interval_horas
     )
 
-    try:
-        await _ejecutar_ingesta(non_blocking, session_factory, desde_inicial, date.today())
-    except Exception:
-        _log.exception("Error en backfill inicial — el scheduler sigue activo")
+    # Backfill: un día a la vez para mantener uso de memoria acotado
+    hoy = date.today()
+    dia = desde_inicial
+    while dia <= hoy:
+        try:
+            await _ejecutar_ingesta(non_blocking, session_factory, dia, dia)
+        except asyncio.CancelledError:
+            _log.info("Scheduler detenido durante backfill.")
+            return
+        except Exception:
+            _log.exception("Error en backfill %s — continuando con el siguiente día", dia)
+        dia += timedelta(days=1)
 
     while True:
         try:
@@ -93,9 +104,14 @@ async def run_scheduler(
             _log.info("Scheduler detenido.")
             return
 
-        try:
-            hasta = date.today()
-            desde = hasta - timedelta(days=lookback_dias)
-            await _ejecutar_ingesta(non_blocking, session_factory, desde, hasta)
-        except Exception:
-            _log.exception("Error en ingesta periódica — reintentará en %dh", interval_horas)
+        hoy = date.today()
+        dia = hoy - timedelta(days=lookback_dias)
+        while dia <= hoy:
+            try:
+                await _ejecutar_ingesta(non_blocking, session_factory, dia, dia)
+            except asyncio.CancelledError:
+                _log.info("Scheduler detenido durante ingesta periódica.")
+                return
+            except Exception:
+                _log.exception("Error en ingesta %s — reintentará en %dh", dia, interval_horas)
+            dia += timedelta(days=1)
