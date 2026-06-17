@@ -10,10 +10,8 @@ import {
   fg,
   font,
   fontSize,
-  fontWeight,
   space,
   color,
-  shadow,
 } from "../design-tokens";
 
 function mesActualYYYYMM(): string {
@@ -107,69 +105,11 @@ export function HomePage({ token, suministroId, mes }: Props) {
   return (
     <div
       style={{
-        minHeight:  "100vh",
+        minHeight:  "100%",
         background: bg.page,
         fontFamily: font.sans,
       }}
     >
-      {/* Header */}
-      <header
-        style={{
-          background:  bg.header,
-          boxShadow:   shadow.sm,
-          position:    "sticky" as const,
-          top:         0,
-          zIndex:      100,
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 960,
-            margin:   "0 auto",
-            padding:  `${space[3]}px ${space[6]}px`,
-            display:  "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <img
-            src="/epec-logo-white.png"
-            alt="EPEC"
-            style={{ height: 32 }}
-            onError={(e) => {
-              // Fallback: mostrar texto si el logo no carga
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-              const next = e.currentTarget.nextElementSibling as HTMLElement | null;
-              if (next) next.style.display = "block";
-            }}
-          />
-          <span
-            style={{
-              display:    "none",
-              fontFamily: font.sans,
-              fontSize:   fontSize.md,
-              fontWeight: fontWeight.bold,
-              color:      fg.onDark,
-              letterSpacing: "0.04em",
-            }}
-          >
-            EPEC
-          </span>
-
-          <span
-            style={{
-              fontFamily: font.sans,
-              fontSize:   fontSize.xs,
-              color:      color.green200,
-              letterSpacing: "0.04em",
-            }}
-          >
-            Plataforma de Clientes
-          </span>
-        </div>
-      </header>
-
-      {/* Main content */}
       <main aria-label="home del cliente">
         <div
           style={{
