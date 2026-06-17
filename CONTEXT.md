@@ -2,29 +2,46 @@
 
 ## Última sesión
 - **Fecha:** 2026-06-17
-- **Qué se completó:**
-  - Sprint 2 backend completo (commit `2460699`): `ObtenerSerieDiariaUseCase`, `ObtenerComparacionHistoricaUseCase`, `consumo_router.py` (endpoints `/diario` y `/comparacion`), `get_ultima_fecha` en repositorio, `main.py` cableado con SQLAlchemy async.
-  - Fix medidor/suministro (commit `210f0b7`): `LecturaTelemedida` tiene `srv_codigo`; Oracle reader hace JOIN con EQUIPOS para resolverlo.
-  - Frontend scaffold completo en `frontend/`: Vite 5 + React 18 + TypeScript + Recharts. Componentes: `GraficoConsumoDiario`, `PanelComparacion`, `CartelLatencia`, `ConsumoPage`. API functions: `fetchSerieDiaria`, `fetchComparacion`. Tests escritos: `consumo.test.ts`, `CartelLatencia.test.tsx`, `PanelComparacion.test.tsx`, `GraficoConsumoDiario.test.tsx`.
-  - Backend: 91 tests pytest en verde, ruff clean, mypy clean.
-- **Qué quedó incompleto:**
-  - `npm install --prefix frontend` bloqueado por red corporativa (ECONNRESET en registry.npmjs.org para paquetes no cacheados: vite, vitest, jsdom, @testing-library/react). Los paquetes react, @types/react y typescript sí están en cache pero las deps transitivas no.
-  - Frontend tests (vitest) no se pudieron ejecutar por el bloqueo de npm.
-  - Frontend TypeScript check (`tsc --noEmit`) tampoco ejecutable sin node_modules.
+- **Qué se completó:** Sprint 3 completo — backend + frontend.
+  - **Backend:**
+    - `src/domain/proyeccion.py` — dataclass `ProyeccionMensual` (frozen)
+    - `src/domain/ports/proyeccion_repository.py` — puerto `ProyeccionRepository`
+    - `src/infrastructure/fakes/proyeccion_repository.py` — `FakeProyeccionRepository`
+    - `src/infrastructure/sqlite/proyeccion_repository.py` — `SQLiteProyeccionRepository` (upsert + get)
+    - `src/infrastructure/sqlite/models.py` — `rango_inferior_kwh` y `rango_superior_kwh` ahora `Mapped[float | None]`
+    - `src/infrastructure/sqlite/vecinos_repository.py` — implementado con bounding box SQL + Haversine Python puro
+    - `src/application/use_cases/calcular_proyeccion_mensual.py` — cascade 4 métodos: interanual/estacional/reciente/insuficiente
+    - `src/application/use_cases/obtener_home.py` — `ObtenerHomeUseCase` + dataclasses `HomeData`, `ConsumoMes`, `ComparacionZona`
+    - `src/interface/home_router.py` — `GET /home/{suministro_id}?mes=YYYY-MM`
+    - `src/interface/dependencies.py` — agregado `get_vecinos_repo`, `get_proyeccion_repo`
+    - `src/main.py` — cableado con `SQLiteVecinosRepository`, `SQLiteProyeccionRepository`, `home_router`
+  - **Tests backend:** 138 tests pytest verdes (47 nuevos)
+  - **Frontend:**
+    - `frontend/src/api/types.ts` — tipos `HomeResponse`, `ProyeccionResponse`, `ConsumoMesResponse`, `ComparacionZonaResponse`
+    - `frontend/src/api/home.ts` — `fetchHome(token, suministroId, mes)`
+    - `frontend/src/components/BloqueConsumoMes.tsx` — total kWh + chips delta
+    - `frontend/src/components/BloqueZona.tsx` — comparación con vecinos
+    - `frontend/src/components/BloqueProyeccion.tsx` — rango proyectado o "insuficiente"
+    - `frontend/src/components/BloqueAccesos.tsx` — links a consumo + botones griseados
+    - `frontend/src/pages/HomePage.tsx` — página Home que fetcha y compone los 4 bloques
+  - **Tests vitest:** 36/36 verdes (23 nuevos)
+  - **Build TypeScript:** tsc + vite build limpios
+  - **ruff check + format:** limpio
+  - **mypy:** limpio (48 archivos)
+
+- **Qué quedó incompleto:** —
 - **Decisiones técnicas no documentadas:**
-  - Se eliminó `@testing-library/jest-dom` de `package.json` (assertions nativas de vitest + @testing-library/react `screen.*`). El `setupTests.ts` fue limpiado (no importa nada externo).
-  - Los tests de API usan `// @vitest-environment node` para evitar jsdom.
-  - `.npmrc` en `frontend/` con `strict-ssl=false` para el proxy SSL corporativo.
-  - Paquetes React y typescript: `react@18.3.1`, `@types/react@18.3.31`, `typescript@5.9.3` sí están en el npm cache local del sistema.
-- **Primer paso para la próxima sesión:**
-  - Ejecutar `npm install --prefix frontend` desde una red sin restricciones (tethering, VPN externa, etc.) y luego `npm test --prefix frontend`.
-  - Verificar que todos los tests vitest pasen (especialmente los de componentes con @testing-library/react).
-  - Si todo verde → commit final confirmando frontend tests green.
+  - El threshold para "interanual" es ≥20 días en el mismo mes del año anterior (no 28).
+  - El threshold para "estacional" requiere ≥20 días por año histórico, en hasta 5 años hacia atrás.
+  - La proyección estacional toma el promedio de totales mensuales históricos (no ajusta por días del mes actual).
+  - El ORM `ProyeccionMensual.rango_*` es nullable — requiere una migración Alembic antes de deploy en producción.
+  - La implementación de `ObtenerHomeUseCase._calcular_zona` usa `mes_fin = primer_día + último_día_del_mes` para la ventana de vecinos (mismo período completo del mes, no solo días transcurridos).
+- **Primer paso para la próxima sesión:** Crear migración Alembic para la columna nullable en `proyeccion_mensual`; luego Sprint 4 (autenticación real + factura/alertas).
 - **Tests fallando intencionalmente:** Ninguno.
 
 ## Estado del repo
-- Rama: main. Commits recientes:
+- Rama: main. Sin commitear: Sprint 3 completo (25 archivos nuevos, 6 modificados).
+- Commits recientes:
+  - `2777328 fix(frontend): vitest 13/13 verde + build TypeScript limpio`
+  - `3ef70f2 feat(sprint-2): frontend scaffold React+Vite+Recharts con tests escritos`
   - `2460699 feat(sprint-2): Módulo Consumo M2 — backend completo`
-  - `210f0b7 fix(domain): corregir mapeo medidor->suministro usando SRV_CODIGO de Oracle`
-  - `4a4a5d1 feat(sprint-1): ingesta y serie de consumo diario (backbone)`
-- Pendiente de commitear: `frontend/` (scaffold + tests escritos, sin node_modules), `CONTEXT.md`.

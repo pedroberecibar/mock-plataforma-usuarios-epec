@@ -84,6 +84,17 @@ Proyecto: **Plataforma de Clientes EPEC** (MVP).
 - Conventional Commits. GitHub Flow. Worktrees para trabajo paralelo.
 - Máximo 2-3 worktrees activos en paralelo (restricción de RAM en entornos modestos).
 
+## UI / Diseño (OBLIGATORIO para cualquier componente frontend)
+
+**Fuente de verdad visual: proyecto Stitch "EPEC Plataforma Clientes — Desktop".**
+
+- Toda pantalla o componente nuevo **debe ajustarse al diseño aprobado en Stitch** (proyecto accesible vía MCP `mcp__stitch__*`).
+- Antes de codear cualquier componente de UI: consultá el proyecto Stitch (`mcp__stitch__get_project`, `mcp__stitch__list_screens`, `mcp__stitch__get_screen`) para obtener la pantalla de referencia.
+- Tokens de color, tipografía y espaciado: usar los definidos en el EPEC Design System (`docs/EPEC Design System/`). Prioridad: Stitch → Design System → ningún default de framework.
+- El agente `ui-designer` debe ser invocado antes de implementar cualquier pantalla nueva; es responsable de validar la coherencia visual con el diseño de Stitch.
+- Prohibido usar el "look default" de cualquier framework (estilos out-of-the-box de Material UI, Tailwind defaults, etc.) sin mapearlos al Design System de EPEC.
+- Inconsistencias o regresiones visuales respecto al diseño de Stitch deben corregirse antes de hacer commit.
+
 ## Context drift
 - Al ~60% de la ventana de contexto: ejecutar `/compact`.
 - Si la sesión es muy larga: decir "terminamos" → nueva sesión (el auto-bootstrap recarga todo).

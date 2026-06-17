@@ -78,8 +78,8 @@ def upgrade() -> None:
         sa.Column("meses_usados_como_base", sa.Integer(), nullable=False),
         sa.Column("dias_usados_como_base", sa.Integer(), nullable=False),
         sa.Column("bandera_confianza", sa.String(), nullable=False),
-        sa.Column("rango_inferior_kwh", sa.Float(), nullable=False),
-        sa.Column("rango_superior_kwh", sa.Float(), nullable=False),
+        sa.Column("rango_inferior_kwh", sa.Float(), nullable=True),
+        sa.Column("rango_superior_kwh", sa.Float(), nullable=True),
         sa.ForeignKeyConstraint(
             ["suministro_id"],
             ["suministros.id"],

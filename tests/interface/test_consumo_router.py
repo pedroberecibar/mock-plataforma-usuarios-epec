@@ -17,7 +17,7 @@ class _FakeAuth(AuthProvider):
         return "fake-token"
 
     async def verificar_token(self, token: str) -> str | None:
-        return "usuario-test" if token == "Bearer fake-token" else None
+        return "usuario-test" if token == "fake-token" else None
 
 
 def _make_app(repo: FakeConsumoDiarioRepository) -> TestClient:

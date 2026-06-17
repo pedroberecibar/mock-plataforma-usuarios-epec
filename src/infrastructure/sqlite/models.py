@@ -44,8 +44,8 @@ class ProyeccionMensual(Base):
     meses_usados_como_base: Mapped[int]
     dias_usados_como_base: Mapped[int]
     bandera_confianza: Mapped[str]
-    rango_inferior_kwh: Mapped[float]
-    rango_superior_kwh: Mapped[float]
+    rango_inferior_kwh: Mapped[float | None]
+    rango_superior_kwh: Mapped[float | None]
 
 
 class NotificacionConfig(Base):

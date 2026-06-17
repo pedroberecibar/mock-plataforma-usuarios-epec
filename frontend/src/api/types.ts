@@ -3,6 +3,34 @@ export interface PuntoSerie {
   kwh: number;
 }
 
+export interface ProyeccionResponse {
+  mes: string;
+  metodo_aplicado: string;
+  bandera_confianza: string;
+  rango_inferior_kwh: number | null;
+  rango_superior_kwh: number | null;
+}
+
+export interface ConsumoMesResponse {
+  total_kwh: number | null;
+  vs_mes_anterior_pct: number | null;
+  vs_anio_anterior_pct: number | null;
+}
+
+export interface ComparacionZonaResponse {
+  promedio_vecinos_kwh: number | null;
+  n_vecinos: number;
+  diferencia_pct: number | null;
+}
+
+export interface HomeResponse {
+  consumo_mes: ConsumoMesResponse;
+  comparacion_zona: ComparacionZonaResponse;
+  proyeccion: ProyeccionResponse;
+  datos_hasta: string | null;
+  timestamp: string;
+}
+
 export interface DiarioResponse {
   serie: PuntoSerie[];
   datos_hasta: string | null;
