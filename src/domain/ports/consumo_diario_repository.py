@@ -12,3 +12,7 @@ class ConsumoDiarioRepository(ABC):
     @abstractmethod
     async def upsert_consumo(self, suministro_id: str, fecha: date, kwh: float) -> None:
         """Inserta o actualiza el consumo de un día para un suministro."""
+
+    @abstractmethod
+    async def get_ultima_fecha(self, suministro_id: str) -> date | None:
+        """Última fecha con dato disponible para el suministro; None si no hay datos."""

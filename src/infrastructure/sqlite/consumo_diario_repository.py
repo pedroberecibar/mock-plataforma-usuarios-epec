@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,3 +35,11 @@ class SQLiteConsumoDiarioRepository(ConsumoDiarioRepository):
         )
         await self._session.execute(stmt)
         await self._session.flush()
+
+    async def get_ultima_fecha(self, suministro_id: str) -> date | None:
+        result = await self._session.execute(
+            select(func.max(ConsumoDiario.fecha)).where(
+                ConsumoDiario.suministro_id == suministro_id
+            )
+        )
+        return result.scalar_one_or_none()

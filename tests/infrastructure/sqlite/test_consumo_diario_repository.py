@@ -82,3 +82,25 @@ async def test_upsert_es_idempotente(
     serie = await repo.get_serie(suministro_fixture, date(2026, 6, 1), date(2026, 6, 1))
 
     assert serie == [(date(2026, 6, 1), 20.0)]
+
+
+async def test_get_ultima_fecha_devuelve_la_fecha_maxima(
+    repo: SQLiteConsumoDiarioRepository,
+    suministro_fixture: str,
+) -> None:
+    await repo.upsert_consumo(suministro_fixture, date(2026, 6, 10), 5.0)
+    await repo.upsert_consumo(suministro_fixture, date(2026, 6, 5), 3.0)
+    await repo.upsert_consumo(suministro_fixture, date(2026, 6, 15), 8.0)
+
+    result = await repo.get_ultima_fecha(suministro_fixture)
+
+    assert result == date(2026, 6, 15)
+
+
+async def test_get_ultima_fecha_devuelve_none_si_no_hay_datos(
+    repo: SQLiteConsumoDiarioRepository,
+    suministro_fixture: str,
+) -> None:
+    result = await repo.get_ultima_fecha(suministro_fixture)
+
+    assert result is None

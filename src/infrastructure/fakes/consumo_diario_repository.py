@@ -18,3 +18,7 @@ class FakeConsumoDiarioRepository(ConsumoDiarioRepository):
 
     async def upsert_consumo(self, suministro_id: str, fecha: date, kwh: float) -> None:
         self._consumos[(suministro_id, fecha)] = kwh
+
+    async def get_ultima_fecha(self, suministro_id: str) -> date | None:
+        fechas = [f for (sid, f) in self._consumos if sid == suministro_id]
+        return max(fechas) if fechas else None
