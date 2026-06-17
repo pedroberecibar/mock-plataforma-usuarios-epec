@@ -12,6 +12,8 @@ _THIN_CLIENT_INITIALIZED = False
 
 # JOIN con XXSIGEC.EQUIPOS resuelve el mapeo medidor (STE_NUMERO) -> suministro (SRV_CODIGO).
 # Lecturas sin entrada en EQUIPOS son descartadas por el INNER JOIN (medidor no registrado).
+# El scheduler llama con rango (D, D+1): el día D+1 actúa como lectura siguiente para
+# calcular consumo de D en _persistir_serie, sin necesidad de una query ANCLAS separada.
 _QUERY_RANGO = """
 SELECT e.SRV_CODIGO AS srv_codigo,
        l.med_numero_equipo, l.cdr_codigo,
@@ -34,35 +36,6 @@ WHERE l.cdr_codigo = 'E'
   AND l.lec_valor_leido IS NOT NULL
   AND l.lec_fecha_lectura >= :desde
   AND l.lec_fecha_lectura <= :hasta
-"""
-
-_QUERY_ANCLAS = """
-SELECT srv_codigo, med_numero_equipo, cdr_codigo, fecha, lec_valor_leido
-FROM (
-    SELECT e.SRV_CODIGO AS srv_codigo,
-           l.med_numero_equipo, l.cdr_codigo,
-           TRUNC(l.lec_fecha_lectura) AS fecha,
-           l.lec_valor_leido,
-           ROW_NUMBER() OVER (
-               PARTITION BY l.med_numero_equipo
-               ORDER BY l.lec_fecha_lectura DESC
-           ) AS rn
-    FROM (
-        SELECT med_numero_equipo, cdr_codigo, lec_fecha_lectura, lec_valor_leido
-        FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS
-        WHERE cdr_codigo = 'E'
-          AND lec_valor_leido IS NOT NULL
-          AND lec_fecha_lectura < :desde
-        UNION ALL
-        SELECT med_numero_equipo, cdr_codigo, lec_fecha_lectura, lec_valor_leido
-        FROM xxsigec.XXCO_LECTURAS_TELEMEDIDAS_H
-        WHERE cdr_codigo = 'E'
-          AND lec_valor_leido IS NOT NULL
-          AND lec_fecha_lectura < :desde
-    ) l
-    JOIN xxsigec.EQUIPOS e ON e.STE_NUMERO = l.med_numero_equipo
-)
-WHERE rn = 1
 """
 
 
@@ -90,7 +63,6 @@ def _normalizar_valor(val: object) -> float | None:
 
 
 def _set_rowfactory(cursor: Any) -> None:
-    """Convierte las filas del cursor de tuplas a namedtuples con acceso por atributo."""
     col_names = [d[0].lower() for d in cursor.description]
     cursor.rowfactory = collections.namedtuple("OracleRow", col_names)  # type: ignore[misc]
 
@@ -141,14 +113,8 @@ class OracleMedicionReader(MedicionSourceReader):
                 cur.arraysize = 10_000  # reduce round-trips: 384K filas / 10K = ~39 fetches
                 cur.execute(_QUERY_RANGO, {"desde": desde, "hasta": hasta})
                 _set_rowfactory(cur)
-                en_rango = _rows_a_lecturas(cur)
-
-            with conn.cursor() as cur:
-                cur.arraysize = 10_000
-                cur.execute(_QUERY_ANCLAS, {"desde": desde})
-                _set_rowfactory(cur)
-                anclas = _rows_a_lecturas(cur)
+                lecturas = _rows_a_lecturas(cur)
 
             conn.rollback()
 
-        return en_rango + anclas
+        return lecturas

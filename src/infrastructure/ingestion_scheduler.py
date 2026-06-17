@@ -84,12 +84,14 @@ async def run_scheduler(
         "Scheduler iniciado — backfill desde %s, intervalo %dh", desde_inicial, interval_horas
     )
 
-    # Backfill: un día a la vez para mantener uso de memoria acotado
+    # Backfill: ventanas de 2 días (D, D+1) para que _persistir_serie tenga la lectura
+    # siguiente sin necesidad de una query ANCLAS separada en Oracle.
     hoy = date.today()
     dia = desde_inicial
     while dia <= hoy:
+        hasta = dia + timedelta(days=1)  # D+1 actúa como lectura siguiente para D
         try:
-            await _ejecutar_ingesta(non_blocking, session_factory, dia, dia)
+            await _ejecutar_ingesta(non_blocking, session_factory, dia, hasta)
         except asyncio.CancelledError:
             _log.info("Scheduler detenido durante backfill.")
             return
@@ -107,8 +109,9 @@ async def run_scheduler(
         hoy = date.today()
         dia = hoy - timedelta(days=lookback_dias)
         while dia <= hoy:
+            hasta = dia + timedelta(days=1)
             try:
-                await _ejecutar_ingesta(non_blocking, session_factory, dia, dia)
+                await _ejecutar_ingesta(non_blocking, session_factory, dia, hasta)
             except asyncio.CancelledError:
                 _log.info("Scheduler detenido durante ingesta periódica.")
                 return

@@ -4,7 +4,6 @@ Mockean oracledb a nivel de módulo para verificar:
 - Construcción correcta del DSN desde variables de entorno.
 - Que la query emitida es parametrizada (no interpolada).
 - Normalización de decimal coma y filtrado de nulos.
-- Lógica de ancla (última lectura antes de `desde` por equipo).
 - Mapeo medidor → suministro vía srv_codigo (JOIN con XXSIGEC.EQUIPOS).
 """
 
@@ -58,19 +57,10 @@ def mock_connection():
 
 async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
-    cursor.fetchall.side_effect = [
-        # primera query: rango principal
-        [_make_row("SRV-001", "91013496", date(2026, 6, 1), 13773.0)],
-        # segunda query: anclas
-        [],
+    cursor.fetchall.return_value = [
+        _make_row("SRV-001", "91013496", date(2026, 6, 1), 13773.0),
     ]
-    cursor.description = [
-        ("srv_codigo",),
-        ("med_numero_equipo",),
-        ("cdr_codigo",),
-        ("fecha",),
-        ("lec_valor_leido",),
-    ]
+    cursor.description = _DESCRIPTION
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -89,17 +79,10 @@ async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connecti
 
 async def test_leer_lecturas_normaliza_coma_decimal(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
-    cursor.fetchall.side_effect = [
-        [_make_row("SRV-001", "91013496", date(2026, 6, 1), "13773,50")],
-        [],
+    cursor.fetchall.return_value = [
+        _make_row("SRV-001", "91013496", date(2026, 6, 1), "13773,50"),
     ]
-    cursor.description = [
-        ("srv_codigo",),
-        ("med_numero_equipo",),
-        ("cdr_codigo",),
-        ("fecha",),
-        ("lec_valor_leido",),
-    ]
+    cursor.description = _DESCRIPTION
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -114,20 +97,11 @@ async def test_leer_lecturas_normaliza_coma_decimal(env_vars, mock_connection) -
 
 async def test_leer_lecturas_descarta_nulos(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
-    cursor.fetchall.side_effect = [
-        [
-            _make_row("SRV-001", "91013496", date(2026, 6, 1), None),  # nulo → descartado
-            _make_row("SRV-001", "91013496", date(2026, 6, 2), 100.0),  # válido
-        ],
-        [],
+    cursor.fetchall.return_value = [
+        _make_row("SRV-001", "91013496", date(2026, 6, 1), None),  # nulo → descartado
+        _make_row("SRV-001", "91013496", date(2026, 6, 2), 100.0),  # válido
     ]
-    cursor.description = [
-        ("srv_codigo",),
-        ("med_numero_equipo",),
-        ("cdr_codigo",),
-        ("fecha",),
-        ("lec_valor_leido",),
-    ]
+    cursor.description = _DESCRIPTION
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -141,21 +115,16 @@ async def test_leer_lecturas_descarta_nulos(env_vars, mock_connection) -> None:
     assert result[0].fecha == date(2026, 6, 2)
 
 
-async def test_leer_lecturas_incluye_ancla_de_segunda_query(env_vars, mock_connection) -> None:
+async def test_leer_lecturas_incluye_segundo_dia_como_lectura_siguiente(
+    env_vars, mock_connection
+) -> None:
+    """Al pedir (D, D+1) el RANGO devuelve ambos días; D+1 actúa como lectura siguiente."""
     conn, cursor = mock_connection
-    cursor.fetchall.side_effect = [
-        # rango principal
-        [_make_row("SRV-001", "91013496", date(2026, 6, 1), 13773.0)],
-        # anclas (última lectura por equipo antes de desde)
-        [_make_row("SRV-001", "91013496", date(2026, 5, 27), 13721.0)],
+    cursor.fetchall.return_value = [
+        _make_row("SRV-001", "91013496", date(2026, 6, 1), 13721.0),
+        _make_row("SRV-001", "91013496", date(2026, 6, 2), 13773.0),
     ]
-    cursor.description = [
-        ("srv_codigo",),
-        ("med_numero_equipo",),
-        ("cdr_codigo",),
-        ("fecha",),
-        ("lec_valor_leido",),
-    ]
+    cursor.description = _DESCRIPTION
 
     with patch("infrastructure.oracle.medicion_reader.oracledb") as mock_oracledb:
         mock_oracledb.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -163,11 +132,11 @@ async def test_leer_lecturas_incluye_ancla_de_segunda_query(env_vars, mock_conne
         mock_oracledb.makedsn.return_value = "oracle-dsn"
 
         reader = OracleMedicionReader()
-        result = await reader.leer_lecturas(date(2026, 6, 1), date(2026, 6, 30))
+        result = await reader.leer_lecturas(date(2026, 6, 1), date(2026, 6, 2))
 
     fechas = {lect.fecha for lect in result}
-    assert date(2026, 5, 27) in fechas, "El ancla debe estar incluido en el resultado"
     assert date(2026, 6, 1) in fechas
+    assert date(2026, 6, 2) in fechas
 
 
 async def test_query_usa_bind_params_no_interpolacion(env_vars, mock_connection) -> None:
