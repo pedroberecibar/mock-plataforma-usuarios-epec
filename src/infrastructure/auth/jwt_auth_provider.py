@@ -1,20 +1,19 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 
 from domain.ports.auth_provider import AuthProvider
 
 ALGORITHM = "HS256"
 EXPIRACION = timedelta(hours=12)
 
+_ph = PasswordHasher()
+
 
 class JwtAuthProvider(AuthProvider):
-    """Login stub: emite un JWT para cualquier credencial.
-
-    La verificación real de identidad contra EPEC es un punto abierto
-    (ver docs/PLAN-SPRINTS-MVP.md, riesgo #2); por ahora solo garantiza
-    que el token emitido y verificado en esta plataforma sea consistente.
-    """
+    """Emite y verifica JWTs. La verificación de contraseña usa argon2id."""
 
     def __init__(self, secret_key: str) -> None:
         self._secret_key = secret_key
@@ -29,3 +28,9 @@ class JwtAuthProvider(AuthProvider):
         except jwt.PyJWTError:
             return None
         return payload.get("sub")
+
+    def verificar_password(self, password: str, password_hash: str) -> bool:
+        try:
+            return _ph.verify(password_hash, password)
+        except VerifyMismatchError:
+            return False

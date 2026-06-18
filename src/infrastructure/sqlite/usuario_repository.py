@@ -13,3 +13,8 @@ class SQLiteUsuarioRepository(UsuarioRepository):
         result = await self._session.execute(select(Usuario).where(Usuario.usuario == usuario))
         row = result.scalar_one_or_none()
         return row.suministro_id if row else None
+
+    async def get_password_hash(self, usuario: str) -> str | None:
+        result = await self._session.execute(select(Usuario).where(Usuario.usuario == usuario))
+        row = result.scalar_one_or_none()
+        return row.password_hash if row else None

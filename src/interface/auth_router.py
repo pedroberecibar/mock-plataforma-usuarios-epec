@@ -27,6 +27,13 @@ async def login(
     suministro_id = await usuario_repo.get_suministro_id(body.usuario)
     if suministro_id is None:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    password_hash = await usuario_repo.get_password_hash(body.usuario)
+    if password_hash is not None and not auth_provider.verificar_password(
+        body.password, password_hash
+    ):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
     token = await auth_provider.autenticar(body.usuario, body.password)
     if token is None:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")

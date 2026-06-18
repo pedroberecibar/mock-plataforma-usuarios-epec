@@ -21,6 +21,7 @@ from infrastructure.fakes.notification_sender import FakeNotificationSender
 from infrastructure.smtp.notification_sender import SmtpNotificationSender
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
 from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
+from infrastructure.sqlite.objetivo_consumo_repository import SQLiteObjetivoConsumoRepository
 from infrastructure.sqlite.proyeccion_repository import SQLiteProyeccionRepository
 from infrastructure.sqlite.suministro_repository import SQLiteSuministroRepository
 from infrastructure.sqlite.usuario_repository import SQLiteUsuarioRepository
@@ -33,6 +34,7 @@ from interface.dependencies import (
     get_consumo_repo,
     get_medicion_reader,
     get_notificacion_config_repo,
+    get_objetivo_repo,
     get_proyeccion_repo,
     get_suministro_repo,
     get_usuario_repo,
@@ -41,6 +43,7 @@ from interface.dependencies import (
 from interface.factura_router import build_router as build_factura_router
 from interface.home_router import router as home_router
 from interface.ingest_router import router as ingest_router
+from interface.objetivos_router import router as objetivos_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 
@@ -153,6 +156,7 @@ def create_app() -> FastAPI:
     app.include_router(consumo_router)
     app.include_router(home_router)
     app.include_router(ingest_router)
+    app.include_router(objetivos_router)
     app.include_router(build_factura_router(epec_base_url=epec_factura_base_url))
 
     secret_key = os.environ["SECRET_KEY"]
@@ -184,7 +188,12 @@ def create_app() -> FastAPI:
         async with session_factory() as session:
             yield SQLiteNotificacionConfigRepository(session)
 
+    async def _get_objetivo_repo() -> AsyncGenerator[SQLiteObjetivoConsumoRepository, None]:
+        async with session_factory() as session:
+            yield SQLiteObjetivoConsumoRepository(session)
+
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
+    app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo
     app.dependency_overrides[get_proyeccion_repo] = _get_proyeccion_repo
     app.dependency_overrides[get_suministro_repo] = _get_suministro_repo

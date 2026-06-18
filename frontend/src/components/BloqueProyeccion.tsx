@@ -93,21 +93,22 @@ export function BloqueProyeccion({ proyeccion }: Props) {
 
       <p
         style={{
-          fontFamily:  font.technical,
-          fontSize:    fontSize.xl,
-          fontWeight:  fontWeight.bold,
-          color:       fg.primary,
-          lineHeight:  lineHeight.tight,
-          margin:      0,
-          marginBottom: space[2],
+          fontFamily:    font.technical,
+          fontSize:      fontSize["4xl"],  // display-lg: 48px — Stitch shows "198 – 226" very large
+          fontWeight:    fontWeight.bold,
+          color:         fg.link,          // primary #00361d
+          lineHeight:    lineHeight.tight,
+          margin:        0,
+          marginBottom:  space[2],
+          letterSpacing: "-0.02em",
         }}
       >
         {rango_inferior_kwh.toFixed(0)} – {rango_superior_kwh.toFixed(0)}{" "}
         <span
           style={{
             fontFamily: font.sans,
-            fontSize:   fontSize.sm,
-            fontWeight: fontWeight.regular,
+            fontSize:   fontSize.xl,    // unit-display: 24px
+            fontWeight: fontWeight.light,  // 300
             color:      fg.secondary,
           }}
         >

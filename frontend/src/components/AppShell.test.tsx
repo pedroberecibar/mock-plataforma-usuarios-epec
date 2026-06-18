@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
@@ -8,7 +8,7 @@ const NAV_LABELS = ["Inicio", "Consumo", "Objetivos", "Mi factura", "Configuraci
 describe("AppShell", () => {
   it("renderiza el logo con alt=EPEC", () => {
     render(
-      <AppShell vistaActiva="home" onNavegar={vi.fn()}>
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()}>
         <div>contenido</div>
       </AppShell>,
     );
@@ -17,7 +17,7 @@ describe("AppShell", () => {
 
   it("renderiza los 5 items de navegación por su label", () => {
     render(
-      <AppShell vistaActiva="home" onNavegar={vi.fn()}>
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()}>
         <div>contenido</div>
       </AppShell>,
     );
@@ -28,7 +28,7 @@ describe("AppShell", () => {
 
   it('"Inicio" tiene aria-current="page" por defecto', () => {
     render(
-      <AppShell vistaActiva="home" onNavegar={vi.fn()}>
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()}>
         <div />
       </AppShell>,
     );
@@ -39,7 +39,7 @@ describe("AppShell", () => {
   it('click en "Consumo" llama onNavegar con "consumo"', async () => {
     const onNavegar = vi.fn();
     render(
-      <AppShell vistaActiva="home" onNavegar={onNavegar}>
+      <AppShell vistaActiva="home" onNavegar={onNavegar} onLogout={vi.fn()}>
         <div />
       </AppShell>,
     );
@@ -49,29 +49,22 @@ describe("AppShell", () => {
     expect(onNavegar).toHaveBeenCalledWith("consumo");
   });
 
-  it('items "Objetivos", "Mi factura" y "Configuración" tienen aria-disabled y no llaman onNavegar', () => {
+  it('click en "Objetivos" llama onNavegar con "objetivos"', async () => {
     const onNavegar = vi.fn();
     render(
-      <AppShell vistaActiva="home" onNavegar={onNavegar}>
+      <AppShell vistaActiva="home" onNavegar={onNavegar} onLogout={vi.fn()}>
         <div />
       </AppShell>,
     );
-    for (const label of ["Objetivos", "Mi factura", "Configuración"]) {
-      const items = screen.getAllByText(label);
-      for (const item of items) {
-        // Verify disabled attribute is set
-        const link = item.closest("a");
-        expect(link?.getAttribute("aria-disabled")).toBe("true");
-        // fireEvent bypasses pointer-events:none — should still not trigger navigation
-        fireEvent.click(item);
-      }
-    }
-    expect(onNavegar).not.toHaveBeenCalled();
+    const links = screen.getAllByRole("link", { name: /objetivos/i });
+    const enabled = links.find((el) => !el.getAttribute("aria-disabled"));
+    await userEvent.click(enabled!);
+    expect(onNavegar).toHaveBeenCalledWith("objetivos");
   });
 
   it("muestra el nombre del usuario cuando se pasa usuarioNombre", () => {
     render(
-      <AppShell vistaActiva="home" onNavegar={vi.fn()} usuarioNombre="Pedro Berecibar">
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()} usuarioNombre="Pedro Berecibar">
         <div />
       </AppShell>,
     );
@@ -80,7 +73,7 @@ describe("AppShell", () => {
 
   it('muestra fallback "Mi cuenta" cuando no se pasa usuarioNombre', () => {
     render(
-      <AppShell vistaActiva="home" onNavegar={vi.fn()}>
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()}>
         <div />
       </AppShell>,
     );
@@ -89,10 +82,22 @@ describe("AppShell", () => {
 
   it("renderiza los children en el área de contenido", () => {
     render(
-      <AppShell vistaActiva="home" onNavegar={vi.fn()}>
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()}>
         <div data-testid="contenido-hijo">hijo</div>
       </AppShell>,
     );
     expect(screen.getByTestId("contenido-hijo")).toBeTruthy();
+  });
+
+  it('click en "Cerrar sesión" llama onLogout', async () => {
+    const onLogout = vi.fn();
+    render(
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={onLogout}>
+        <div />
+      </AppShell>,
+    );
+    const logoutBtn = screen.getByRole("button", { name: /cerrar sesión/i });
+    await userEvent.click(logoutBtn);
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });

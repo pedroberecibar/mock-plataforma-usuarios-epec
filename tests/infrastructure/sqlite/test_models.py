@@ -16,7 +16,7 @@ EXPECTED_TABLES = {
     },
     "notificaciones_config": {"usuario_id", "tipo", "canal", "habilitado"},
     "factura_redireccion": {"id", "numero_cliente", "numero_contrato"},
-    "usuarios": {"usuario", "suministro_id", "email"},
+    "usuarios": {"usuario", "suministro_id", "email", "password_hash"},
     "notificaciones_enviadas": {"id", "suministro_id", "tipo_alerta", "fecha_envio"},
 }
 

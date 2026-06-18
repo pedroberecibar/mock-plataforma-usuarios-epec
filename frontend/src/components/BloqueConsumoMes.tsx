@@ -77,21 +77,22 @@ export function BloqueConsumoMes({ consumoMes }: Props) {
 
       <p
         style={{
-          fontFamily:  font.technical,
-          fontSize:    fontSize["4xl"],
-          fontWeight:  fontWeight.bold,
-          color:       fg.primary,
-          lineHeight:  lineHeight.tight,
-          margin:      0,
-          marginBottom: space[3],
+          fontFamily:    font.technical,
+          fontSize:      fontSize["4xl"],  // display-lg: 48px
+          fontWeight:    fontWeight.bold,
+          color:         fg.link,          // primary #00361d
+          lineHeight:    lineHeight.tight,
+          margin:        0,
+          marginBottom:  space[3],
+          letterSpacing: "-0.02em",
         }}
       >
         {total_kwh !== null ? total_kwh.toFixed(1) : "—"}
         <span
           style={{
             fontFamily: font.sans,
-            fontSize:   fontSize.md,
-            fontWeight: fontWeight.regular,
+            fontSize:   fontSize.xl,    // unit-display: 24px
+            fontWeight: fontWeight.light,  // 300
             color:      fg.secondary,
             marginLeft: space[2],
           }}

@@ -49,20 +49,21 @@ export function BloqueZona({ zona }: Props) {
       {diferencia_pct !== null ? (
         <p
           style={{
-            fontFamily:  font.technical,
-            fontSize:    fontSize.xl,
-            fontWeight:  fontWeight.bold,
-            color:       numColor,
-            lineHeight:  lineHeight.tight,
-            margin:      0,
-            marginBottom: space[2],
+            fontFamily:    font.technical,
+            fontSize:      fontSize["2xl"],  // headline-lg: 32px (Stitch shows diferencia prominently)
+            fontWeight:    fontWeight.bold,
+            color:         numColor,
+            lineHeight:    lineHeight.snug,
+            margin:        0,
+            marginBottom:  space[2],
+            letterSpacing: "-0.01em",
           }}
         >
           {signo}{diferencia_pct.toFixed(1)}%{" "}
           <span
             style={{
               fontFamily: font.sans,
-              fontSize:   fontSize.sm,
+              fontSize:   fontSize.base,  // body-md: 16px
               fontWeight: fontWeight.regular,
               color:      fg.secondary,
             }}
@@ -74,7 +75,7 @@ export function BloqueZona({ zona }: Props) {
         <p
           style={{
             fontFamily: font.sans,
-            fontSize:   fontSize.sm,
+            fontSize:   fontSize.base,
             color:      fg.muted,
             margin:     0,
             marginBottom: space[2],

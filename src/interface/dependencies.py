@@ -4,6 +4,7 @@ from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.medicion_source_reader import MedicionSourceReader
 from domain.ports.notificacion_config_repository import NotificacionConfigRepository
+from domain.ports.objetivo_consumo_repository import ObjetivoConsumoRepository
 from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.suministro_repository import SuministroRepository
 from domain.ports.usuario_repository import UsuarioRepository
@@ -53,6 +54,12 @@ def get_medicion_reader() -> MedicionSourceReader:
 def get_suministro_repo() -> SuministroRepository:
     raise NotImplementedError(
         "SuministroRepository debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_objetivo_repo() -> ObjetivoConsumoRepository:
+    raise NotImplementedError(
+        "ObjetivoConsumoRepository debe ser wireado en el composition root (src/main.py)"
     )
 
 

@@ -10,8 +10,10 @@ import {
   fg,
   font,
   fontSize,
+  fontWeight,
   space,
   color,
+  border,
 } from "../design-tokens";
 
 function mesActualYYYYMM(): string {
@@ -110,19 +112,46 @@ export function HomePage({ token, suministroId, mes }: Props) {
         fontFamily: font.sans,
       }}
     >
+      {/* Content header (top app bar style, sticky) */}
+      <header style={{
+        height:           64,
+        display:          "flex",
+        justifyContent:   "space-between",
+        alignItems:       "flex-start",
+        padding:          `${space[6]}px ${space[10]}px`,
+        background:       bg.page,
+        borderBottom:     `1px solid ${border.default}`,
+        position:         "sticky",
+        top:              0,
+        zIndex:           40,
+      }}>
+        <div>
+          <h2 style={{
+            fontFamily:   font.sans,
+            fontSize:     fontSize["2xl"],
+            fontWeight:   fontWeight.semibold,
+            color:        fg.link,
+            margin:       0,
+            letterSpacing: "-0.01em",
+            lineHeight:   1.25,
+          }}>
+            Inicio
+          </h2>
+        </div>
+      </header>
+
       <main aria-label="home del cliente">
         <div
           style={{
-            maxWidth: 960,
-            margin:   "0 auto",
-            padding:  `${space[8]}px ${space[6]}px`,
+            maxWidth: 1400,
+            padding:  `${space[10]}px ${space[10]}px`,
           }}
         >
           {/* 2-column grid on wide, stack on narrow */}
           <div
             style={{
               display:             "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
               gap:                 space[6],
             }}
           >
@@ -133,18 +162,25 @@ export function HomePage({ token, suministroId, mes }: Props) {
           </div>
 
           {/* Timestamp footer */}
-          <p
-            style={{
-              fontFamily:  font.sans,
-              fontSize:    fontSize.xs,
-              color:       fg.muted,
-              marginTop:   space[6],
-              marginBottom: 0,
-              textAlign:   "right" as const,
-            }}
-          >
-            Actualizado: {tsDate}
-          </p>
+          <footer style={{
+            marginTop:    space[10],
+            paddingTop:   space[6],
+            borderTop:    `1px solid ${border.default}`,
+            display:      "flex",
+            justifyContent: "flex-end",
+          }}>
+            <p
+              style={{
+                fontFamily:   font.mono,
+                fontSize:     fontSize.xs,
+                letterSpacing: "0.05em",
+                color:        fg.muted,
+                margin:       0,
+              }}
+            >
+              Actualizado: {tsDate}
+            </p>
+          </footer>
         </div>
       </main>
     </div>
