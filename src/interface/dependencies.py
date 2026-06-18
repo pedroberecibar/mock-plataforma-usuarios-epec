@@ -4,6 +4,7 @@ from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.medicion_source_reader import MedicionSourceReader
 from domain.ports.notificacion_config_repository import NotificacionConfigRepository
+from domain.ports.notification_sender import NotificationSender
 from domain.ports.objetivo_consumo_repository import ObjetivoConsumoRepository
 from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.suministro_repository import SuministroRepository
@@ -63,6 +64,12 @@ def get_objetivo_repo() -> ObjetivoConsumoRepository:
     )
 
 
+def get_notification_sender() -> NotificationSender:
+    raise NotImplementedError(
+        "NotificationSender debe ser wireado en el composition root (src/main.py)"
+    )
+
+
 async def get_usuario_actual(
     authorization: str | None = Header(None),
     auth_provider: AuthProvider = Depends(get_auth_provider),
@@ -84,3 +91,10 @@ async def get_suministro_actual(
     if suministro_id is None:
         raise HTTPException(status_code=401, detail="Usuario sin suministro asignado")
     return suministro_id
+
+
+async def get_email_actual(
+    usuario: str = Depends(get_usuario_actual),
+    usuario_repo: UsuarioRepository = Depends(get_usuario_repo),
+) -> str | None:
+    return await usuario_repo.get_email(usuario)

@@ -34,6 +34,7 @@ from interface.dependencies import (
     get_consumo_repo,
     get_medicion_reader,
     get_notificacion_config_repo,
+    get_notification_sender,
     get_objetivo_repo,
     get_proyeccion_repo,
     get_suministro_repo,
@@ -192,6 +193,8 @@ def create_app() -> FastAPI:
         async with session_factory() as session:
             yield SQLiteObjetivoConsumoRepository(session)
 
+    _notification_sender = _build_notification_sender()
+    app.dependency_overrides[get_notification_sender] = lambda: _notification_sender
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
     app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo

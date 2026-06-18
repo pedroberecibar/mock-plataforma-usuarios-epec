@@ -8,7 +8,7 @@ def test_is_abstract_and_cannot_be_instantiated_directly() -> None:
         UsuarioRepository()  # type: ignore[abstract]
 
 
-def test_declares_get_suministro_id_and_get_password_hash_as_abstract() -> None:
+def test_declares_abstract_methods() -> None:
     assert UsuarioRepository.__abstractmethods__ == frozenset(
-        {"get_suministro_id", "get_password_hash"}
+        {"get_suministro_id", "get_password_hash", "get_email"}
     )

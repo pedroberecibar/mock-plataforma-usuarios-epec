@@ -2,35 +2,49 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { color, fontSize, fontWeight, radius, space } from "../design-tokens";
 import { fetchObjetivo, setObjetivo, type ObjetivoResponse } from "../api/objetivos";
+import { fetchHome } from "../api/home";
 
 interface ObjetivosPageProps {
   token: string;
+  suministroId: string;
 }
 
 type Estado = "cargando" | "sin_objetivo" | "con_objetivo" | "editando" | "guardando" | "error";
 
-export function ObjetivosPage({ token }: ObjetivosPageProps) {
+function mesActualYYYYMM(): string {
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${m}`;
+}
+
+const WARN_THRESHOLD = 0.8;
+
+export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
   const [objetivo, setObjetivoState] = useState<ObjetivoResponse | null>(null);
   const [estado, setEstado] = useState<Estado>("cargando");
   const [inputKwh, setInputKwh] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [consumoActual, setConsumoActual] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchObjetivo(token)
-      .then((data) => {
-        if (cancelled) return;
-        setObjetivoState(data);
-        setEstado(data ? "con_objetivo" : "sin_objetivo");
-        if (data) setInputKwh(String(data.valor_kwh));
-      })
-      .catch(() => {
-        if (!cancelled) setEstado("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+    const mes = mesActualYYYYMM();
+
+    Promise.all([
+      fetchObjetivo(token),
+      fetchHome(token, suministroId, mes).catch(() => null),
+    ]).then(([obj, home]) => {
+      if (cancelled) return;
+      setObjetivoState(obj);
+      setEstado(obj ? "con_objetivo" : "sin_objetivo");
+      if (obj) setInputKwh(String(obj.valor_kwh));
+      setConsumoActual(home?.consumo_mes.total_kwh ?? null);
+    }).catch(() => {
+      if (!cancelled) setEstado("error");
+    });
+
+    return () => { cancelled = true; };
+  }, [token, suministroId]);
 
   async function handleGuardar() {
     const valor = parseFloat(inputKwh);
@@ -48,6 +62,19 @@ export function ObjetivosPage({ token }: ObjetivosPageProps) {
       setEstado("error");
     }
   }
+
+  const pct = objetivo && consumoActual !== null
+    ? Math.min(consumoActual / objetivo.valor_kwh, 1)
+    : null;
+
+  const superado = pct !== null && pct >= 1;
+  const enAviso = pct !== null && pct >= WARN_THRESHOLD && !superado;
+
+  const barColor = superado
+    ? color.errorDark
+    : enAviso
+      ? color.warningDark
+      : color.green500;
 
   return (
     <div style={{ padding: `${space[8]}px ${space[6]}px`, maxWidth: 560, margin: "0 auto" }}>
@@ -81,6 +108,60 @@ export function ObjetivosPage({ token }: ObjetivosPageProps) {
               </p>
             </div>
           )}
+
+          {pct !== null && consumoActual !== null && objetivo && (
+            <div style={{ marginBottom: space[6] }}>
+              <Label>Consumo acumulado este mes</Label>
+
+              {(superado || enAviso) && (
+                <p
+                  role="alert"
+                  style={{
+                    marginTop:    space[2],
+                    marginBottom: space[2],
+                    padding:      `${space[2]}px ${space[3]}px`,
+                    borderRadius: radius.sm,
+                    fontSize:     fontSize.sm,
+                    fontWeight:   fontWeight.medium,
+                    background:   superado ? color.errorLight : color.warningLight,
+                    color:        superado ? color.errorDark   : color.warningDark,
+                  }}
+                >
+                  {superado
+                    ? "Objetivo superado — revisá tu consumo."
+                    : `Atención: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
+                </p>
+              )}
+
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(pct * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Progreso consumo vs objetivo"
+                style={{
+                  marginTop:    space[2],
+                  height:       10,
+                  background:   color.neutral200,
+                  borderRadius: radius.full,
+                  overflow:     "hidden",
+                }}
+              >
+                <div style={{
+                  height:      "100%",
+                  width:       `${Math.round(pct * 100)}%`,
+                  background:  barColor,
+                  borderRadius: radius.full,
+                  transition:  "width 0.3s ease",
+                }} />
+              </div>
+
+              <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
+                {consumoActual} de {objetivo.valor_kwh} kWh ({Math.round(pct * 100)}%)
+              </p>
+            </div>
+          )}
+
           <Label>{objetivo ? "Modificar objetivo" : "Configurar objetivo"}</Label>
           <div style={{ display: "flex", gap: space[3], marginTop: space[2], alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>

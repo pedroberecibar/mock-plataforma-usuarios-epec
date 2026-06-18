@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date, datetime
 
-TIPOS_ALERTA = ("factura_disponible", "vencimiento_proximo", "consumo_anomalo")
+TIPOS_ALERTA = ("factura_disponible", "vencimiento_proximo", "consumo_anomalo", "objetivo_superado")
 CANAL_DEFAULT = "email"
 
 

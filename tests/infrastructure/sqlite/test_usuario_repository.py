@@ -36,3 +36,23 @@ async def test_distingue_entre_usuarios_distintos(
 
     assert await repo.get_suministro_id("pedro") == "1111111"
     assert await repo.get_suministro_id("maria") == "2222222"
+
+
+async def test_get_email_devuelve_email_cuando_existe(
+    repo: SQLiteUsuarioRepository,
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(Usuario(usuario="demo", suministro_id="3037481", email="demo@example.com"))
+    await db_session.flush()
+
+    assert await repo.get_email("demo") == "demo@example.com"
+
+
+async def test_get_email_devuelve_none_cuando_no_existe(
+    repo: SQLiteUsuarioRepository,
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(Usuario(usuario="demo", suministro_id="3037481"))
+    await db_session.flush()
+
+    assert await repo.get_email("demo") is None

@@ -9,3 +9,7 @@ class UsuarioRepository(ABC):
     @abstractmethod
     async def get_password_hash(self, usuario: str) -> str | None:
         """Devuelve el password_hash almacenado para el usuario, o None si no existe."""
+
+    @abstractmethod
+    async def get_email(self, usuario: str) -> str | None:
+        """Devuelve el email asociado al usuario, o None si no existe."""

@@ -8,6 +8,7 @@ ASUNTOS: dict[str, str] = {
     "factura_disponible": "Tu factura EPEC ya está disponible",
     "vencimiento_proximo": "Tu factura EPEC vence pronto",
     "consumo_anomalo": "Alerta: consumo inusual detectado",
+    "objetivo_superado": "Alerta: tu objetivo de consumo está por alcanzarse",
 }
 
 CUERPOS: dict[str, str] = {
@@ -21,6 +22,10 @@ CUERPOS: dict[str, str] = {
         "Detectamos un consumo fuera de lo habitual en tu suministro. "
         "Revisá el detalle en la sección Consumo."
     ),
+    "objetivo_superado": (
+        "Tu consumo acumulado este mes alcanzó el límite configurado. "
+        "Ingresá a la plataforma para revisar el detalle y ajustar tu objetivo si es necesario."
+    ),
 }
 
 
@@ -28,6 +33,7 @@ class TipoAlerta(StrEnum):
     FACTURA_DISPONIBLE = "factura_disponible"
     VENCIMIENTO_PROXIMO = "vencimiento_proximo"
     CONSUMO_ANOMALO = "consumo_anomalo"
+    OBJETIVO_SUPERADO = "objetivo_superado"
 
 
 class EvaluarAlertasUseCase:

@@ -6,12 +6,17 @@ class FakeUsuarioRepository(UsuarioRepository):
         self,
         usuarios: dict[str, str] | None = None,
         password_hashes: dict[str, str] | None = None,
+        emails: dict[str, str] | None = None,
     ) -> None:
         self._usuarios = usuarios or {}
         self._password_hashes = password_hashes or {}
+        self._emails = emails or {}
 
     async def get_suministro_id(self, usuario: str) -> str | None:
         return self._usuarios.get(usuario)
 
     async def get_password_hash(self, usuario: str) -> str | None:
         return self._password_hashes.get(usuario)
+
+    async def get_email(self, usuario: str) -> str | None:
+        return self._emails.get(usuario)
