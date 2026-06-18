@@ -1,0 +1,70 @@
+from datetime import UTC, date, datetime
+from enum import StrEnum
+
+from domain.ports.notificacion_config_repository import NotificacionConfigRepository
+from domain.ports.notification_sender import NotificationSender
+
+ASUNTOS: dict[str, str] = {
+    "factura_disponible": "Tu factura EPEC ya está disponible",
+    "vencimiento_proximo": "Tu factura EPEC vence pronto",
+    "consumo_anomalo": "Alerta: consumo inusual detectado",
+}
+
+CUERPOS: dict[str, str] = {
+    "factura_disponible": (
+        "Tu nueva factura de EPEC está disponible. Ingresá a la plataforma para verla y abonarla."
+    ),
+    "vencimiento_proximo": (
+        "Tu factura EPEC vence en los próximos días. Recordá abonarla para evitar inconvenientes."
+    ),
+    "consumo_anomalo": (
+        "Detectamos un consumo fuera de lo habitual en tu suministro. "
+        "Revisá el detalle en la sección Consumo."
+    ),
+}
+
+
+class TipoAlerta(StrEnum):
+    FACTURA_DISPONIBLE = "factura_disponible"
+    VENCIMIENTO_PROXIMO = "vencimiento_proximo"
+    CONSUMO_ANOMALO = "consumo_anomalo"
+
+
+class EvaluarAlertasUseCase:
+    def __init__(
+        self,
+        notificacion_repo: NotificacionConfigRepository,
+        notification_sender: NotificationSender,
+        email_destinatario: str,
+    ) -> None:
+        self._notificacion_repo = notificacion_repo
+        self._sender = notification_sender
+        self._email_destinatario = email_destinatario
+
+    async def ejecutar(
+        self,
+        suministro_id: str,
+        tipos: list[TipoAlerta],
+        hoy: date | None = None,
+    ) -> None:
+        if hoy is None:
+            hoy = datetime.now(UTC).date()
+
+        config_list = await self._notificacion_repo.get_config(suministro_id)
+        config = {c.tipo: c.habilitado for c in config_list}
+
+        for tipo in tipos:
+            tipo_str = str(tipo)
+            if not config.get(tipo_str, False):
+                continue
+            if await self._notificacion_repo.ya_enviada_hoy(suministro_id, tipo_str, hoy):
+                continue
+
+            await self._sender.enviar_email(
+                destinatario=self._email_destinatario,
+                asunto=ASUNTOS[tipo_str],
+                cuerpo=CUERPOS[tipo_str],
+            )
+            await self._notificacion_repo.registrar_enviada(
+                suministro_id, tipo_str, datetime.now(UTC).replace(tzinfo=None)
+            )

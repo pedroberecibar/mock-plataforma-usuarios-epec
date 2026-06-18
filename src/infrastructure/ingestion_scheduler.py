@@ -11,15 +11,22 @@ import asyncio
 import logging
 from datetime import date, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from application.use_cases.evaluar_alertas import EvaluarAlertasUseCase, TipoAlerta
 from application.use_cases.ingestar_consumo_diario import IngestarConsumoDiarioUseCase
 from domain.lecturas import LecturaTelemedida
 from domain.ports.medicion_source_reader import MedicionSourceReader
+from domain.ports.notification_sender import NotificationSender
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
+from infrastructure.sqlite.models import Usuario
+from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
 from infrastructure.sqlite.suministro_repository import SQLiteSuministroRepository
 
 _log = logging.getLogger(__name__)
+
+_TIPOS_ALERTA_PERIODICOS = [TipoAlerta.FACTURA_DISPONIBLE, TipoAlerta.VENCIMIENTO_PROXIMO]
 
 
 class _NonBlockingReader(MedicionSourceReader):
@@ -74,6 +81,31 @@ async def _ejecutar_ingesta(
     )
 
 
+async def _evaluar_alertas_todos(
+    session_factory: async_sessionmaker[AsyncSession],
+    notification_sender: NotificationSender,
+) -> None:
+    """Evalúa y envía alertas para todos los usuarios con email registrado."""
+    async with session_factory() as session:
+        result = await session.execute(
+            select(Usuario.suministro_id, Usuario.email).where(Usuario.email.is_not(None))
+        )
+        usuarios = result.all()
+
+        for suministro_id, email in usuarios:
+            notif_repo = SQLiteNotificacionConfigRepository(session)
+            uc = EvaluarAlertasUseCase(
+                notificacion_repo=notif_repo,
+                notification_sender=notification_sender,
+                email_destinatario=email,
+            )
+            try:
+                await uc.ejecutar(suministro_id, _TIPOS_ALERTA_PERIODICOS)
+            except Exception:
+                _log.exception("Error evaluando alertas para suministro %s", suministro_id)
+        await session.commit()
+
+
 async def run_scheduler(
     reader: MedicionSourceReader,
     session_factory: async_sessionmaker[AsyncSession],
@@ -82,10 +114,12 @@ async def run_scheduler(
     lookback_dias: int,
     interval_horas: int,
     equipos: list[str] | None = None,
+    notification_sender: NotificationSender | None = None,
 ) -> None:
     """Backfill inicial + loop periódico. Diseñado para cancelarse limpiamente con asyncio.
 
     `equipos`: lista de med_numero_equipo a ingestar. None = todos (no recomendado en prod).
+    `notification_sender`: si está configurado, evalúa alertas tras cada ciclo periódico.
     Procesa de a 1 día con ventana (D, D+1) para que _persistir_serie tenga lectura siguiente.
     """
     non_blocking = _NonBlockingReader(reader)
@@ -129,3 +163,12 @@ async def run_scheduler(
             except Exception:
                 _log.exception("Error en ingesta %s — reintentará en %dh", dia, interval_horas)
             dia += timedelta(days=1)
+
+        if notification_sender is not None:
+            try:
+                await _evaluar_alertas_todos(session_factory, notification_sender)
+            except asyncio.CancelledError:
+                _log.info("Scheduler detenido durante evaluación de alertas.")
+                return
+            except Exception:
+                _log.exception("Error evaluando alertas — continuando")

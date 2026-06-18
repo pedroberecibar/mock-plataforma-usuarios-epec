@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -63,3 +63,20 @@ class FacturaRedireccion(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     numero_cliente: Mapped[str]
     numero_contrato: Mapped[str]
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    usuario: Mapped[str] = mapped_column(primary_key=True)
+    suministro_id: Mapped[str]
+    email: Mapped[str | None] = mapped_column(nullable=True, default=None)
+
+
+class NotificacionEnviada(Base):
+    __tablename__ = "notificaciones_enviadas"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    suministro_id: Mapped[str]
+    tipo_alerta: Mapped[str]
+    fecha_envio: Mapped[datetime]

@@ -1,47 +1,30 @@
 # Estado de Sesión Actual
 
 ## Última sesión
-- **Fecha:** 2026-06-17
-- **Qué se completó:** Sprint 3 completo — backend + frontend.
-  - **Backend:**
-    - `src/domain/proyeccion.py` — dataclass `ProyeccionMensual` (frozen)
-    - `src/domain/ports/proyeccion_repository.py` — puerto `ProyeccionRepository`
-    - `src/infrastructure/fakes/proyeccion_repository.py` — `FakeProyeccionRepository`
-    - `src/infrastructure/sqlite/proyeccion_repository.py` — `SQLiteProyeccionRepository` (upsert + get)
-    - `src/infrastructure/sqlite/models.py` — `rango_inferior_kwh` y `rango_superior_kwh` ahora `Mapped[float | None]`
-    - `src/infrastructure/sqlite/vecinos_repository.py` — implementado con bounding box SQL + Haversine Python puro
-    - `src/application/use_cases/calcular_proyeccion_mensual.py` — cascade 4 métodos: interanual/estacional/reciente/insuficiente
-    - `src/application/use_cases/obtener_home.py` — `ObtenerHomeUseCase` + dataclasses `HomeData`, `ConsumoMes`, `ComparacionZona`
-    - `src/interface/home_router.py` — `GET /home/{suministro_id}?mes=YYYY-MM`
-    - `src/interface/dependencies.py` — agregado `get_vecinos_repo`, `get_proyeccion_repo`
-    - `src/main.py` — cableado con `SQLiteVecinosRepository`, `SQLiteProyeccionRepository`, `home_router`
-  - **Tests backend:** 138 tests pytest verdes (47 nuevos)
-  - **Frontend:**
-    - `frontend/src/api/types.ts` — tipos `HomeResponse`, `ProyeccionResponse`, `ConsumoMesResponse`, `ComparacionZonaResponse`
-    - `frontend/src/api/home.ts` — `fetchHome(token, suministroId, mes)`
-    - `frontend/src/components/BloqueConsumoMes.tsx` — total kWh + chips delta
-    - `frontend/src/components/BloqueZona.tsx` — comparación con vecinos
-    - `frontend/src/components/BloqueProyeccion.tsx` — rango proyectado o "insuficiente"
-    - `frontend/src/components/BloqueAccesos.tsx` — links a consumo + botones griseados
-    - `frontend/src/pages/HomePage.tsx` — página Home que fetcha y compone los 4 bloques
-  - **Tests vitest:** 36/36 verdes (23 nuevos)
-  - **Build TypeScript:** tsc + vite build limpios
-  - **ruff check + format:** limpio
-  - **mypy:** limpio (48 archivos)
+- **Fecha:** 2026-06-18
+- **Qué se completó:**
+  - T3c: columna `email` en `usuarios` + migración `c5d6e7f8a9b0_usuarios_add_email.py` + `_evaluar_alertas_todos()` integrado en `run_scheduler()` (post ciclo periódico, no backfill) + `SmtpNotificationSender` wired en `main.py` vía vars SMTP
+  - T3d: `GET /alertas/config` + `PATCH /alertas/config` en `alertas_router.py` + `get_suministro_actual` en `dependencies.py` + `AlertasPage.tsx` con toggles por tipo + pestaña "Configuración" habilitada en `AppShell.tsx`
+  - Sprint 5 **completo**: Login → suministroId lookup → Mi Factura → Alertas/Notificaciones
+  - Validación final: 193 tests pasando, mypy sin errores, ruff sin errores, tsc sin errores
 
 - **Qué quedó incompleto:** —
+
 - **Decisiones técnicas no documentadas:**
-  - El threshold para "interanual" es ≥20 días en el mismo mes del año anterior (no 28).
-  - El threshold para "estacional" requiere ≥20 días por año histórico, en hasta 5 años hacia atrás.
-  - La proyección estacional toma el promedio de totales mensuales históricos (no ajusta por días del mes actual).
-  - El ORM `ProyeccionMensual.rango_*` es nullable — requiere una migración Alembic antes de deploy en producción.
-  - La implementación de `ObtenerHomeUseCase._calcular_zona` usa `mes_fin = primer_día + último_día_del_mes` para la ventana de vecinos (mismo período completo del mes, no solo días transcurridos).
-- **Primer paso para la próxima sesión:** Crear migración Alembic para la columna nullable en `proyeccion_mensual`; luego Sprint 4 (autenticación real + factura/alertas).
-- **Tests fallando intencionalmente:** Ninguno.
+  - `_evaluar_alertas_todos` en el scheduler usa `select(Usuario.suministro_id, Usuario.email)` directamente (sin nuevo método de puerto) — pragmático para MVP
+  - `get_suministro_actual` en `dependencies.py` hace la resolución usuario→suministro_id y eleva 401 si no existe
+  - El fake `FakeNotificationSender` fue cambiado de tuplas a dicts para coherencia con los tests de `EvaluarAlertasUseCase`; los tests del fake fueron actualizados
+
+- **Primer paso para la próxima sesión:** Sprint 6 planning — revisar backlog y definir alcance siguiente (Objetivos, autenticación real, etc.)
+
+- **Tests fallando intencionalmente:** Ninguno
 
 ## Estado del repo
-- Rama: main. Sin commitear: Sprint 3 completo (25 archivos nuevos, 6 modificados).
-- Commits recientes:
-  - `2777328 fix(frontend): vitest 13/13 verde + build TypeScript limpio`
-  - `3ef70f2 feat(sprint-2): frontend scaffold React+Vite+Recharts con tests escritos`
-  - `2460699 feat(sprint-2): Módulo Consumo M2 — backend completo`
+Archivos modificados sin commitear — pendiente hacer commit de Sprint 5.
+
+Commits recientes al inicio de sesión:
+- b0a4330 fix(sqlite): usar Any en vez de assert para compatibilidad con aiosqlite en PRAGMA event
+- ad7415b feat(ingesta): filtrar Oracle por equipos configurados vía INGEST_EQUIPOS
+- cb8f0f2 perf(oracle): GROUP BY equipo+fecha en la query para reducir 384K→~15K filas/día
+- f56ae7f perf(sqlite): eliminar flush() por operación para reducir round-trips a SQLite
+- 1d5d812 fix(ingesta): eliminar query ANCLAS — era full scan sin cota inferior, mas de 60s por dia

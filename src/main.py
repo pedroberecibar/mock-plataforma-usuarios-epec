@@ -17,20 +17,28 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
+from infrastructure.fakes.notification_sender import FakeNotificationSender
+from infrastructure.smtp.notification_sender import SmtpNotificationSender
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
+from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
 from infrastructure.sqlite.proyeccion_repository import SQLiteProyeccionRepository
 from infrastructure.sqlite.suministro_repository import SQLiteSuministroRepository
+from infrastructure.sqlite.usuario_repository import SQLiteUsuarioRepository
 from infrastructure.sqlite.vecinos_repository import SQLiteVecinosRepository
+from interface.alertas_router import router as alertas_router
 from interface.auth_router import router as auth_router
 from interface.consumo_router import router as consumo_router
 from interface.dependencies import (
     get_auth_provider,
     get_consumo_repo,
     get_medicion_reader,
+    get_notificacion_config_repo,
     get_proyeccion_repo,
     get_suministro_repo,
+    get_usuario_repo,
     get_vecinos_repo,
 )
+from interface.factura_router import build_router as build_factura_router
 from interface.home_router import router as home_router
 from interface.ingest_router import router as ingest_router
 
@@ -88,6 +96,19 @@ def create_app() -> FastAPI:
 
         oracle_reader = OracleMedicionReader()
 
+    def _build_notification_sender() -> SmtpNotificationSender | FakeNotificationSender:
+        smtp_host = os.environ.get("SMTP_HOST")
+        if not smtp_host:
+            return FakeNotificationSender()
+        return SmtpNotificationSender(
+            host=smtp_host,
+            port=_parse_env_int("SMTP_PORT", 587),
+            username=os.environ.get("SMTP_USER"),
+            password=os.environ.get("SMTP_PASS"),
+            from_addr=os.environ.get("SMTP_FROM", f"alertas@{smtp_host}"),
+            use_tls=os.environ.get("SMTP_TLS", "").lower() in ("1", "true", "yes"),
+        )
+
     def _parse_env_equipos(name: str) -> list[str] | None:
         raw = os.environ.get(name, "").strip()
         if not raw:
@@ -115,6 +136,7 @@ def create_app() -> FastAPI:
                     lookback_dias=lookback_dias,
                     interval_horas=interval_horas,
                     equipos=equipos,
+                    notification_sender=_build_notification_sender(),
                 )
             )
         yield
@@ -123,11 +145,15 @@ def create_app() -> FastAPI:
             with contextlib.suppress(asyncio.CancelledError):
                 await scheduler_task
 
+    epec_factura_base_url = os.environ.get("EPEC_FACTURA_BASE_URL")
+
     app = FastAPI(title="Plataforma de Clientes EPEC", lifespan=lifespan)
     app.include_router(auth_router)
+    app.include_router(alertas_router)
     app.include_router(consumo_router)
     app.include_router(home_router)
     app.include_router(ingest_router)
+    app.include_router(build_factura_router(epec_base_url=epec_factura_base_url))
 
     secret_key = os.environ["SECRET_KEY"]
     app.dependency_overrides[get_auth_provider] = lambda: JwtAuthProvider(secret_key=secret_key)
@@ -148,10 +174,22 @@ def create_app() -> FastAPI:
         async with session_factory() as session:
             yield SQLiteSuministroRepository(session)
 
+    async def _get_usuario_repo() -> AsyncGenerator[SQLiteUsuarioRepository, None]:
+        async with session_factory() as session:
+            yield SQLiteUsuarioRepository(session)
+
+    async def _get_notificacion_config_repo() -> AsyncGenerator[
+        SQLiteNotificacionConfigRepository, None
+    ]:
+        async with session_factory() as session:
+            yield SQLiteNotificacionConfigRepository(session)
+
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo
     app.dependency_overrides[get_proyeccion_repo] = _get_proyeccion_repo
     app.dependency_overrides[get_suministro_repo] = _get_suministro_repo
+    app.dependency_overrides[get_usuario_repo] = _get_usuario_repo
+    app.dependency_overrides[get_notificacion_config_repo] = _get_notificacion_config_repo
 
     if oracle_reader is not None:
         from infrastructure.ingestion_scheduler import _NonBlockingReader

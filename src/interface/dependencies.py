@@ -3,13 +3,27 @@ from fastapi import Depends, Header, HTTPException
 from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.medicion_source_reader import MedicionSourceReader
+from domain.ports.notificacion_config_repository import NotificacionConfigRepository
 from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.suministro_repository import SuministroRepository
+from domain.ports.usuario_repository import UsuarioRepository
 from domain.ports.vecinos_repository import VecinosRepository
 
 
 def get_auth_provider() -> AuthProvider:
     raise NotImplementedError("AuthProvider debe ser wireado en el composition root (src/main.py)")
+
+
+def get_usuario_repo() -> UsuarioRepository:
+    raise NotImplementedError(
+        "UsuarioRepository debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_notificacion_config_repo() -> NotificacionConfigRepository:
+    raise NotImplementedError(
+        "NotificacionConfigRepository debe ser wireado en el composition root (src/main.py)"
+    )
 
 
 def get_consumo_repo() -> ConsumoDiarioRepository:
@@ -53,3 +67,13 @@ async def get_usuario_actual(
     if usuario is None:
         raise HTTPException(status_code=401, detail="Token inválido")
     return usuario
+
+
+async def get_suministro_actual(
+    usuario: str = Depends(get_usuario_actual),
+    usuario_repo: UsuarioRepository = Depends(get_usuario_repo),
+) -> str:
+    suministro_id = await usuario_repo.get_suministro_id(usuario)
+    if suministro_id is None:
+        raise HTTPException(status_code=401, detail="Usuario sin suministro asignado")
+    return suministro_id

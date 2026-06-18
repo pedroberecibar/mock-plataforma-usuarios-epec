@@ -20,6 +20,8 @@ dependencies = [
     "alembic>=1.13",
     "pyjwt>=2.9",
     "oracledb>=1.4",
+    "aiosmtplib>=5.1.1",
+    "aiosmtpd>=1.4.6",
 ]
 
 [tool.uv]

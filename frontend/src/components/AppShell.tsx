@@ -45,7 +45,7 @@ const IconSettings = () => (
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-export type Vista = "home" | "consumo";
+export type Vista = "home" | "consumo" | "factura" | "alertas";
 
 interface NavItem {
   label: string;
@@ -58,8 +58,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Inicio",        vista: "home",    icon: <IconHome />,     disabled: false },
   { label: "Consumo",       vista: "consumo", icon: <IconBarChart />, disabled: false },
   { label: "Objetivos",     vista: null,      icon: <IconTarget />,   disabled: true  },
-  { label: "Mi factura",    vista: null,      icon: <IconReceipt />,  disabled: true  },
-  { label: "Configuración", vista: null,      icon: <IconSettings />, disabled: true  },
+  { label: "Mi factura",    vista: "factura", icon: <IconReceipt />,  disabled: false },
+  { label: "Configuración", vista: "alertas", icon: <IconSettings />, disabled: false },
 ];
 
 interface AppShellProps {
