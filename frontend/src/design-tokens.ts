@@ -3,38 +3,38 @@
  * Empresa Provincial de Energía de Córdoba
  *
  * Source of truth: Stitch Desktop project 8454275166029898380
- * Material You color system with EPEC green palette.
+ * Warm cream surface system inspired by Solora (Phenomenon Studio).
  * These constants mirror the Stitch Tailwind config for use in React inline styles.
  */
 
 // ---------------------------------------------------------------------------
-// COLOR PALETTE — Material You / EPEC green
+// COLOR PALETTE — Material You / EPEC green (INTOCABLE)
 // ---------------------------------------------------------------------------
 export const color = {
-  // Brand green scale (Material You primary role)
-  green900: "#002110",  // on-primary-fixed
-  green800: "#00361d",  // primary (darkest brand)
-  green700: "#124e2f",  // primary-container (sidebar bg)
-  green600: "#165131",  // on-primary-fixed-variant
-  green500: "#316948",  // surface-tint
-  green400: "#84be97",  // on-primary-container (active nav text)
-  green300: "#98d4ab",  // primary-fixed-dim / inverse-primary
-  green200: "#b4f0c6",  // primary-fixed
-  green100: "#d4eedd",  // legacy
-  green50:  "#edf5f0",  // legacy
+  // Brand green scale — INTOCABLE
+  green900: "#002110",
+  green800: "#00361d",
+  green700: "#124e2f",
+  green600: "#165131",
+  green500: "#316948",
+  green400: "#84be97",
+  green300: "#98d4ab",
+  green200: "#b4f0c6",
+  green100: "#d4eedd",
+  green50:  "#edf5f0",
 
   // Neutral / surface scale (Material You surface roles)
-  neutral900: "#191c1d",  // on-surface / on-background
-  neutral800: "#2e3132",  // inverse-surface
-  neutral700: "#404942",  // on-surface-variant
-  neutral600: "#4e6073",  // secondary / on-secondary-container approx
-  neutral500: "#717971",  // outline
-  neutral400: "#8f9c97",  // legacy
-  neutral300: "#c0c9c0",  // outline-variant
-  neutral200: "#d9dadb",  // surface-dim
-  neutral100: "#e7e8e9",  // surface-container-high
-  neutral50:  "#f8f9fa",  // surface / background
-  white:      "#ffffff",  // surface-container-lowest
+  neutral900: "#191c1d",
+  neutral800: "#2e3132",
+  neutral700: "#404942",
+  neutral600: "#4e6073",
+  neutral500: "#717971",
+  neutral400: "#8f9c97",
+  neutral300: "#c0c9c0",
+  neutral200: "#d9dadb",
+  neutral100: "#e7e8e9",
+  neutral50:  "#f8f9fa",
+  white:      "#ffffff",
 
   // Surface containers
   surfaceContainer:        "#edeeef",
@@ -43,95 +43,119 @@ export const color = {
   surfaceContainerHighest: "#e1e3e4",
 
   // Secondary (blue-slate accent)
-  secondaryContainer:  "#cfe2f9",
+  secondaryContainer:   "#cfe2f9",
   onSecondaryContainer: "#526478",
 
   // Tertiary (amber warning)
-  tertiaryContainer:    "#6d3500",
-  onTertiaryContainer:  "#ff9846",
-  tertiaryFixed:        "#ffdcc5",
-  onTertiaryFixed:      "#301400",
+  tertiaryContainer:      "#6d3500",
+  onTertiaryContainer:    "#ff9846",
+  tertiaryFixed:          "#ffdcc5",
+  onTertiaryFixed:        "#301400",
   onTertiaryFixedVariant: "#713700",
 
   // Semantic status (Material You error + custom)
-  successDark:   "#165131",  // on-primary-fixed-variant (reuse)
-  success:       "#316948",  // surface-tint (reuse)
-  successLight:  "#b4f0c6",  // primary-fixed
-  warningDark:   "#713700",  // on-tertiary-fixed-variant
-  warning:       "#ff9846",  // on-tertiary-container
-  warningLight:  "#ffdcc5",  // tertiary-fixed
-  errorDark:     "#93000a",  // on-error-container
-  error:         "#ba1a1a",  // error (Material You)
-  errorLight:    "#ffdad6",  // error-container
-  infoDark:      "#36485b",  // on-secondary-fixed-variant
-  info:          "#4e6073",  // secondary
-  infoLight:     "#cfe2f9",  // secondary-container
+  successDark:   "#165131",
+  success:       "#316948",
+  successLight:  "#b4f0c6",
+  warningDark:   "#713700",
+  warning:       "#ff9846",
+  warningLight:  "#ffdcc5",
+  errorDark:     "#93000a",
+  error:         "#ba1a1a",
+  errorLight:    "#ffdad6",
+  infoDark:      "#36485b",
+  info:          "#4e6073",
+  infoLight:     "#cfe2f9",
 } as const;
 
 // ---------------------------------------------------------------------------
-// SEMANTIC UI TOKENS — mapped to Material You roles
+// SEMANTIC UI TOKENS — Warm cream system
 // ---------------------------------------------------------------------------
 export const bg = {
-  page:     color.neutral50,           // background: #f8f9fa
-  surface:  color.white,               // surface-container-lowest: #ffffff
-  sidebar:  color.green700,            // primary-container: #124e2f
-  header:   color.surfaceContainerLow, // surface-container-low: #f3f4f5 (content header)
-  hover:    color.surfaceContainerLow, // surface-container-low
-  selected: color.green200,            // primary-fixed: #b4f0c6
-  muted:    color.neutral100,          // surface-container-high: #e7e8e9
+  page:        "#F8F6F2",              // warm cream — page background
+  surface:     "#FDFCF9",             // warm white — card standard
+  surfaceFeat: "#F3EDE2",             // beige visible — card destacada (Solora-style)
+  selected:    "#E8DFD0",             // warm selected state
+  sidebar:     color.green700,        // #124e2f — intocable
+  header:      color.green700,        // #124e2f — intocable
+  hover:       "rgba(18,78,47,0.06)", // verde muy sutil en hover
+  muted:       "#F3EDE2",             // warm muted bg
 } as const;
 
 export const fg = {
-  primary:   color.neutral900,  // on-surface: #191c1d
-  secondary: color.neutral700,  // on-surface-variant: #404942
-  muted:     color.neutral500,  // outline: #717971
-  onDark:    color.white,       // on-primary: #ffffff
-  link:      color.green800,    // primary: #00361d
-  linkHover: color.green700,    // primary-container: #124e2f
+  primary:   "#1C1410",        // near-black cálido
+  secondary: "#6B5A45",        // warm brown-gray
+  muted:     "#8C7A63",        // warm muted
+  onDark:    "#ffffff",
+  link:      color.green700,   // #124e2f
+  linkHover: color.green600,   // #165131
 } as const;
 
 export const border = {
-  default: color.neutral300,    // outline-variant: #c0c9c0
-  strong:  color.neutral500,    // outline: #717971
-  focus:   color.green800,      // primary: #00361d
-  brand:   color.green700,      // primary-container: #124e2f
+  default: "#D4C4A8",       // warm separator — solo cuando necesario
+  strong:  "#B0A090",       // warm border fuerte
+  focus:   color.green600,  // focus ring
+  brand:   color.green700,  // #124e2f
 } as const;
 
 export const brand = {
-  primary:   color.green700,    // primary-container: #124e2f (used for filled buttons, sidebar)
-  hover:     color.green800,    // primary: #00361d (darker on hover)
-  pressed:   color.green900,    // on-primary-fixed: #002110
-  // Nav item active state (Home screen — pill style)
-  navActive:         color.green400,  // on-primary-container: #84be97 (background of active pill)
-  navActiveText:     color.green700,  // primary-container: #124e2f (text on active pill)
-  // Nav item active state (other screens — semi-transparent overlay)
+  primary:          color.green700,
+  hover:            color.green800,
+  pressed:          color.green900,
+  navActive:         color.green400,
+  navActiveText:     color.green700,
   navActiveOverlay: "rgba(255,255,255,0.20)",
 } as const;
 
 // ---------------------------------------------------------------------------
-// TYPOGRAPHY — Stitch font system
-// Body/display: Hanken Grotesk. Labels/mono: JetBrains Mono. kWh values: Space Grotesk.
+// WARM SURFACE — explicit layer system
+// ---------------------------------------------------------------------------
+export const warmSurface = {
+  0: "#F8F6F2",   // page
+  1: "#FDFCF9",   // card standard
+  2: "#F3EDE2",   // featured card
+  3: "#E8DFD0",   // selected
+  4: "#D4C4A8",   // separator
+} as const;
+
+// ---------------------------------------------------------------------------
+// CHART COLORS
+// ---------------------------------------------------------------------------
+export const chartColor = {
+  primary:       "#1a6640",
+  primaryDim:    "rgba(26,102,64,0.30)",
+  comparison:    "rgba(180,175,170,0.40)",
+  anomaly:       "#c0780a",
+  goalLine:      "rgba(18,78,47,0.50)",
+  grid:          "rgba(180,170,155,0.30)",
+  axisText:      "#8C7A63",
+  tooltipBg:     "#F3EDE2",
+  tooltipBorder: "#D4C4A8",
+} as const;
+
+// ---------------------------------------------------------------------------
+// TYPOGRAPHY
 // ---------------------------------------------------------------------------
 export const font = {
-  sans:      "'Hanken Grotesk', 'Segoe UI', sans-serif",  // body, UI text
-  technical: "'Space Grotesk', 'Hanken Grotesk', sans-serif",  // kWh numeric display
-  mono:      "'Roboto Mono', 'Courier New', monospace",      // labels, metadata
+  sans:      "'Inter', 'Segoe UI', system-ui, sans-serif",
+  technical: "'Space Grotesk', 'Inter', sans-serif",
+  mono:      "'JetBrains Mono', 'Roboto Mono', monospace",
 } as const;
 
 export const fontSize = {
-  xs:    12,  // label-sm: 12px (JetBrains Mono)
-  sm:    14,  // small body
-  base:  16,  // body-md: 16px
-  md:    18,  // body-lg: 18px
-  lg:    20,  // title-md: 20px
-  xl:    24,  // unit-display: 24px
-  "2xl": 32,  // headline-lg: 32px
-  "3xl": 40,  // legacy
-  "4xl": 48,  // display-lg: 48px
+  xs:    12,
+  sm:    14,
+  base:  16,
+  md:    18,
+  lg:    20,
+  xl:    24,
+  "2xl": 32,
+  "3xl": 40,
+  "4xl": 48,
 } as const;
 
 export const fontWeight = {
-  light:    300,  // unit-display weight
+  light:    300,
   regular:  400,
   medium:   500,
   semibold: 600,
@@ -139,10 +163,10 @@ export const fontWeight = {
 } as const;
 
 export const lineHeight = {
-  tight:   1.167,  // 56/48 for display-lg
-  snug:    1.25,   // 40/32 for headline-lg
-  normal:  1.4,    // 28/20 for title-md
-  relaxed: 1.5,    // 24/16 for body-md
+  tight:   1.167,
+  snug:    1.25,
+  normal:  1.4,
+  relaxed: 1.5,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -163,58 +187,96 @@ export const space = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// BORDER RADIUS — Stitch config: DEFAULT=2px, lg=4px, xl=8px, full=12px
+// BORDER RADIUS — Solora-inspired generous radii
 // ---------------------------------------------------------------------------
 export const radius = {
-  xs:   2,   // DEFAULT in Stitch (0.125rem)
-  sm:   4,   // lg in Stitch (0.25rem)
-  md:   8,   // xl in Stitch (0.5rem) — cards, inputs, buttons
-  lg:   12,  // full in Stitch (0.75rem) — pills, chips
-  xl:   16,  // extended for login card
-  full: 9999,
+  xs:    4,
+  sm:    8,
+  md:    12,
+  lg:    16,
+  xl:    20,
+  "2xl": 24,
+  full:  9999,
 } as const;
 
 // ---------------------------------------------------------------------------
-// SHADOWS
+// SHADOWS — warm-tinted (sin negro puro)
 // ---------------------------------------------------------------------------
 export const shadow = {
-  xs: "0 1px 2px rgba(0,0,0,0.06)",
-  sm: "0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)",
-  md: "0 4px 12px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)",
-  lg: "0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.07)",
-  xl: "0 20px 48px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.08)",
+  xs:   "0 1px 2px rgba(100,80,60,0.06)",
+  sm:   "0 1px 4px rgba(100,80,60,0.08), 0 1px 2px rgba(100,80,60,0.05)",
+  md:   "0 4px 12px rgba(100,80,60,0.10), 0 1px 3px rgba(100,80,60,0.06)",
+  lg:   "0 8px 24px rgba(100,80,60,0.12), 0 2px 6px rgba(100,80,60,0.07)",
+  xl:   "0 20px 48px rgba(100,80,60,0.15), 0 4px 12px rgba(100,80,60,0.08)",
+  warm: "0 8px 32px rgba(180,140,80,0.12), 0 2px 8px rgba(100,80,60,0.08)",
 } as const;
 
 // ---------------------------------------------------------------------------
-// COMPOSITE STYLE OBJECTS — shared card container
+// MOTION
+// ---------------------------------------------------------------------------
+export const motion = {
+  duration: { instant: 80, fast: 150, base: 250, slow: 400, xslow: 600 },
+  easing: {
+    out:    "cubic-bezier(0.0, 0.0, 0.2, 1)",
+    inOut:  "cubic-bezier(0.4, 0.0, 0.2, 1)",
+    spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// COMPOSITE STYLE OBJECTS
 // ---------------------------------------------------------------------------
 export const cardStyle: React.CSSProperties = {
   background:   bg.surface,
-  border:       `1px solid ${border.default}`,  // outline-variant #c0c9c0
-  borderRadius: radius.md,                       // 8px — rounded-xl in Stitch
+  border:       "none",
+  borderRadius: `${radius.lg}px`,
   boxShadow:    shadow.sm,
-  padding:      space[6],
+  padding:      `${space[8]}px`,
   fontFamily:   font.sans,
 };
 
+export const cardFeaturedStyle: React.CSSProperties = {
+  background:   bg.surfaceFeat,
+  border:       "none",
+  borderRadius: `${radius.xl}px`,
+  boxShadow:    shadow.warm,
+  padding:      `${space[10]}px`,
+  fontFamily:   font.sans,
+};
+
+export const cardAlertStyle = (
+  variant: "success" | "warning" | "error" | "info"
+): React.CSSProperties => ({
+  background:   bg.surface,
+  borderLeft:   `3px solid ${
+    variant === "success" ? color.green500 :
+    variant === "warning" ? "#e6910a" :
+    variant === "error"   ? "#c0392b" : "#1565c0"
+  }`,
+  borderRadius: `0 ${radius.lg}px ${radius.lg}px 0`,
+  boxShadow:    shadow.xs,
+  padding:      `${space[5]}px ${space[6]}px`,
+  fontFamily:   font.sans,
+});
+
 export const labelStyle: React.CSSProperties = {
-  fontFamily:   font.mono,            // JetBrains Mono for labels (label-sm in Stitch)
-  fontSize:     fontSize.xs,          // 12px
-  fontWeight:   fontWeight.medium,    // 500
-  color:        fg.secondary,         // on-surface-variant #404942
-  letterSpacing: "0.05em",            // label-sm tracking in Stitch
-  margin:       0,
-  marginBottom: space[1],
-  lineHeight:   lineHeight.relaxed,
+  fontFamily:    font.sans,
+  fontSize:      fontSize.xs,
+  fontWeight:    fontWeight.medium,
+  color:         fg.secondary,
+  letterSpacing: "0.05em",
+  margin:        0,
+  marginBottom:  space[1],
+  lineHeight:    lineHeight.relaxed,
 };
 
 export const captionStyle: React.CSSProperties = {
-  fontFamily:   font.mono,            // JetBrains Mono
-  fontSize:     fontSize.xs,          // 12px
-  color:        fg.muted,             // outline #717971
-  letterSpacing: "0.05em",
-  margin:       0,
-  lineHeight:   lineHeight.relaxed,
+  fontFamily:    font.sans,
+  fontSize:      fontSize.xs,
+  color:         fg.muted,
+  letterSpacing: "0.02em",
+  margin:        0,
+  lineHeight:    lineHeight.relaxed,
 };
 
 // Re-export React type so importing files don't need to import React separately

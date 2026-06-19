@@ -10,5 +10,5 @@ def test_is_abstract_and_cannot_be_instantiated_directly() -> None:
 
 def test_declares_expected_abstract_methods() -> None:
     assert NotificacionConfigRepository.__abstractmethods__ == frozenset(
-        {"get_config", "upsert_config", "ya_enviada_hoy", "registrar_enviada"}
+        {"get_config", "upsert_config", "ya_enviada_hoy", "ya_en_cooldown", "registrar_enviada"}
     )

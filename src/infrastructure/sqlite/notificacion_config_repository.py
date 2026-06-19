@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select, text
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -53,6 +53,19 @@ class SQLiteNotificacionConfigRepository(NotificacionConfigRepository):
                 text("DATE(notificaciones_enviadas.fecha_envio) = :hoy"),
             )
             .params(hoy=hoy.isoformat())
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def ya_en_cooldown(
+        self, suministro_id: str, tipo_alerta: str, cooldown_horas: int, ahora: datetime
+    ) -> bool:
+        limite = ahora - timedelta(hours=cooldown_horas)
+        result = await self._session.execute(
+            select(NotificacionEnviada).where(
+                NotificacionEnviada.suministro_id == suministro_id,
+                NotificacionEnviada.tipo_alerta == tipo_alerta,
+                NotificacionEnviada.fecha_envio >= limite,
+            )
         )
         return result.scalar_one_or_none() is not None
 

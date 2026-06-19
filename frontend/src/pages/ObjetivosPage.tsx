@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { color, fontSize, fontWeight, radius, space } from "../design-tokens";
+import { bg, color, fg, font, fontSize, fontWeight, radius, space } from "../design-tokens";
 import {
   evaluarObjetivo,
   fetchObjetivoEstado,
@@ -66,7 +66,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
   async function handleGuardar() {
     const valor = parseFloat(inputKwh);
     if (isNaN(valor) || valor <= 0) {
-      setErrorMsg("Ingresá un valor mayor a 0 kWh");
+      setErrorMsg("IngresÃ¡ un valor mayor a 0 kWh");
       return;
     }
     setErrorMsg(null);
@@ -84,7 +84,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
     }
   }
 
-  // Para compatibilidad con tests existentes: cálculo del pct simple
+  // Para compatibilidad con tests existentes: cÃ¡lculo del pct simple
   const consumoActual = estadoObj
     ? (estadoObj.dias_objetivo_consumidos != null && estadoObj.consumo_diario_objetivo_kwh != null
         ? estadoObj.dias_objetivo_consumidos * estadoObj.consumo_diario_objetivo_kwh
@@ -98,23 +98,23 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
   const superado = estadoObj?.texto_dinamico === "agotado";
   const enAviso = pct !== null && pct >= WARN_THRESHOLD && !superado;
 
-  const barColor = superado
-    ? color.errorDark
+  const progressGradient = superado
+    ? "linear-gradient(90deg, #b02020 0%, #e05050 100%)"
     : enAviso
-      ? color.warningDark
-      : color.green500;
+      ? "linear-gradient(90deg, #d4850a 0%, #f0a930 100%)"
+      : "linear-gradient(90deg, #124e2f 0%, #227d50 100%)";
 
   return (
     <div style={{ padding: `${space[8]}px ${space[6]}px`, maxWidth: 560, margin: "0 auto" }}>
-      <h1 style={{ fontSize: fontSize["2xl"], fontWeight: fontWeight.bold, color: color.neutral900, margin: `0 0 ${space[2]}px` }}>
+      <h1 style={{ fontSize: fontSize["2xl"], fontWeight: fontWeight.bold, color: fg.primary, fontFamily: font.sans, margin: `0 0 ${space[2]}px` }}>
         Objetivo de consumo
       </h1>
-      <p style={{ fontSize: fontSize.sm, color: color.neutral700, margin: `0 0 ${space[8]}px` }}>
-        Establecé tu meta mensual en kWh para recibir alertas cuando te acercás al límite.
+      <p style={{ fontSize: fontSize.sm, color: fg.secondary, fontFamily: font.sans, margin: `0 0 ${space[8]}px` }}>
+        EstablecÃ© tu meta mensual en kWh para recibir alertas cuando te acercÃ¡s al lÃ­mite.
       </p>
 
       {estado === "cargando" && (
-        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Cargando…</p>
+        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Cargandoâ€¦</p>
       )}
 
       {estado === "error" && (
@@ -154,8 +154,8 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
           {objetivo && (
             <div style={{ marginBottom: space[6] }}>
               <Label>Objetivo vigente</Label>
-              <p style={{ fontSize: "2.5rem", fontWeight: fontWeight.bold, color: color.green700, margin: `${space[1]}px 0 0` }}>
-                {objetivo.valor_kwh} <span style={{ fontSize: fontSize.base, color: color.neutral500 }}>kWh / mes</span>
+              <p style={{ fontFamily: font.technical, fontSize: "2.5rem", fontWeight: fontWeight.light, color: color.green700, margin: `${space[1]}px 0 0` }}>
+                {objetivo.valor_kwh} <span style={{ fontFamily: font.sans, fontSize: fontSize.base, color: fg.muted }}>kWh / mes</span>
               </p>
               <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
                 Configurado el {new Date(objetivo.vigente_desde).toLocaleDateString("es-AR")}
@@ -163,7 +163,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
             </div>
           )}
 
-          {/* ── Barra de progreso (compatibilidad tests existentes) ── */}
+          {/* â”€â”€ Barra de progreso (compatibilidad tests existentes) â”€â”€ */}
           {pct !== null && estadoObj?.objetivo_kwh && consumoActual !== null && objetivo && (
             <div style={{ marginBottom: space[6] }}>
               <Label>Consumo acumulado este mes</Label>
@@ -178,13 +178,13 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                     borderRadius: radius.sm,
                     fontSize:     fontSize.sm,
                     fontWeight:   fontWeight.medium,
-                    background:   superado ? color.errorLight : color.warningLight,
-                    color:        superado ? color.errorDark   : color.warningDark,
+                    background:   superado ? "rgba(192,57,43,0.08)" : "rgba(230,145,10,0.10)",
+                    color:        superado ? color.errorDark          : color.warningDark,
                   }}
                 >
                   {superado
-                    ? "Objetivo superado — revisá tu consumo."
-                    : `Atención: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
+                    ? "Objetivo superado â€” revisÃ¡ tu consumo."
+                    : `AtenciÃ³n: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
                 </p>
               )}
 
@@ -197,39 +197,39 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                 style={{
                   marginTop:    space[2],
                   height:       10,
-                  background:   color.neutral200,
+                  background:   "#E8DFD0",
                   borderRadius: radius.full,
                   overflow:     "hidden",
                 }}
               >
                 <div style={{
-                  height:      "100%",
-                  width:       `${Math.round(pct * 100)}%`,
-                  background:  barColor,
+                  height:       "100%",
+                  width:        `${Math.round(pct * 100)}%`,
+                  background:   progressGradient,
                   borderRadius: radius.full,
-                  transition:  "width 0.3s ease",
+                  transition:   "width 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
                 }} />
               </div>
 
-              <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
+              <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
                 {Math.round(consumoActual)} de {estadoObj.objetivo_kwh} kWh ({Math.round(pct * 100)}%)
               </p>
             </div>
           )}
 
-          {/* ── Indicador 2: Días objetivo consumidos ── */}
+          {/* â”€â”€ Indicador 2: DÃ­as objetivo consumidos â”€â”€ */}
           {estadoObj && estadoObj.texto_dinamico !== "sin_objetivo" && (
             <IndicadorDias estado={estadoObj} />
           )}
 
-          {/* ── Indicador 3: Consumo diario real vs objetivo ── */}
+          {/* â”€â”€ Indicador 3: Consumo diario real vs objetivo â”€â”€ */}
           {estadoObj && estadoObj.consumo_diario_real_kwh != null && estadoObj.consumo_diario_objetivo_kwh != null && (
             <div style={{ marginBottom: space[6] }}>
               <Label>Consumo diario real vs objetivo</Label>
               <div style={{ display: "flex", alignItems: "center", gap: space[3], marginTop: space[2] }}>
                 <Chip
                   label={`${estadoObj.consumo_diario_real_kwh.toFixed(1)} kWh`}
-                  sublabel="Último día"
+                  sublabel="Ãšltimo dÃ­a"
                   accent={estadoObj.consumo_diario_real_kwh <= estadoObj.consumo_diario_objetivo_kwh ? color.green700 : color.errorDark}
                 />
                 <span style={{ color: color.neutral400, fontSize: fontSize.sm }}>vs</span>
@@ -242,7 +242,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
             </div>
           )}
 
-          {/* ── Indicador 1: Tu objetivo vs tu zona ── */}
+          {/* â”€â”€ Indicador 1: Tu objetivo vs tu zona â”€â”€ */}
           {estadoObj && estadoObj.promedio_vecinos_kwh != null && estadoObj.diferencia_pct != null && (
             <div style={{ marginBottom: space[6] }}>
               <Label>Tu objetivo vs tu zona</Label>
@@ -254,14 +254,14 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                     borderRadius: radius.full,
                     fontSize: fontSize.sm,
                     fontWeight: fontWeight.semibold,
-                    background: estadoObj.diferencia_pct > 0 ? color.errorLight : color.green50,
+                    background: estadoObj.diferencia_pct > 0 ? "rgba(192,57,43,0.08)" : "rgba(18,78,47,0.10)",
                     color: estadoObj.diferencia_pct > 0 ? color.errorDark : color.green700,
                   }}
                 >
                   {estadoObj.diferencia_pct > 0 ? "+" : ""}
                   {estadoObj.diferencia_pct.toFixed(1)}% vs zona ({estadoObj.n_vecinos} vecinos)
                 </span>
-                <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
+                <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
                   Promedio zonal: {Math.round(estadoObj.promedio_vecinos_kwh)} kWh/mes
                 </p>
               </div>
@@ -269,7 +269,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
           )}
 
           {estadoObj && estadoObj.promedio_vecinos_kwh == null && estadoObj.texto_dinamico !== "sin_objetivo" && (
-            <p style={{ fontSize: fontSize.xs, color: color.neutral400, marginBottom: space[4] }}>
+            <p style={{ fontSize: fontSize.xs, color: fg.muted, marginBottom: space[4] }}>
               Sin datos suficientes de tu zona
             </p>
           )}
@@ -288,11 +288,14 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                 style={{
                   width:        "100%",
                   padding:      `${space[3]}px ${space[4]}px`,
-                  border:       `1px solid ${errorMsg ? color.errorDark : color.neutral300}`,
+                  border:       `1px solid ${errorMsg ? color.errorDark : "#D4C4A8"}`,
                   borderRadius: radius.md,
                   fontSize:     fontSize.base,
+                  fontFamily:   font.technical,
                   outline:      "none",
                   boxSizing:    "border-box",
+                  background:   bg.surface,
+                  color:        fg.primary,
                 }}
               />
               {errorMsg && (
@@ -301,7 +304,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                 </p>
               )}
             </div>
-            <span style={{ color: color.neutral500, fontSize: fontSize.sm, paddingTop: space[3] }}>kWh</span>
+            <span style={{ color: fg.muted, fontFamily: font.sans, fontSize: fontSize.sm, paddingTop: space[3] }}>kWh</span>
             <button
               onClick={handleGuardar}
               style={{
@@ -323,7 +326,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
       )}
 
       {estado === "guardando" && (
-        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Guardando…</p>
+        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Guardandoâ€¦</p>
       )}
     </div>
   );
@@ -333,17 +336,17 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
   const { texto_dinamico, dias_objetivo_consumidos, dias_transcurridos, excedente_kwh } = estado;
 
   const mensajes: Record<string, string> = {
-    bajo_ritmo: "Vas bien, estás por debajo de tu ritmo objetivo.",
-    en_ritmo: "Vas en línea con tu objetivo.",
-    sobre_ritmo: "Atención, estás consumiendo más rápido que tu objetivo.",
+    bajo_ritmo: "Vas bien, estÃ¡s por debajo de tu ritmo objetivo.",
+    en_ritmo: "Vas en lÃ­nea con tu objetivo.",
+    sobre_ritmo: "AtenciÃ³n, estÃ¡s consumiendo mÃ¡s rÃ¡pido que tu objetivo.",
     agotado: "Ya alcanzaste tu objetivo de consumo de este mes.",
   };
 
   const colores: Record<string, { bg: string; text: string }> = {
-    bajo_ritmo:  { bg: color.green50, text: color.green700 },
-    en_ritmo:    { bg: color.green50, text: color.green700 },
-    sobre_ritmo: { bg: color.warningLight, text: color.warningDark },
-    agotado:     { bg: color.errorLight, text: color.errorDark },
+    bajo_ritmo:  { bg: "rgba(18,78,47,0.10)",   text: color.green700 },
+    en_ritmo:    { bg: "rgba(18,78,47,0.10)",   text: color.green700 },
+    sobre_ritmo: { bg: "rgba(230,145,10,0.10)", text: color.warningDark },
+    agotado:     { bg: "rgba(192,57,43,0.08)",  text: color.errorDark },
   };
 
   const c = colores[texto_dinamico] ?? { bg: color.neutral100, text: color.neutral700 };
@@ -353,7 +356,7 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
 
   return (
     <div style={{ marginBottom: space[6] }}>
-      <Label>Días de consumo</Label>
+      <Label>DÃ­as de consumo</Label>
       <p
         data-testid="indicador-2-texto"
         style={{
@@ -378,28 +381,28 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
             style={{
               marginTop:    space[2],
               height:       8,
-              background:   color.neutral200,
+              background:   "#E8DFD0",
               borderRadius: radius.full,
               overflow:     "hidden",
             }}
           >
             <div style={{
-              height:      "100%",
-              width:       `${Math.round(barPct * 100)}%`,
-              background:  c.text,
+              height:       "100%",
+              width:        `${Math.round(barPct * 100)}%`,
+              background:   c.text,
               borderRadius: radius.full,
-              transition:  "width 0.3s ease",
+              transition:   "width 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
             }} />
           </div>
-          <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
-            {dias_objetivo_consumidos.toFixed(1)} de {dias_transcurridos} días objetivo consumidos
+          <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
+            {dias_objetivo_consumidos.toFixed(1)} de {dias_transcurridos} dÃ­as objetivo consumidos
           </p>
         </>
       )}
 
       {(texto_dinamico === "sobre_ritmo" || texto_dinamico === "agotado") && (
         <p style={{ fontSize: fontSize.xs, color: color.neutral600, marginTop: space[2] }}>
-          💡 Palanca: revisá tus electrodomésticos de mayor consumo o postponé el uso de lavarropas/lavavajillas a horarios de menor demanda.
+          ðŸ’¡ Palanca: revisÃ¡ tus electrodomÃ©sticos de mayor consumo o postponÃ© el uso de lavarropas/lavavajillas a horarios de menor demanda.
         </p>
       )}
     </div>
@@ -426,7 +429,7 @@ function Chip({
       minWidth:     80,
     }}>
       <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: accent }}>{label}</span>
-      <span style={{ fontSize: fontSize.xs, color: color.neutral500 }}>{sublabel}</span>
+      <span style={{ fontSize: fontSize.xs, color: fg.muted }}>{sublabel}</span>
     </div>
   );
 }
@@ -434,10 +437,12 @@ function Chip({
 function Card({ children }: { children: ReactNode }) {
   return (
     <div style={{
-      background:   color.white,
-      borderRadius: radius.lg,
-      border:       `1px solid ${color.neutral200}`,
-      padding:      `${space[6]}px`,
+      background:   bg.surface,
+      borderRadius: `${radius.lg}px`,
+      border:       "none",
+      boxShadow:    "0 1px 4px rgba(100,80,60,0.08), 0 1px 2px rgba(100,80,60,0.05)",
+      padding:      `${space[8]}px`,
+      fontFamily:   font.sans,
     }}>
       {children}
     </div>
@@ -446,8 +451,9 @@ function Card({ children }: { children: ReactNode }) {
 
 function Label({ children }: { children: ReactNode }) {
   return (
-    <p style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: color.neutral500, textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>
+    <p style={{ fontFamily: font.sans, fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: fg.muted, textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>
       {children}
     </p>
   );
 }
+

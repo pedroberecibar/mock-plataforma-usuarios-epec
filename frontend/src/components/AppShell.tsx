@@ -1,5 +1,5 @@
 import type React from "react";
-import { color, font, fontSize, fontWeight, space, radius, brand } from "../design-tokens";
+import { bg, color, font, fontSize, fontWeight, space, radius, brand } from "../design-tokens";
 
 // ---------------------------------------------------------------------------
 // SVG icons — inline, no external dependency
@@ -89,7 +89,7 @@ const C = {
   textActive:        color.white,
   textEnabled:       color.white,
   textDisabled:      color.green300,
-  content:           color.neutral50,
+  content:           bg.page,
 } as const;
 
 // ---------------------------------------------------------------------------

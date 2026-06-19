@@ -5,12 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EPEC — Plataforma de Clientes</title>
-    <!-- EPEC Design System typography — aligned with Stitch Desktop -->
+    <!-- EPEC Design System typography — Inter (variable) + Space Grotesk -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Hanken Grotesk: body/display/headline. Space Grotesk: kWh numeric. Roboto Mono: labels. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&family=Space+Grotesk:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -18,8 +17,8 @@
       html, body {
         margin: 0;
         padding: 0;
-        background: #f8f9fa;
-        font-family: 'Hanken Grotesk', 'Segoe UI', sans-serif;
+        background: #F8F6F2;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
@@ -35,6 +34,10 @@
       .login-panel-left { display: flex; }
       @media (max-width: 767px) {
         .login-panel-left { display: none; }
+      }
+      /* CU-C07: Exportar CSV visible solo en viewport web (≥ 768px) */
+      @media (min-width: 768px) {
+        .export-csv-btn { display: inline-flex !important; align-items: center; gap: 6px; }
       }
     </style>
   </head>

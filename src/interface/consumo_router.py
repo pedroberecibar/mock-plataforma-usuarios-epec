@@ -1,8 +1,10 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
+from application.use_cases.detectar_anomalia_consumo import DetectarAnomaliaConsumoUseCase
 from application.use_cases.get_detalle_dia import GetDetalleDiaUseCase
 from application.use_cases.obtener_comparacion_historica import (
     ObtenerComparacionHistoricaUseCase,
@@ -45,6 +47,13 @@ class DetalleDiaResponse(BaseModel):
     kwh_mismo_dia_anio_ant: float | None
     kwh_promedio_zona: float | None
     n_vecinos: int
+
+
+class AnomaliaResponse(BaseModel):
+    fecha: date
+    kwh: float
+    z_score: float
+    desviacion_pct: float
 
 
 @router.get("/{suministro_id}/dia", response_model=DetalleDiaResponse)
@@ -105,4 +114,46 @@ async def get_comparacion_historica(
         mes_anterior=_to_periodo(resultado.mes_anterior),
         mismo_mes_anio_anterior=_to_periodo(resultado.mismo_mes_anio_anterior),
         datos_hasta=resultado.datos_hasta,
+    )
+
+
+@router.get("/{suministro_id}/anomalia", response_model=AnomaliaResponse | None)
+async def get_anomalia_consumo(
+    suministro_id: str,
+    mes: str,
+    _usuario: str = Depends(get_usuario_actual),
+    repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+) -> AnomaliaResponse | None:
+    try:
+        mes_date = datetime.strptime(mes, "%Y-%m").date()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="mes debe tener formato YYYY-MM") from exc
+
+    resultado = await DetectarAnomaliaConsumoUseCase(repo).ejecutar(suministro_id, mes_date)
+    if resultado is None:
+        return None
+    return AnomaliaResponse(
+        fecha=resultado.fecha,
+        kwh=resultado.kwh,
+        z_score=resultado.z_score,
+        desviacion_pct=resultado.desviacion_pct,
+    )
+
+
+@router.get("/{suministro_id}/export/csv")
+async def export_consumo_csv(
+    suministro_id: str,
+    desde: date,
+    hasta: date,
+    _usuario: str = Depends(get_usuario_actual),
+    repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+) -> Response:
+    serie = await repo.get_serie(suministro_id, desde, hasta)
+    rows = ["fecha,kwh"] + [f"{f},{kwh}" for f, kwh in serie]
+    content = "\n".join(rows)
+    filename = f"consumo_{suministro_id}_{desde}_{hasta}.csv"
+    return Response(
+        content=content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

@@ -1,9 +1,8 @@
 import type { ProyeccionResponse } from "../api/types";
 import {
-  cardStyle,
+  cardFeaturedStyle,
   labelStyle,
   captionStyle,
-  color,
   font,
   fontSize,
   fontWeight,
@@ -32,10 +31,10 @@ interface BadgeStyle {
 }
 
 const CONFIANZA_BADGE: Record<ConfianzaKey, BadgeStyle> = {
-  alta:      { background: color.successLight, color: color.successDark },
-  media:     { background: color.warningLight, color: color.warningDark },
-  baja:      { background: color.warningLight,  color: color.warningDark },
-  sin_datos: { background: color.neutral100,   color: color.neutral600  },
+  alta:      { background: "rgba(18,78,47,0.10)",   color: "#155a2e" },
+  media:     { background: "rgba(230,145,10,0.10)", color: "#7a4a00" },
+  baja:      { background: "rgba(230,145,10,0.10)", color: "#7a4a00" },
+  sin_datos: { background: "#F3EDE2",               color: "#6B5A45" },
 };
 
 function ConfianzaBadge({ bandera }: { bandera: string }) {
@@ -67,7 +66,7 @@ export function BloqueProyeccion({ proyeccion }: Props) {
 
   if (metodo_aplicado === "insuficiente" || rango_inferior_kwh === null || rango_superior_kwh === null) {
     return (
-      <section aria-label="proyección mensual" style={cardStyle}>
+      <section aria-label="proyección mensual" style={cardFeaturedStyle}>
         <p style={labelStyle}>Proyección del mes</p>
         <p
           style={{
@@ -88,15 +87,15 @@ export function BloqueProyeccion({ proyeccion }: Props) {
   }
 
   return (
-    <section aria-label="proyección mensual" style={cardStyle}>
+    <section aria-label="proyección mensual" style={cardFeaturedStyle}>
       <p style={labelStyle}>Proyección del mes</p>
 
       <p
         style={{
           fontFamily:    font.technical,
-          fontSize:      fontSize["4xl"],  // display-lg: 48px — Stitch shows "198 – 226" very large
-          fontWeight:    fontWeight.bold,
-          color:         fg.link,          // primary #00361d
+          fontSize:      fontSize["4xl"],  // 48px — hero kWh display
+          fontWeight:    fontWeight.light, // 300 — elegante, no pesado
+          color:         fg.link,          // #124e2f
           lineHeight:    lineHeight.tight,
           margin:        0,
           marginBottom:  space[2],

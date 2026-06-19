@@ -29,6 +29,14 @@ CUERPOS: dict[str, str] = {
 }
 
 
+_COOLDOWN_HORAS: dict[str, int] = {
+    "factura_disponible": 24,
+    "vencimiento_proximo": 24,
+    "objetivo_superado": 12,
+    "consumo_anomalo": 6,
+}
+
+
 class TipoAlerta(StrEnum):
     FACTURA_DISPONIBLE = "factura_disponible"
     VENCIMIENTO_PROXIMO = "vencimiento_proximo"
@@ -52,9 +60,12 @@ class EvaluarAlertasUseCase:
         suministro_id: str,
         tipos: list[TipoAlerta],
         hoy: date | None = None,
+        ahora: datetime | None = None,
     ) -> None:
+        if ahora is None:
+            ahora = datetime.now(UTC).replace(tzinfo=None)
         if hoy is None:
-            hoy = datetime.now(UTC).date()
+            hoy = ahora.date()
 
         config_list = await self._notificacion_repo.get_config(suministro_id)
         config = {c.tipo: c.habilitado for c in config_list}
@@ -63,7 +74,10 @@ class EvaluarAlertasUseCase:
             tipo_str = str(tipo)
             if not config.get(tipo_str, False):
                 continue
-            if await self._notificacion_repo.ya_enviada_hoy(suministro_id, tipo_str, hoy):
+            cooldown = _COOLDOWN_HORAS.get(tipo_str, 24)
+            if await self._notificacion_repo.ya_en_cooldown(
+                suministro_id, tipo_str, cooldown, ahora
+            ):
                 continue
 
             await self._sender.enviar_email(
@@ -71,5 +85,4 @@ class EvaluarAlertasUseCase:
                 asunto=ASUNTOS[tipo_str],
                 cuerpo=CUERPOS[tipo_str],
             )
-            ts_envio = datetime.combine(hoy, datetime.now(UTC).time())
-            await self._notificacion_repo.registrar_enviada(suministro_id, tipo_str, ts_envio)
+            await self._notificacion_repo.registrar_enviada(suministro_id, tipo_str, ahora)

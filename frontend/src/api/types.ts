@@ -74,6 +74,13 @@ export type TextoDinamico =
   | "agotado"
   | "sin_objetivo";
 
+export interface AnomaliaResponse {
+  fecha: string; // "YYYY-MM-DD"
+  kwh: number;
+  z_score: number;
+  desviacion_pct: number;
+}
+
 export interface ObjetivoEstadoResponse {
   objetivo_kwh: number | null;
   promedio_vecinos_kwh: number | null;

@@ -1,4 +1,4 @@
-import type { ComparacionResponse, DetalleDiaResponse, DiarioResponse } from "./types";
+import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse } from "./types";
 
 const BASE = "";
 
@@ -37,4 +37,15 @@ export async function fetchComparacion(
   const resp = await fetch(url, { headers: authHeaders(token) });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.json() as Promise<ComparacionResponse>;
+}
+
+export async function fetchAnomalia(
+  token: string,
+  suministroId: string,
+  mes: string
+): Promise<AnomaliaResponse | null> {
+  const url = `${BASE}/consumo/${suministroId}/anomalia?mes=${mes}`;
+  const resp = await fetch(url, { headers: authHeaders(token) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json() as Promise<AnomaliaResponse | null>;
 }

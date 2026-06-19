@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from domain.ports.notificacion_config_repository import (
     TIPOS_ALERTA,
@@ -27,6 +27,15 @@ class FakeNotificacionConfigRepository(NotificacionConfigRepository):
     async def ya_enviada_hoy(self, suministro_id: str, tipo_alerta: str, hoy: date) -> bool:
         return any(
             sid == suministro_id and tipo == tipo_alerta and ts.date() == hoy
+            for sid, tipo, ts in self._enviadas
+        )
+
+    async def ya_en_cooldown(
+        self, suministro_id: str, tipo_alerta: str, cooldown_horas: int, ahora: datetime
+    ) -> bool:
+        limite = ahora - timedelta(hours=cooldown_horas)
+        return any(
+            sid == suministro_id and tipo == tipo_alerta and ts >= limite
             for sid, tipo, ts in self._enviadas
         )
 

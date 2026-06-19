@@ -64,10 +64,10 @@ export function LoginPage({ onLogin }: Props) {
         display:      "flex",
         width:        "100%",
         maxWidth:     880,
-        background:   bg.surface,
-        borderRadius: radius.md,
-        boxShadow:    "0px 4px 12px rgba(0,0,0,0.05)",
-        border:       `1px solid ${border.default}`,
+        background:   bg.surfaceFeat,
+        borderRadius: `${radius["2xl"]}px`,
+        boxShadow:    "0 8px 32px rgba(180,140,80,0.12), 0 2px 8px rgba(100,80,60,0.08)",
+        border:       "none",
         overflow:     "hidden",
       }}>
 
@@ -138,7 +138,7 @@ export function LoginPage({ onLogin }: Props) {
                 fontFamily:   font.sans,
                 fontSize:     fontSize["2xl"],
                 fontWeight:   fontWeight.semibold,
-                color:        fg.link,  // primary #00361d
+                color:        fg.link,  // #124e2f
                 margin:       0,
                 letterSpacing: "-0.01em",
               }}>
@@ -235,7 +235,7 @@ export function LoginPage({ onLogin }: Props) {
                   background:   loading ? color.green400 : brand.primary,
                   color:        color.white,
                   border:       "none",
-                  borderRadius: radius.md,
+                  borderRadius: `${radius.md}px`,
                   fontSize:     fontSize.base,
                   fontWeight:   fontWeight.semibold,
                   fontFamily:   font.sans,
@@ -261,10 +261,10 @@ export function LoginPage({ onLogin }: Props) {
 
 const labelStyle: React.CSSProperties = {
   display:       "block",
-  fontFamily:    font.mono,         // JetBrains Mono — label-sm in Stitch
-  fontSize:      fontSize.xs,       // 12px
+  fontFamily:    font.sans,
+  fontSize:      fontSize.xs,
   fontWeight:    fontWeight.medium,
-  color:         fg.secondary,      // on-surface-variant #404942
+  color:         fg.secondary,
   letterSpacing: "0.05em",
 };
 
@@ -272,13 +272,13 @@ const inputStyle: React.CSSProperties = {
   display:      "block",
   width:        "100%",
   boxSizing:    "border-box",
-  height:       48,                  // h-12 in Stitch
+  height:       48,
   fontFamily:   font.sans,
-  fontSize:     fontSize.base,       // 16px body-md
+  fontSize:     fontSize.base,
   color:        fg.primary,
   background:   bg.surface,
-  border:       `1px solid ${border.default}`,  // outline-variant #c0c9c0
-  borderRadius: radius.md,           // 8px — rounded-lg in Stitch
+  border:       `1px solid ${border.default}`,
+  borderRadius: `${radius.md}px`,
   padding:      `0 ${space[3]}px`,
   outline:      "none",
   transition:   "border-color 150ms ease",

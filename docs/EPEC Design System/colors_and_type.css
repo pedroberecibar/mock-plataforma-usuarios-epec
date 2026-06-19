@@ -3,13 +3,13 @@
    Empresa Provincial de Energía de Córdoba
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&family=Space+Grotesk:wght@400;500;600&display=swap');
 
 /* ------------------------------------------------------------
    BASE COLOR PALETTE
    ------------------------------------------------------------ */
 :root {
-  /* Primary Green Scale */
+  /* Primary Green Scale — INTOCABLE */
   --color-green-900: #0a2e1b;
   --color-green-800: #0f3d24;
   --color-green-700: #124e2f;   /* BRAND PRIMARY */
@@ -21,18 +21,28 @@
   --color-green-100: #d4eedd;
   --color-green-50:  #edf5f0;
 
-  /* Neutral Scale */
-  --color-neutral-900: #111614;
-  --color-neutral-800: #1e2421;
-  --color-neutral-700: #2f3733;
-  --color-neutral-600: #4a5550;
-  --color-neutral-500: #6b7772;
-  --color-neutral-400: #8f9c97;
-  --color-neutral-300: #b5bfbb;
-  --color-neutral-200: #d5ddd9;
-  --color-neutral-100: #eaeeec;
-  --color-neutral-50:  #f5f7f6;
-  --color-white:       #ffffff;
+  /* Neutral Scale — Warm (reemplaza escala fría previa) */
+  --color-neutral-900: #1C1410;
+  --color-neutral-800: #2E231A;
+  --color-neutral-700: #4A3D2E;
+  --color-neutral-600: #6B5A45;
+  --color-neutral-500: #8C7A63;
+  --color-neutral-400: #B0A090;
+  --color-neutral-300: #D4C4A8;
+  --color-neutral-200: #E8DFD0;
+  --color-neutral-100: #F3EDE2;
+  --color-neutral-50:  #F8F6F2;
+  --color-white:       #FDFCF9;
+
+  /* Warm Surface Palette */
+  --warm-0: #F8F6F2;   /* page background */
+  --warm-1: #FDFCF9;   /* card standard */
+  --warm-2: #F3EDE2;   /* card featured (Solora-style) */
+  --warm-3: #E8DFD0;   /* selected / active */
+  --warm-4: #D4C4A8;   /* separador warm */
+  --warm-text-1: #1C1410;
+  --warm-text-2: #6B5A45;
+  --warm-text-3: #8C7A63;
 
   /* Semantic — Status Colors */
   --color-success-dark:   #155a2e;
@@ -48,32 +58,50 @@
   --color-info:           #1565c0;
   --color-info-light:     #dbeafe;
 
+  /* Warm semantic status backgrounds */
+  --color-success-bg-warm:  rgba(18,78,47,0.10);
+  --color-warning-bg-warm:  rgba(230,145,10,0.10);
+  --color-error-bg-warm:    rgba(192,57,43,0.08);
+  --color-info-bg-warm:     rgba(21,101,192,0.08);
+
+  /* Chart Colors */
+  --chart-primary:        #1a6640;
+  --chart-primary-dim:    rgba(26,102,64,0.30);
+  --chart-comparison:     rgba(180,175,170,0.40);
+  --chart-anomaly:        #c0780a;
+  --chart-goal-line:      rgba(18,78,47,0.50);
+  --chart-grid:           rgba(180,170,155,0.30);
+  --chart-axis-text:      #8C7A63;
+  --chart-tooltip-bg:     #F3EDE2;
+  --chart-tooltip-border: #D4C4A8;
+
   /* ------------------------------------------------------------
      SEMANTIC UI TOKENS
      ------------------------------------------------------------ */
 
   /* Backgrounds */
-  --bg-page:        var(--color-neutral-50);
-  --bg-surface:     var(--color-white);
-  --bg-sidebar:     var(--color-green-700);
-  --bg-header:      var(--color-green-700);
-  --bg-hover:       var(--color-green-50);
-  --bg-selected:    var(--color-green-100);
-  --bg-muted:       var(--color-neutral-100);
+  --bg-page:         var(--warm-0);           /* #F8F6F2 */
+  --bg-surface:      var(--warm-1);           /* #FDFCF9 */
+  --bg-surface-feat: var(--warm-2);           /* #F3EDE2 */
+  --bg-sidebar:      var(--color-green-700);  /* #124e2f — intocable */
+  --bg-header:       var(--color-green-700);  /* #124e2f — intocable */
+  --bg-hover:        rgba(18,78,47,0.06);
+  --bg-selected:     var(--warm-3);           /* #E8DFD0 */
+  --bg-muted:        var(--warm-2);           /* #F3EDE2 */
 
   /* Foregrounds */
-  --fg-primary:     var(--color-neutral-900);
-  --fg-secondary:   var(--color-neutral-600);
-  --fg-muted:       var(--color-neutral-400);
-  --fg-on-dark:     var(--color-white);
-  --fg-link:        var(--color-green-600);
-  --fg-link-hover:  var(--color-green-700);
+  --fg-primary:     var(--warm-text-1);   /* #1C1410 */
+  --fg-secondary:   var(--warm-text-2);   /* #6B5A45 */
+  --fg-muted:       var(--warm-text-3);   /* #8C7A63 */
+  --fg-on-dark:     #ffffff;
+  --fg-link:        var(--color-green-700); /* #124e2f */
+  --fg-link-hover:  var(--color-green-600); /* #1a6640 */
 
-  /* Borders */
-  --border-default: var(--color-neutral-200);
-  --border-strong:  var(--color-neutral-300);
-  --border-focus:   var(--color-green-500);
-  --border-brand:   var(--color-green-700);
+  /* Borders — mínimos, solo cuando el contraste de superficie no alcanza */
+  --border-default: var(--warm-4);          /* #D4C4A8 — cálido */
+  --border-strong:  var(--color-neutral-300); /* #D4C4A8 */
+  --border-focus:   var(--color-green-600); /* #1a6640 */
+  --border-brand:   var(--color-green-700); /* #124e2f */
 
   /* Brand */
   --brand-primary:  var(--color-green-700);
@@ -84,8 +112,9 @@
      TYPOGRAPHY
      ------------------------------------------------------------ */
 
-  --font-sans: 'Roboto', 'Segoe UI', sans-serif;
-  --font-technical: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-sans:      'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-technical: 'Space Grotesk', 'Inter', sans-serif;
+  --font-mono:      'JetBrains Mono', 'Roboto Mono', monospace;
 
   /* Font Sizes */
   --text-xs:   11px;
@@ -99,6 +128,7 @@
   --text-4xl:  42px;
 
   /* Font Weights */
+  --weight-light:    300;
   --weight-regular:  400;
   --weight-medium:   500;
   --weight-semibold: 600;
@@ -112,15 +142,25 @@
 
   /* Letter Spacing */
   --tracking-tight:  -0.02em;
-  --tracking-normal:  0;
+  --tracking-normal:  0.01em;
   --tracking-wide:    0.04em;
-  --tracking-widest:  0.12em;
+  --tracking-widest:  0.10em;
+  --tracking-caps:    0.08em;
+
+  /* KWH hero typography roles */
+  --kwh-hero-size:     var(--text-4xl);
+  --kwh-hero-weight:   var(--weight-light);
+  --kwh-hero-font:     var(--font-technical);
+  --kwh-hero-leading:  1.0;
+  --kwh-card-size:     var(--text-2xl);
+  --kwh-card-weight:   var(--weight-regular);
+  --kwh-inline-size:   var(--text-xl);
+  --kwh-inline-weight: var(--weight-medium);
 
   /* ------------------------------------------------------------
      SEMANTIC TYPE ROLES
      ------------------------------------------------------------ */
 
-  /* Headings */
   --h1-size:    var(--text-3xl);
   --h1-weight:  var(--weight-bold);
   --h1-leading: var(--leading-tight);
@@ -137,7 +177,6 @@
   --h4-weight:  var(--weight-semibold);
   --h4-leading: var(--leading-snug);
 
-  /* Body */
   --body-size:    var(--text-base);
   --body-weight:  var(--weight-regular);
   --body-leading: var(--leading-normal);
@@ -146,13 +185,11 @@
   --body-sm-weight:  var(--weight-regular);
   --body-sm-leading: var(--leading-normal);
 
-  /* Labels & Captions */
   --label-size:    var(--text-sm);
   --label-weight:  var(--weight-medium);
   --caption-size:  var(--text-xs);
   --caption-weight: var(--weight-regular);
 
-  /* Code / Mono */
   --code-size:   var(--text-sm);
   --code-weight: var(--weight-regular);
 
@@ -170,22 +207,40 @@
   --space-12: 48px;
   --space-16: 64px;
   --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
 
   /* ------------------------------------------------------------
-     BORDER RADII
+     BORDER RADII — Solora-inspired generous
      ------------------------------------------------------------ */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-xs:   4px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-2xl:  24px;
   --radius-full: 9999px;
 
   /* ------------------------------------------------------------
-     SHADOWS / ELEVATION
+     SHADOWS / ELEVATION — warm-tinted (sin negro puro)
      ------------------------------------------------------------ */
-  --shadow-xs:  0 1px 2px rgba(0,0,0,0.06);
-  --shadow-sm:  0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.07);
-  --shadow-xl:  0 20px 48px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-xs:  0 1px 2px rgba(100,80,60,0.06);
+  --shadow-sm:  0 1px 4px rgba(100,80,60,0.08), 0 1px 2px rgba(100,80,60,0.05);
+  --shadow-md:  0 4px 12px rgba(100,80,60,0.10), 0 1px 3px rgba(100,80,60,0.06);
+  --shadow-lg:  0 8px 24px rgba(100,80,60,0.12), 0 2px 6px rgba(100,80,60,0.07);
+  --shadow-xl:  0 20px 48px rgba(100,80,60,0.15), 0 4px 12px rgba(100,80,60,0.08);
+  --shadow-warm: 0 8px 32px rgba(180,140,80,0.12), 0 2px 8px rgba(100,80,60,0.08);
+
+  /* ------------------------------------------------------------
+     MOTION TOKENS
+     ------------------------------------------------------------ */
+  --motion-instant: 80ms;
+  --motion-fast:    150ms;
+  --motion-base:    250ms;
+  --motion-slow:    400ms;
+  --motion-xslow:   600ms;
+
+  --ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}

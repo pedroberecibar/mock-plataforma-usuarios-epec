@@ -26,6 +26,12 @@ class NotificacionConfigRepository(ABC):
         """Devuelve True si ya se envió esta alerta hoy para este suministro."""
 
     @abstractmethod
+    async def ya_en_cooldown(
+        self, suministro_id: str, tipo_alerta: str, cooldown_horas: int, ahora: datetime
+    ) -> bool:
+        """Devuelve True si el último envío de este tipo fue hace menos de cooldown_horas horas."""
+
+    @abstractmethod
     async def registrar_enviada(
         self, suministro_id: str, tipo_alerta: str, fecha_envio: datetime
     ) -> None:
