@@ -8,6 +8,8 @@ from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.vecinos_repository import VecinosRepository
 from domain.proyeccion import ProyeccionMensual
 
+_MIN_VECINOS = 5
+
 
 @dataclass(frozen=True)
 class ConsumoMes:
@@ -150,7 +152,7 @@ class ObtenerHomeUseCase:
         vecinos = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
         n_vecinos = len(vecinos)
 
-        if n_vecinos == 0 or dias_transcurridos == 0:
+        if n_vecinos < _MIN_VECINOS or dias_transcurridos == 0:
             return ComparacionZona(
                 promedio_vecinos_kwh=None, n_vecinos=n_vecinos, diferencia_pct=None
             )
