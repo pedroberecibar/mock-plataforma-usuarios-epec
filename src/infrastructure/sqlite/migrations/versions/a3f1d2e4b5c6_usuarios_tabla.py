@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("usuario"),
     )
     # Seed de desarrollo: usuario demo → suministro real de Oracle
-    op.execute("INSERT INTO usuarios (usuario, suministro_id) VALUES ('demo', '3037481')")
+    op.execute("INSERT INTO usuarios (usuario, suministro_id) VALUES ('demo', '2817670')")
 
 
 def downgrade() -> None:

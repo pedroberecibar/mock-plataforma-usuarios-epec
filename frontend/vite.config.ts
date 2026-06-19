@@ -10,6 +10,7 @@ export default defineConfig({
       "/home":      "http://localhost:8000",
       "/objetivos": "http://localhost:8000",
       "/alertas":   "http://localhost:8000",
+      "/factura":   "http://localhost:8000",
     },
   },
   test: {

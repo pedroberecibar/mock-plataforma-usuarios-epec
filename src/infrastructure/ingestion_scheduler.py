@@ -132,17 +132,16 @@ async def run_scheduler(
     )
 
     hoy = date.today()
-    dia = desde_inicial
-    while dia <= hoy:
-        hasta = dia + timedelta(days=1)
-        try:
-            await _ejecutar_ingesta(non_blocking, session_factory, dia, hasta, equipos=equipos)
-        except asyncio.CancelledError:
-            _log.info("Scheduler detenido durante backfill.")
-            return
-        except Exception:
-            _log.exception("Error en backfill %s — continuando con el siguiente día", dia)
-        dia += timedelta(days=1)
+    hasta_total = hoy + timedelta(days=1)
+    try:
+        await _ejecutar_ingesta(
+            non_blocking, session_factory, desde_inicial, hasta_total, equipos=equipos
+        )
+    except asyncio.CancelledError:
+        _log.info("Scheduler detenido durante backfill.")
+        return
+    except Exception:
+        _log.exception("Error en backfill desde %s hasta %s", desde_inicial, hasta_total)
 
     while True:
         try:
@@ -152,17 +151,17 @@ async def run_scheduler(
             return
 
         hoy = date.today()
-        dia = hoy - timedelta(days=lookback_dias)
-        while dia <= hoy:
-            hasta = dia + timedelta(days=1)
-            try:
-                await _ejecutar_ingesta(non_blocking, session_factory, dia, hasta, equipos=equipos)
-            except asyncio.CancelledError:
-                _log.info("Scheduler detenido durante ingesta periódica.")
-                return
-            except Exception:
-                _log.exception("Error en ingesta %s — reintentará en %dh", dia, interval_horas)
-            dia += timedelta(days=1)
+        dia_inicio = hoy - timedelta(days=lookback_dias)
+        hasta_total = hoy + timedelta(days=1)
+        try:
+            await _ejecutar_ingesta(
+                non_blocking, session_factory, dia_inicio, hasta_total, equipos=equipos
+            )
+        except asyncio.CancelledError:
+            _log.info("Scheduler detenido durante ingesta periódica.")
+            return
+        except Exception:
+            _log.exception("Error en ingesta — reintentará en %dh", interval_horas)
 
         if notification_sender is not None:
             try:

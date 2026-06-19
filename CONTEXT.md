@@ -3,41 +3,34 @@
 ## Última sesión
 - **Fecha:** 2026-06-19
 - **Qué se completó:**
-  - **Sprint 9 — Drill-down Consumo (CU-C02) + Alerta Vencimiento (CU-F05)** commiteado en `e902c31`
-  - **GetDetalleDiaUseCase** (`src/application/use_cases/get_detalle_dia.py`):
-    kwh_dia + kwh_mismo_dia_anio_ant (364 días atrás = mismo día-semana) + kwh_promedio_zona (None si n<5, Ley 25.326)
-  - **GET /consumo/{id}/dia?fecha=YYYY-MM-DD** — sin auth, usa consumo_repo + vecinos_repo
-  - **PanelDetalleDia.tsx** — componente con 3 tarjetas (este día / año ant / zona), testeable sin Recharts
-  - **ConsumoPage.tsx** — click en barra → `handleClickBarra` → fetchDetalleDia → PanelDetalleDia
-  - **FacturaSourceReader port** (`src/domain/ports/factura_source_reader.py`) con `FacturaResult(fecha_vencimiento)`
-  - **FakeFacturaSourceReader** devuelve `date.today() + timedelta(days=5)` por defecto
-  - **EvaluarVencimientoUseCase** (`src/application/use_cases/evaluar_vencimiento.py`):
-    si fecha_vcto=None o días>5 → no hace nada; si días≤5 → delega a EvaluarAlertasUseCase tipo `vencimiento_proximo`
-  - **POST /alertas/evaluar-vencimiento** — fire-and-forget desde FacturaPage al montar
-  - **GET /factura/datos** — devuelve `FacturaDatosResponse(fecha_vencimiento)` autenticado
-  - **FacturaPage.tsx** — banner amarillo (`role=alert`, `data-testid=banner-vencimiento`) cuando días≤5
-  - **Fix pre-existente**: AppShell.test.tsx — etiqueta "Configuración" corregida a "Alertas"
-  - **Tests**: 247 backend (+7) · 74 frontend (+13) · mypy ok · ruff ok · tsc ok · arch ok
-
-- **Qué quedó incompleto:** —
-
+  - CU-C06: `DetectarAnomaliaConsumoUseCase` (z-score > 2.0), endpoint `GET /consumo/anomalia`, banner en `ConsumoPage.tsx`
+  - CU-C07: endpoint `GET /consumo/export/csv`, botón "Exportar CSV" en `ConsumoPage.tsx` (oculto < 768px)
+  - CU-A06: rate-limit por tipo en `EvaluarAlertasUseCase` (cooldown 24h/12h/6h), método `ya_en_cooldown` en port
+  - fix(privacidad): k-anonymity `n_vecinos < 5` en `ObtenerHomeUseCase`
+  - fix(security): IDOR en `/consumo/anomalia` y `/consumo/export/csv` — usan `get_suministro_actual` en lugar de URL param
+  - fix(encoding): strings garbled en `ObjetivosPage.tsx` (curly quotes U+201C/D reemplazadas por ASCII, acentos corregidos)
+  - chore(design-system): refactor SOLORA (warm cream, nav icons, retry button, proxy config)
+  - fix(alertas): `registrar_enviada` usa fecha inyectada en vez de `datetime.now()`
+  - Suite completa verde: pytest 262/262, vitest 74/74, mypy, ruff, tsc
+- **Qué quedó incompleto:**
+  - NFR Responsive: screenshots en 375/768/1280 con agent-browser — dev server no disponible durante la sesión
 - **Decisiones técnicas no documentadas:**
-  - `kwh_mismo_dia_anio_ant` usa `fecha - timedelta(days=364)` (52 semanas) para preservar día-de-semana
-  - `GetDetalleDiaUseCase` no extiende el port `ConsumoDiarioRepository` — reutiliza `get_serie(id, fecha, fecha)`
-  - `FakeFacturaSourceReader` wired en main.py con default de 5 días; no hay Oracle adapter para factura aún
-  - `fetchDetalleDia` en consumo.ts no pasa auth header (endpoint no requiere auth, consistente con spec)
-  - Test de AppShell.test.tsx tenía "Configuración" hardcodeado; el nav real siempre fue "Alertas" (M pre-sprint)
-
-- **Primer paso para la próxima sesión:** Sprint 10 — definir siguientes historias de usuario
-
-- **Tests fallando intencionalmente:**
-  - `tests/application/use_cases/test_evaluar_alertas.py::test_registra_envio_en_notificaciones_enviadas`
-    (falla pre-existente desde sprint 7, no relacionada con sprint 9)
+  - Los endpoints `/diario` y `/comparacion` conservan patrón IDOR (`{suministro_id}` URL + `_usuario` JWT). Fuera de scope sprint-10.
+  - `autenticar()` en `JwtAuthProvider` no verifica contraseña (verificacion en `auth_router`). Fix arquitectónico mayor, pendiente sprint-11.
+  - Curly quotes corregidas con PowerShell replace de bytes (U+201C/D → U+0022). El Edit tool no puede matchear curly vs ASCII.
+- **Primer paso para la próxima sesión:**
+  - Levantar dev server: `cd frontend && npx vite` + `cd .. && uvicorn src.main:app --reload`
+  - Tomar screenshots responsive con agent-browser en 375/768/1280px para ConsumoPage (verificar botón CSV oculto en móvil)
+  - Commit final: `feat(sprint-10): hardening, NFR y features should — release MVP`
+- **Tests fallando intencionalmente:** Ninguno
 
 ## Estado del repo
-Commits recientes:
-- e902c31 feat(sprint-9): drill-down consumo y alerta vencimiento factura
-- c346e7a fix(auth): auto-logout cuando el JWT expira en ObjetivosPage
-- 3649bab feat(sprint-8): objetivo sugerido, onboarding primer login e indicadores O1-O3
-- 4b740f2 feat(sprint-7): barra de progreso, alerta objetivo superado y seed contraseñas
-- d974e6f feat(sprint-6): auth argon2id, cerrar sesión y objetivos de consumo
+```
+b5c8516 fix(security): corregir IDOR en endpoints de anomalia y CSV, encoding ObjetivosPage
+f29fff5 refactor(components): add Icon wrapper with strokeWidth 1.5
+e9e312a fix(privacidad): k-anonymity n<5 en ObtenerHomeUseCase (CU-NF02)
+e9d31c3 feat(sprint-10): CU-C06 anomalia, CU-C07 CSV export, CU-A06 rate-limit
+5f34a76 chore(design-system): refactor SOLORA warm cream theme y mejoras UX
+```
+
+Archivos sin trackear (ignorar): `data/*.db-shm`, `data/*.db-wal`, `epec.db`, `login-warm.png`

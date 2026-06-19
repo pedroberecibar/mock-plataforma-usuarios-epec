@@ -32,13 +32,11 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         numero_contrato: str,
         _usuario: str = Depends(get_usuario_actual),
     ) -> LinkResponse:
-        if epec_base_url is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Redirección a EPEC no configurada — definir EPEC_FACTURA_BASE_URL",
-            )
         uc = ObtenerLinkFacturaUseCase(base_url=epec_base_url)
-        url = await uc.ejecutar(numero_cliente, numero_contrato)
-        return LinkResponse(url=url)
+        try:
+            url = await uc.ejecutar(numero_cliente, numero_contrato)
+            return LinkResponse(url=url)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al conectar con EPEC: {e}") from e
 
     return router
