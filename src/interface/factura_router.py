@@ -5,7 +5,13 @@ from pydantic import BaseModel
 
 from application.use_cases.obtener_link_factura import ObtenerLinkFacturaUseCase
 from domain.ports.factura_source_reader import FacturaSourceReader
-from interface.dependencies import get_factura_reader, get_suministro_actual, get_usuario_actual
+from domain.ports.factura_verificacion_port import FacturaVerificacionPort
+from interface.dependencies import (
+    get_factura_reader,
+    get_factura_verificacion,
+    get_suministro_actual,
+    get_usuario_actual,
+)
 
 
 def build_router(epec_base_url: str | None) -> APIRouter:
@@ -31,8 +37,12 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         numero_cliente: str,
         numero_contrato: str,
         _usuario: str = Depends(get_usuario_actual),
+        verificacion_port: FacturaVerificacionPort = Depends(get_factura_verificacion),
     ) -> LinkResponse:
-        uc = ObtenerLinkFacturaUseCase(base_url=epec_base_url)
+        uc = ObtenerLinkFacturaUseCase(
+            verificacion_port=verificacion_port,
+            base_url=epec_base_url,
+        )
         try:
             url = await uc.ejecutar(numero_cliente, numero_contrato)
             return LinkResponse(url=url)

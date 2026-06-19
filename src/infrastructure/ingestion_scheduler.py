@@ -8,9 +8,9 @@ ejecutando leer_lecturas() en un thread pool para no bloquear el event loop.
 """
 
 import asyncio
-import logging
 from datetime import date, timedelta
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -24,7 +24,7 @@ from infrastructure.sqlite.models import Usuario
 from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
 from infrastructure.sqlite.suministro_repository import SQLiteSuministroRepository
 
-_log = logging.getLogger(__name__)
+_log = structlog.get_logger(__name__)
 
 _TIPOS_ALERTA_PERIODICOS = [TipoAlerta.FACTURA_DISPONIBLE, TipoAlerta.VENCIMIENTO_PROXIMO]
 

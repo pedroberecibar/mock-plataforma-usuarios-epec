@@ -76,9 +76,8 @@ export function LoginPage({ onLogin }: Props) {
           className="login-panel-left"
           style={{
             width:          "50%",
-            background:     brand.primary,  // primary-container #124e2f
+            background:     brand.primary,
             padding:        space[16],
-            display:        "flex",
             flexDirection:  "column",
             justifyContent: "space-between",
             color:          color.white,
@@ -124,13 +123,15 @@ export function LoginPage({ onLogin }: Props) {
         </div>
 
         {/* Right panel — form */}
-        <div style={{
-          width:          "50%",
-          padding:        `${space[10]}px ${space[16]}px`,
-          display:        "flex",
-          flexDirection:  "column",
-          justifyContent: "center",
-        }}>
+        <div
+          className="login-panel-right"
+          style={{
+            padding:        `${space[10]}px ${space[16]}px`,
+            display:        "flex",
+            flexDirection:  "column",
+            justifyContent: "center",
+          }}
+        >
           <div style={{ maxWidth: 360, width: "100%" }}>
 
             <header style={{ marginBottom: space[10] }}>

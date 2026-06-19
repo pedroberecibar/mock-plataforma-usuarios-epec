@@ -10,7 +10,7 @@ describe("fetchSerieDiaria", () => {
     mockFetch.mockReset();
   });
 
-  it("construye la URL con suministro y rango de fechas", async () => {
+  it("construye la URL sin suministro en la ruta (usa JWT del servidor)", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ serie: [], datos_hasta: null }),
@@ -19,7 +19,7 @@ describe("fetchSerieDiaria", () => {
     await fetchSerieDiaria("mi-token", "SRV-001", "2026-06-01", "2026-06-30");
 
     expect(mockFetch).toHaveBeenCalledWith(
-      "/consumo/SRV-001/diario?desde=2026-06-01&hasta=2026-06-30",
+      "/consumo/diario?desde=2026-06-01&hasta=2026-06-30",
       { headers: { Authorization: "Bearer mi-token" } },
     );
   });
@@ -50,7 +50,7 @@ describe("fetchComparacion", () => {
     mockFetch.mockReset();
   });
 
-  it("construye la URL con suministro y mes", async () => {
+  it("construye la URL sin suministro en la ruta (usa JWT del servidor)", async () => {
     const stub = {
       mes_actual: { mes: "2026-06-01", serie: [], total_kwh: null },
       mes_anterior: { mes: "2026-05-01", serie: [], total_kwh: null },
@@ -62,7 +62,7 @@ describe("fetchComparacion", () => {
     await fetchComparacion("token", "SRV-001", "2026-06");
 
     expect(mockFetch).toHaveBeenCalledWith(
-      "/consumo/SRV-001/comparacion?mes=2026-06",
+      "/consumo/comparacion?mes=2026-06",
       { headers: { Authorization: "Bearer token" } },
     );
   });

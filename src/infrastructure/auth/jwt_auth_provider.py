@@ -18,7 +18,11 @@ class JwtAuthProvider(AuthProvider):
     def __init__(self, secret_key: str) -> None:
         self._secret_key = secret_key
 
-    async def autenticar(self, usuario: str, password: str) -> str | None:
+    async def autenticar(
+        self, usuario: str, password: str, password_hash: str | None = None
+    ) -> str | None:
+        if password_hash is not None and not self.verificar_password(password, password_hash):
+            return None
         payload = {"sub": usuario, "exp": datetime.now(UTC) + EXPIRACION}
         return jwt.encode(payload, self._secret_key, algorithm=ALGORITHM)
 

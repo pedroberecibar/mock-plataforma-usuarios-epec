@@ -16,7 +16,6 @@ from domain.ports.vecinos_repository import VecinosRepository
 from interface.dependencies import (
     get_consumo_repo,
     get_suministro_actual,
-    get_usuario_actual,
     get_vecinos_repo,
 )
 
@@ -78,12 +77,11 @@ async def get_detalle_dia(
     )
 
 
-@router.get("/{suministro_id}/diario", response_model=DiarioResponse)
+@router.get("/diario", response_model=DiarioResponse)
 async def get_consumo_diario(
-    suministro_id: str,
     desde: date,
     hasta: date,
-    _usuario: str = Depends(get_usuario_actual),
+    suministro_id: str = Depends(get_suministro_actual),
     repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
 ) -> DiarioResponse:
     resultado = await ObtenerSerieDiariaUseCase(repo).ejecutar(suministro_id, desde, hasta)
@@ -93,11 +91,10 @@ async def get_consumo_diario(
     )
 
 
-@router.get("/{suministro_id}/comparacion", response_model=ComparacionResponse)
+@router.get("/comparacion", response_model=ComparacionResponse)
 async def get_comparacion_historica(
-    suministro_id: str,
     mes: str,
-    _usuario: str = Depends(get_usuario_actual),
+    suministro_id: str = Depends(get_suministro_actual),
     repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
 ) -> ComparacionResponse:
     try:

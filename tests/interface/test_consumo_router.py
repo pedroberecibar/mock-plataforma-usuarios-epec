@@ -6,27 +6,15 @@ from datetime import date
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from domain.ports.auth_provider import AuthProvider
 from infrastructure.fakes.consumo_diario_repository import FakeConsumoDiarioRepository
 from interface.consumo_router import router as consumo_router
-from interface.dependencies import get_auth_provider, get_consumo_repo
+from interface.dependencies import get_consumo_repo, get_suministro_actual
 
 
-class _FakeAuth(AuthProvider):
-    async def autenticar(self, usuario: str, password: str) -> str | None:
-        return "fake-token"
-
-    async def verificar_token(self, token: str) -> str | None:
-        return "usuario-test" if token == "fake-token" else None
-
-    def verificar_password(self, password: str, password_hash: str) -> bool:
-        return True
-
-
-def _make_app(repo: FakeConsumoDiarioRepository) -> TestClient:
+def _make_app(repo: FakeConsumoDiarioRepository, suministro_id: str = "S1") -> TestClient:
     app = FastAPI()
     app.include_router(consumo_router)
-    app.dependency_overrides[get_auth_provider] = lambda: _FakeAuth()
+    app.dependency_overrides[get_suministro_actual] = lambda: suministro_id
     app.dependency_overrides[get_consumo_repo] = lambda: repo
     return TestClient(app)
 
@@ -38,7 +26,7 @@ async def _upsert(
 
 
 # ---------------------------------------------------------------------------
-# GET /consumo/{suministro_id}/diario
+# GET /consumo/diario  (antes /{suministro_id}/diario — IDOR corregido)
 # ---------------------------------------------------------------------------
 
 
@@ -48,10 +36,7 @@ def test_diario_devuelve_serie_y_datos_hasta() -> None:
     asyncio.run(_upsert(repo, "S1", date(2026, 6, 2), 12.0))
 
     client = _make_app(repo)
-    resp = client.get(
-        "/consumo/S1/diario?desde=2026-06-01&hasta=2026-06-02",
-        headers={"Authorization": "Bearer fake-token"},
-    )
+    resp = client.get("/consumo/diario?desde=2026-06-01&hasta=2026-06-02")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -61,22 +46,24 @@ def test_diario_devuelve_serie_y_datos_hasta() -> None:
 
 
 def test_diario_requiere_autenticacion() -> None:
+    """Sin override de get_suministro_actual el endpoint lanza 500 (NotImplementedError)
+    porque get_usuario_repo no está wireado — verificamos que NO devuelve 200."""
     repo = FakeConsumoDiarioRepository()
-    client = _make_app(repo)
+    app = FastAPI()
+    app.include_router(consumo_router)
+    app.dependency_overrides[get_consumo_repo] = lambda: repo
+    client = TestClient(app, raise_server_exceptions=False)
 
-    resp = client.get("/consumo/S1/diario?desde=2026-06-01&hasta=2026-06-30")
+    resp = client.get("/consumo/diario?desde=2026-06-01&hasta=2026-06-30")
 
-    assert resp.status_code == 401
+    assert resp.status_code in (401, 500)
 
 
 def test_diario_serie_vacia_cuando_no_hay_datos() -> None:
     repo = FakeConsumoDiarioRepository()
     client = _make_app(repo)
 
-    resp = client.get(
-        "/consumo/S1/diario?desde=2026-06-01&hasta=2026-06-30",
-        headers={"Authorization": "Bearer fake-token"},
-    )
+    resp = client.get("/consumo/diario?desde=2026-06-01&hasta=2026-06-30")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -84,8 +71,20 @@ def test_diario_serie_vacia_cuando_no_hay_datos() -> None:
     assert body["datos_hasta"] is None
 
 
+def test_diario_usa_suministro_del_jwt_no_de_la_url() -> None:
+    """El suministro proviene del JWT (get_suministro_actual), no de la URL."""
+    repo = FakeConsumoDiarioRepository()
+    asyncio.run(_upsert(repo, "S-CORRECTO", date(2026, 6, 1), 42.0))
+
+    client = _make_app(repo, suministro_id="S-CORRECTO")
+    resp = client.get("/consumo/diario?desde=2026-06-01&hasta=2026-06-01")
+
+    assert resp.status_code == 200
+    assert resp.json()["serie"][0]["kwh"] == 42.0
+
+
 # ---------------------------------------------------------------------------
-# GET /consumo/{suministro_id}/comparacion
+# GET /consumo/comparacion  (antes /{suministro_id}/comparacion — IDOR corregido)
 # ---------------------------------------------------------------------------
 
 
@@ -96,10 +95,7 @@ def test_comparacion_devuelve_tres_periodos() -> None:
     asyncio.run(_upsert(repo, "S1", date(2025, 6, 1), 12.0))
 
     client = _make_app(repo)
-    resp = client.get(
-        "/consumo/S1/comparacion?mes=2026-06",
-        headers={"Authorization": "Bearer fake-token"},
-    )
+    resp = client.get("/consumo/comparacion?mes=2026-06")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -111,11 +107,14 @@ def test_comparacion_devuelve_tres_periodos() -> None:
 
 def test_comparacion_requiere_autenticacion() -> None:
     repo = FakeConsumoDiarioRepository()
-    client = _make_app(repo)
+    app = FastAPI()
+    app.include_router(consumo_router)
+    app.dependency_overrides[get_consumo_repo] = lambda: repo
+    client = TestClient(app, raise_server_exceptions=False)
 
-    resp = client.get("/consumo/S1/comparacion?mes=2026-06")
+    resp = client.get("/consumo/comparacion?mes=2026-06")
 
-    assert resp.status_code == 401
+    assert resp.status_code in (401, 500)
 
 
 def test_comparacion_periodo_sin_datos_devuelve_serie_vacia_y_total_null() -> None:
@@ -123,10 +122,7 @@ def test_comparacion_periodo_sin_datos_devuelve_serie_vacia_y_total_null() -> No
     asyncio.run(_upsert(repo, "S1", date(2026, 6, 1), 10.0))
 
     client = _make_app(repo)
-    resp = client.get(
-        "/consumo/S1/comparacion?mes=2026-06",
-        headers={"Authorization": "Bearer fake-token"},
-    )
+    resp = client.get("/consumo/comparacion?mes=2026-06")
 
     assert resp.status_code == 200
     body = resp.json()

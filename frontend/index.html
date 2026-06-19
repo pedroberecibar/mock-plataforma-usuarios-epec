@@ -30,10 +30,12 @@
         .app-sidebar   { display: none; }
         .app-bottomnav { display: flex; }
       }
-      /* LoginPage: left decorative panel hidden on mobile */
+      /* LoginPage: left decorative panel hidden on mobile; right panel fills full width */
       .login-panel-left { display: flex; }
+      .login-panel-right { width: 50%; }
       @media (max-width: 767px) {
-        .login-panel-left { display: none; }
+        .login-panel-left  { display: none; }
+        .login-panel-right { width: 100%; padding: 40px 24px !important; }
       }
       /* CU-C07: Exportar CSV visible solo en viewport web (≥ 768px) */
       @media (min-width: 768px) {

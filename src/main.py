@@ -9,14 +9,17 @@ import asyncio
 import contextlib
 import logging
 import os
+import sys
 from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 
+import structlog
 from fastapi import FastAPI, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
+from infrastructure.epec.epec_factura_verificacion import EpecFacturaVerificacion
 from infrastructure.fakes.factura_source_reader import FakeFacturaSourceReader
 from infrastructure.fakes.notification_sender import FakeNotificationSender
 from infrastructure.smtp.notification_sender import SmtpNotificationSender
@@ -34,6 +37,7 @@ from interface.dependencies import (
     get_auth_provider,
     get_consumo_repo,
     get_factura_reader,
+    get_factura_verificacion,
     get_medicion_reader,
     get_notificacion_config_repo,
     get_notification_sender,
@@ -48,7 +52,33 @@ from interface.home_router import router as home_router
 from interface.ingest_router import router as ingest_router
 from interface.objetivos_router import router as objetivos_router
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
+
+def _configure_logging() -> None:
+    log_format = os.environ.get("LOG_FORMAT", "text")
+    processors: list[structlog.types.Processor] = [
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.StackInfoRenderer(),
+    ]
+    if log_format == "json":
+        processors.append(structlog.processors.JSONRenderer())
+    else:
+        processors.append(structlog.dev.ConsoleRenderer())
+
+    structlog.configure(
+        processors=processors,
+        wrapper_class=structlog.stdlib.BoundLogger,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=logging.INFO)
+
+
+_configure_logging()
 
 _ORACLE_VARS = ("OR_HOST", "OR_USER", "OR_PASS", "OR_SERVICE_NAME")
 
@@ -197,8 +227,10 @@ def create_app() -> FastAPI:
 
     _notification_sender = _build_notification_sender()
     _factura_reader = FakeFacturaSourceReader()
+    _factura_verificacion = EpecFacturaVerificacion()
     app.dependency_overrides[get_notification_sender] = lambda: _notification_sender
     app.dependency_overrides[get_factura_reader] = lambda: _factura_reader
+    app.dependency_overrides[get_factura_verificacion] = lambda: _factura_verificacion
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
     app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo
@@ -209,9 +241,12 @@ def create_app() -> FastAPI:
 
     if oracle_reader is not None:
         from infrastructure.ingestion_scheduler import _NonBlockingReader
+        from infrastructure.oracle.vecinos_repository import OracleVecinosRepository
 
         _non_blocking_reader = _NonBlockingReader(oracle_reader)
         app.dependency_overrides[get_medicion_reader] = lambda: _non_blocking_reader
+        _oracle_vecinos = OracleVecinosRepository()
+        app.dependency_overrides[get_vecinos_repo] = lambda: _oracle_vecinos
     else:
 
         def _oracle_no_configurado() -> None:

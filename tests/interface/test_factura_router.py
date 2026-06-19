@@ -4,16 +4,17 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from infrastructure.fakes.auth_provider import FakeAuthProvider
-from interface.dependencies import get_auth_provider, get_usuario_actual
+from infrastructure.fakes.factura_verificacion_port import FakeFacturaVerificacionPort
+from interface.dependencies import get_auth_provider, get_factura_verificacion, get_usuario_actual
 from interface.factura_router import build_router
 
 
 def build_client(base_url: str | None) -> TestClient:
     app = FastAPI()
     app.include_router(build_router(epec_base_url=base_url))
-    # bypass auth for these tests
     app.dependency_overrides[get_auth_provider] = lambda: FakeAuthProvider(usuarios={"demo": "x"})
     app.dependency_overrides[get_usuario_actual] = lambda: "demo"
+    app.dependency_overrides[get_factura_verificacion] = lambda: FakeFacturaVerificacionPort()
     return TestClient(app)
 
 

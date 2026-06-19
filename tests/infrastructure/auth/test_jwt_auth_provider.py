@@ -1,17 +1,39 @@
+from argon2 import PasswordHasher
+
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
 
+_ph = PasswordHasher()
 
-async def test_autenticar_issues_a_token_as_a_login_stub_pending_real_auth() -> None:
+
+async def test_autenticar_sin_hash_emite_token() -> None:
     provider = JwtAuthProvider(secret_key="test-secret")
 
-    token = await provider.autenticar("cliente1", "cualquier-password")
+    token = await provider.autenticar("cliente1", "cualquier-password", password_hash=None)
 
     assert token is not None
 
 
+async def test_autenticar_con_hash_correcto_emite_token() -> None:
+    provider = JwtAuthProvider(secret_key="test-secret")
+    hash_correcto = _ph.hash("mi-clave")
+
+    token = await provider.autenticar("cliente1", "mi-clave", password_hash=hash_correcto)
+
+    assert token is not None
+
+
+async def test_autenticar_con_hash_incorrecto_devuelve_none() -> None:
+    provider = JwtAuthProvider(secret_key="test-secret")
+    hash_otro = _ph.hash("otra-clave")
+
+    token = await provider.autenticar("cliente1", "mi-clave", password_hash=hash_otro)
+
+    assert token is None
+
+
 async def test_verificar_token_returns_the_usuario_encoded_in_a_valid_token() -> None:
     provider = JwtAuthProvider(secret_key="test-secret")
-    token = await provider.autenticar("cliente1", "cualquier-password")
+    token = await provider.autenticar("cliente1", "cualquier-password", password_hash=None)
 
     assert await provider.verificar_token(token) == "cliente1"
 

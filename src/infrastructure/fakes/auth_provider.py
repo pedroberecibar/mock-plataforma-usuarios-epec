@@ -8,7 +8,11 @@ class FakeAuthProvider(AuthProvider):
         self._usuarios = usuarios or {}
         self._tokens: dict[str, str] = {}
 
-    async def autenticar(self, usuario: str, password: str) -> str | None:
+    async def autenticar(
+        self, usuario: str, password: str, password_hash: str | None = None
+    ) -> str | None:
+        if password_hash is not None and not self.verificar_password(password, password_hash):
+            return None
         token = str(uuid4())
         self._tokens[token] = usuario
         return token
