@@ -19,6 +19,7 @@ const COMPARACION_VACIA = {
 beforeEach(() => {
   vi.mocked(consumoApi.fetchSerieDiaria).mockResolvedValue(SERIE_VACIA);
   vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_VACIA);
+  vi.mocked(consumoApi.fetchAnomalia).mockResolvedValue(null);
   vi.mocked(consumoApi.fetchDetalleDia).mockResolvedValue({
     fecha: "2026-06-15",
     kwh_dia: 12.5,

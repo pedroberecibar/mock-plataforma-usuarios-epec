@@ -43,7 +43,7 @@ export function ConsumoPage({ token, suministroId }: Props) {
     Promise.all([
       fetchSerieDiaria(token, suministroId, primerDiaMes(), hoy()),
       fetchComparacion(token, suministroId, mesActualStr()),
-      fetchAnomalia(token, suministroId, mesActualStr()).catch(() => null),
+      fetchAnomalia(token, mesActualStr()).catch(() => null),
     ])
       .then(([d, c, a]) => {
         setDiario(d);
@@ -70,7 +70,7 @@ export function ConsumoPage({ token, suministroId }: Props) {
     setDescargandoCsv(true);
     const desde = primerDiaMes();
     const hasta = hoy();
-    const url = `/consumo/${suministroId}/export/csv?desde=${desde}&hasta=${hasta}`;
+    const url = `/consumo/export/csv?desde=${desde}&hasta=${hasta}`;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.blob())
       .then((blob) => {

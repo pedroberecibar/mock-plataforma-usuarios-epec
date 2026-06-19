@@ -66,7 +66,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
   async function handleGuardar() {
     const valor = parseFloat(inputKwh);
     if (isNaN(valor) || valor <= 0) {
-      setErrorMsg("IngresÃ¡ un valor mayor a 0 kWh");
+      setErrorMsg("Ingresá un valor mayor a 0 kWh");
       return;
     }
     setErrorMsg(null);
@@ -110,11 +110,11 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
         Objetivo de consumo
       </h1>
       <p style={{ fontSize: fontSize.sm, color: fg.secondary, fontFamily: font.sans, margin: `0 0 ${space[8]}px` }}>
-        EstablecÃ© tu meta mensual en kWh para recibir alertas cuando te acercÃ¡s al lÃ­mite.
+        Establecé tu meta mensual en kWh para recibir alertas cuando te acercás al límite.
       </p>
 
       {estado === "cargando" && (
-        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Cargandoâ€¦</p>
+        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Cargando…</p>
       )}
 
       {estado === "error" && (
@@ -183,8 +183,8 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                   }}
                 >
                   {superado
-                    ? "Objetivo superado â€” revisÃ¡ tu consumo."
-                    : `AtenciÃ³n: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
+                    ? "Objetivo superado — revisá tu consumo."
+                    : `Atención: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
                 </p>
               )}
 
@@ -326,7 +326,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
       )}
 
       {estado === "guardando" && (
-        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Guardandoâ€¦</p>
+        <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Guardando…</p>
       )}
     </div>
   );
@@ -336,9 +336,9 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
   const { texto_dinamico, dias_objetivo_consumidos, dias_transcurridos, excedente_kwh } = estado;
 
   const mensajes: Record<string, string> = {
-    bajo_ritmo: "Vas bien, estÃ¡s por debajo de tu ritmo objetivo.",
-    en_ritmo: "Vas en lÃ­nea con tu objetivo.",
-    sobre_ritmo: "AtenciÃ³n, estÃ¡s consumiendo mÃ¡s rÃ¡pido que tu objetivo.",
+    bajo_ritmo: "Vas bien, estás por debajo de tu ritmo objetivo.",
+    en_ritmo: "Vas en línea con tu objetivo.",
+    sobre_ritmo: "Atención, estás consumiendo más rápido que tu objetivo.",
     agotado: "Ya alcanzaste tu objetivo de consumo de este mes.",
   };
 
@@ -356,7 +356,7 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
 
   return (
     <div style={{ marginBottom: space[6] }}>
-      <Label>DÃ­as de consumo</Label>
+      <Label>Días de consumo</Label>
       <p
         data-testid="indicador-2-texto"
         style={{
@@ -395,14 +395,14 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
             }} />
           </div>
           <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
-            {dias_objetivo_consumidos.toFixed(1)} de {dias_transcurridos} dÃ­as objetivo consumidos
+            {dias_objetivo_consumidos.toFixed(1)} de {dias_transcurridos} días objetivo consumidos
           </p>
         </>
       )}
 
       {(texto_dinamico === "sobre_ritmo" || texto_dinamico === "agotado") && (
         <p style={{ fontSize: fontSize.xs, color: color.neutral600, marginTop: space[2] }}>
-          ðŸ’¡ Palanca: revisÃ¡ tus electrodomÃ©sticos de mayor consumo o postponÃ© el uso de lavarropas/lavavajillas a horarios de menor demanda.
+          💡 Palanca: revisá tus electrodomésticos de mayor consumo o postponé el uso de lavarropas/lavavajillas a horarios de menor demanda.
         </p>
       )}
     </div>

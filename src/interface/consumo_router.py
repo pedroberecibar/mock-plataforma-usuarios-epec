@@ -13,7 +13,12 @@ from application.use_cases.obtener_comparacion_historica import (
 from application.use_cases.obtener_serie_diaria import ObtenerSerieDiariaUseCase
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.vecinos_repository import VecinosRepository
-from interface.dependencies import get_consumo_repo, get_usuario_actual, get_vecinos_repo
+from interface.dependencies import (
+    get_consumo_repo,
+    get_suministro_actual,
+    get_usuario_actual,
+    get_vecinos_repo,
+)
 
 router = APIRouter(prefix="/consumo", tags=["consumo"])
 
@@ -117,11 +122,10 @@ async def get_comparacion_historica(
     )
 
 
-@router.get("/{suministro_id}/anomalia", response_model=AnomaliaResponse | None)
+@router.get("/anomalia", response_model=AnomaliaResponse | None)
 async def get_anomalia_consumo(
-    suministro_id: str,
     mes: str,
-    _usuario: str = Depends(get_usuario_actual),
+    suministro_id: str = Depends(get_suministro_actual),
     repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
 ) -> AnomaliaResponse | None:
     try:
@@ -140,12 +144,11 @@ async def get_anomalia_consumo(
     )
 
 
-@router.get("/{suministro_id}/export/csv")
+@router.get("/export/csv")
 async def export_consumo_csv(
-    suministro_id: str,
     desde: date,
     hasta: date,
-    _usuario: str = Depends(get_usuario_actual),
+    suministro_id: str = Depends(get_suministro_actual),
     repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
 ) -> Response:
     serie = await repo.get_serie(suministro_id, desde, hasta)
