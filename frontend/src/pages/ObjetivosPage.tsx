@@ -32,10 +32,12 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
   const [inputKwh, setInputKwh] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [estadoObj, setEstadoObj] = useState<ObjetivoEstadoResponse | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     const mes = mesActualYYYYMM();
+    setEstado("cargando");
 
     Promise.all([
       fetchObjetivo(token),
@@ -59,7 +61,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
     evaluarObjetivo(token);
 
     return () => { cancelled = true; };
-  }, [token, suministroId]);
+  }, [token, suministroId, retryCount]);
 
   async function handleGuardar() {
     const valor = parseFloat(inputKwh);
@@ -116,9 +118,35 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
       )}
 
       {estado === "error" && (
-        <p style={{ color: color.errorDark, fontSize: fontSize.sm }}>
-          Error al cargar el objetivo. Intentá de nuevo.
-        </p>
+        <div style={{
+          display:      "flex",
+          alignItems:   "center",
+          gap:          space[3],
+          padding:      `${space[3]}px ${space[4]}px`,
+          background:   color.errorLight,
+          border:       `1px solid ${color.error}`,
+          borderRadius: radius.sm,
+        }}>
+          <p style={{ color: color.errorDark, fontSize: fontSize.sm, margin: 0, flex: 1 }}>
+            Error al cargar el objetivo.
+          </p>
+          <button
+            onClick={() => { setEstadoObj(null); setObjetivoState(null); setRetryCount((n) => n + 1); }}
+            style={{
+              padding:      `${space[1]}px ${space[3]}px`,
+              background:   color.errorDark,
+              color:        color.white,
+              border:       "none",
+              borderRadius: radius.sm,
+              fontSize:     fontSize.xs,
+              fontWeight:   fontWeight.medium,
+              cursor:       "pointer",
+              whiteSpace:   "nowrap",
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
       )}
 
       {(estado === "con_objetivo" || estado === "sin_objetivo") && (

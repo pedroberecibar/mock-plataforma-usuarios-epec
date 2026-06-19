@@ -1,6 +1,13 @@
-﻿{
+{
   "hooks": {
     "PreToolUse": [],
     "PostToolUse": []
+  },
+  "mcpServers": {
+    "agent-browser": {
+      "command": "C:\\Users\\pberecibar\\AppData\\Roaming\\npm\\node_modules\\agent-browser\\bin\\agent-browser-win32-x64.exe",
+      "args": ["mcp"],
+      "type": "stdio"
+    }
   }
 }

@@ -34,7 +34,7 @@ interface BadgeStyle {
 const CONFIANZA_BADGE: Record<ConfianzaKey, BadgeStyle> = {
   alta:      { background: color.successLight, color: color.successDark },
   media:     { background: color.warningLight, color: color.warningDark },
-  baja:      { background: color.errorLight,   color: color.errorDark   },
+  baja:      { background: color.warningLight,  color: color.warningDark },
   sin_datos: { background: color.neutral100,   color: color.neutral600  },
 };
 

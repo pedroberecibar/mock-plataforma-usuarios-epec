@@ -115,7 +115,7 @@ export const brand = {
 export const font = {
   sans:      "'Hanken Grotesk', 'Segoe UI', sans-serif",  // body, UI text
   technical: "'Space Grotesk', 'Hanken Grotesk', sans-serif",  // kWh numeric display
-  mono:      "'JetBrains Mono', 'Courier New', monospace",  // labels, metadata
+  mono:      "'Roboto Mono', 'Courier New', monospace",      // labels, metadata
 } as const;
 
 export const fontSize = {

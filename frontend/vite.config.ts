@@ -5,9 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/consumo": "http://localhost:8000",
-      "/auth": "http://localhost:8000",
-      "/home": "http://localhost:8000",
+      "/consumo":   "http://localhost:8000",
+      "/auth":      "http://localhost:8000",
+      "/home":      "http://localhost:8000",
+      "/objetivos": "http://localhost:8000",
+      "/alertas":   "http://localhost:8000",
     },
   },
   test: {

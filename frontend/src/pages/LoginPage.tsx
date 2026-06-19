@@ -158,12 +158,13 @@ export function LoginPage({ onLogin }: Props) {
 
               {/* Usuario */}
               <div style={{ display: "flex", flexDirection: "column", gap: space[1] }}>
-                <label htmlFor="usuario" style={labelStyle}>Usuario</label>
+                <label htmlFor="usuario" style={labelStyle}>Número de Suministro</label>
                 <input
                   id="usuario"
                   type="text"
                   value={usuario}
                   onChange={(e) => setUsuario(e.target.value)}
+                  placeholder="ej. 3037481"
                   autoComplete="username"
                   required
                   disabled={loading}
