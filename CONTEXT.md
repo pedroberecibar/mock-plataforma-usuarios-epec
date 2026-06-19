@@ -3,34 +3,35 @@
 ## Última sesión
 - **Fecha:** 2026-06-19
 - **Qué se completó:**
-  - CU-C06: `DetectarAnomaliaConsumoUseCase` (z-score > 2.0), endpoint `GET /consumo/anomalia`, banner en `ConsumoPage.tsx`
-  - CU-C07: endpoint `GET /consumo/export/csv`, botón "Exportar CSV" en `ConsumoPage.tsx` (oculto < 768px)
-  - CU-A06: rate-limit por tipo en `EvaluarAlertasUseCase` (cooldown 24h/12h/6h), método `ya_en_cooldown` en port
+  - Sprint 10: CU-C06 (anomalía z-score), CU-C07 (export CSV), CU-A06 (rate-limit cooldown por tipo)
+  - fix(security): IDOR en `/consumo/anomalia` y `/consumo/export/csv` → `get_suministro_actual`
   - fix(privacidad): k-anonymity `n_vecinos < 5` en `ObtenerHomeUseCase`
-  - fix(security): IDOR en `/consumo/anomalia` y `/consumo/export/csv` — usan `get_suministro_actual` en lugar de URL param
-  - fix(encoding): strings garbled en `ObjetivosPage.tsx` (curly quotes U+201C/D reemplazadas por ASCII, acentos corregidos)
-  - chore(design-system): refactor SOLORA (warm cream, nav icons, retry button, proxy config)
-  - fix(alertas): `registrar_enviada` usa fecha inyectada en vez de `datetime.now()`
-  - Suite completa verde: pytest 262/262, vitest 74/74, mypy, ruff, tsc
+  - fix(alertas): timestamp usa fecha inyectada en `EvaluarAlertasUseCase`
+  - fix(encoding): strings garbled en `ObjetivosPage.tsx` (curly quotes → ASCII)
+  - chore(design-system): refactor SOLORA warm cream
+  - feat(factura): integración experimental API EPEC en `ObtenerLinkFacturaUseCase` (httpx)
+  - refactor scheduler: backfill en una sola llamada en vez de día por día
+  - Suite verde: pytest 262/262 · vitest 74/74 · mypy ok · ruff ok · tsc ok
 - **Qué quedó incompleto:**
-  - NFR Responsive: screenshots en 375/768/1280 con agent-browser — dev server no disponible durante la sesión
+  - NFR Responsive: screenshots en 375/768/1280 — dev server no disponible en sesión
+  - NFR Performance Lighthouse CI < 3 s en 3G — no medido
+  - NFR PWA offline (service worker) — no implementado
+  - NFR Observabilidad (structlog + Sentry) — no implementado
+  - CU-A01: push web real (PywebpushSender) — solo email implementado
+  - IDOR en `/consumo/{id}/diario` y `/consumo/{id}/comparacion` — pendiente menor
+  - DEUDA arq.: `httpx` importado directamente en `ObtenerLinkFacturaUseCase` (viola Ports & Adapters); refactorizar a `FacturaVerificacionPort` en sprint-11
 - **Decisiones técnicas no documentadas:**
-  - Los endpoints `/diario` y `/comparacion` conservan patrón IDOR (`{suministro_id}` URL + `_usuario` JWT). Fuera de scope sprint-10.
-  - `autenticar()` en `JwtAuthProvider` no verifica contraseña (verificacion en `auth_router`). Fix arquitectónico mayor, pendiente sprint-11.
-  - Curly quotes corregidas con PowerShell replace de bytes (U+201C/D → U+0022). El Edit tool no puede matchear curly vs ASCII.
-- **Primer paso para la próxima sesión:**
-  - Levantar dev server: `cd frontend && npx vite` + `cd .. && uvicorn src.main:app --reload`
-  - Tomar screenshots responsive con agent-browser en 375/768/1280px para ConsumoPage (verificar botón CSV oculto en móvil)
-  - Commit final: `feat(sprint-10): hardening, NFR y features should — release MVP`
+  - La API de EPEC para verificar contratos es `GET https://www.epec.com.ar/api/contratos/no-ov/{nc}/{ct}` con `apikey: web-prod`. Encontrada por el usuario explorando la web de EPEC.
+  - El scheduler de ingesta ahora hace una sola llamada al source reader por período (en vez de iterar día por día) — cambio de comportamiento que simplifica el code pero asume que el source soporta rangos amplios.
+- **Primer paso para la próxima sesión:** Sprint 11 — refactorizar `httpx` a `FacturaVerificacionPort`, luego screenshots responsive, luego observabilidad
 - **Tests fallando intencionalmente:** Ninguno
 
 ## Estado del repo
 ```
-b5c8516 fix(security): corregir IDOR en endpoints de anomalia y CSV, encoding ObjetivosPage
-f29fff5 refactor(components): add Icon wrapper with strokeWidth 1.5
-e9e312a fix(privacidad): k-anonymity n<5 en ObtenerHomeUseCase (CU-NF02)
-e9d31c3 feat(sprint-10): CU-C06 anomalia, CU-C07 CSV export, CU-A06 rate-limit
-5f34a76 chore(design-system): refactor SOLORA warm cream theme y mejoras UX
+def7420 feat(factura): integración experimental API EPEC + refactor scheduler
+b5c8516 fix(security): IDOR anomalía/CSV, encoding ObjetivosPage
+f29fff5 refactor(components): add Icon wrapper
+e9e312a fix(privacidad): k-anonymity n<5 ObtenerHomeUseCase
+e9d31c3 feat(sprint-10): CU-C06 anomalía, CU-C07 CSV, CU-A06 rate-limit
 ```
-
-Archivos sin trackear (ignorar): `data/*.db-shm`, `data/*.db-wal`, `epec.db`, `login-warm.png`
+Working tree limpio (solo archivos ignorables: db-shm, db-wal, epec.db, login-warm.png)
