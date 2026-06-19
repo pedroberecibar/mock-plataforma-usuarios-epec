@@ -19,7 +19,9 @@ from interface.ingest_router import router as ingest_router
 
 
 class _FakeAuth(AuthProvider):
-    async def autenticar(self, usuario: str, password: str) -> str | None:
+    async def autenticar(
+        self, usuario: str, password: str, password_hash: str | None = None
+    ) -> str | None:
         return "fake-token"
 
     async def verificar_token(self, token: str) -> str | None:

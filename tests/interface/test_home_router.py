@@ -9,22 +9,30 @@ from fastapi.testclient import TestClient
 from domain.ports.auth_provider import AuthProvider
 from infrastructure.fakes.consumo_diario_repository import FakeConsumoDiarioRepository
 from infrastructure.fakes.proyeccion_repository import FakeProyeccionRepository
+from infrastructure.fakes.usuario_repository import FakeUsuarioRepository
 from infrastructure.fakes.vecinos_repository import FakeVecinosRepository
 from interface.dependencies import (
     get_auth_provider,
     get_consumo_repo,
     get_proyeccion_repo,
+    get_usuario_repo,
     get_vecinos_repo,
 )
 from interface.home_router import router as home_router
 
+_TEST_TOKEN = "fake-token"
+_TEST_SUMINISTRO = "S1"
+_TEST_USUARIO = "usuario-test"
+
 
 class _FakeAuth(AuthProvider):
-    async def autenticar(self, usuario: str, password: str) -> str | None:
-        return "fake-token"
+    async def autenticar(
+        self, usuario: str, password: str, password_hash: str | None = None
+    ) -> str | None:
+        return _TEST_TOKEN
 
     async def verificar_token(self, token: str) -> str | None:
-        return "usuario-test" if token == "fake-token" else None
+        return _TEST_USUARIO if token == _TEST_TOKEN else None
 
     def verificar_password(self, password: str, password_hash: str) -> bool:
         return True
@@ -38,6 +46,9 @@ def _make_app(
     app = FastAPI()
     app.include_router(home_router)
     app.dependency_overrides[get_auth_provider] = lambda: _FakeAuth()
+    app.dependency_overrides[get_usuario_repo] = lambda: FakeUsuarioRepository(
+        {_TEST_USUARIO: _TEST_SUMINISTRO}
+    )
     app.dependency_overrides[get_consumo_repo] = lambda: consumo
     app.dependency_overrides[get_vecinos_repo] = lambda: vecinos or FakeVecinosRepository()
     app.dependency_overrides[get_proyeccion_repo] = lambda: proy or FakeProyeccionRepository()
@@ -57,7 +68,7 @@ def test_home_requiere_autenticacion() -> None:
     consumo = FakeConsumoDiarioRepository()
     client = _make_app(consumo)
 
-    resp = client.get("/home/S1?mes=2026-06")
+    resp = client.get("/home?mes=2026-06")
 
     assert resp.status_code == 401
 
@@ -74,7 +85,7 @@ def test_home_devuelve_estructura_completa() -> None:
 
     client = _make_app(consumo)
     resp = client.get(
-        "/home/S1?mes=2026-06",
+        "/home?mes=2026-06",
         headers={"Authorization": "Bearer fake-token"},
     )
 
@@ -94,7 +105,7 @@ def test_home_consumo_mes_total() -> None:
 
     client = _make_app(consumo)
     resp = client.get(
-        "/home/S1?mes=2026-06",
+        "/home?mes=2026-06",
         headers={"Authorization": "Bearer fake-token"},
     )
 
@@ -108,7 +119,7 @@ def test_home_usa_mes_actual_si_no_se_especifica() -> None:
     client = _make_app(consumo)
 
     resp = client.get(
-        "/home/S1",
+        "/home",
         headers={"Authorization": "Bearer fake-token"},
     )
 
@@ -120,7 +131,7 @@ def test_home_error_422_si_mes_invalido() -> None:
     client = _make_app(consumo)
 
     resp = client.get(
-        "/home/S1?mes=2026-13",
+        "/home?mes=2026-13",
         headers={"Authorization": "Bearer fake-token"},
     )
 
@@ -134,7 +145,7 @@ def test_home_zona_sin_vecinos() -> None:
 
     client = _make_app(consumo, vecinos=vecinos)
     resp = client.get(
-        "/home/S1?mes=2026-06",
+        "/home?mes=2026-06",
         headers={"Authorization": "Bearer fake-token"},
     )
 
@@ -152,7 +163,7 @@ def test_home_proyeccion_insuficiente_devuelve_rangos_null() -> None:
 
     client = _make_app(consumo)
     resp = client.get(
-        "/home/S1?mes=2026-06",
+        "/home?mes=2026-06",
         headers={"Authorization": "Bearer fake-token"},
     )
 

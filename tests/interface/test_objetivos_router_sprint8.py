@@ -67,7 +67,7 @@ def test_sugerido_sin_datos_cuando_no_hay_vecinos() -> None:
     client, _, _, _ = build_client()
 
     res = client.get(
-        f"/objetivos/sugerido/{SUMINISTRO}?mes=2026-06",
+        "/objetivos/sugerido?mes=2026-06",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
 
@@ -91,7 +91,7 @@ async def test_sugerido_devuelve_promedio_con_cinco_vecinos() -> None:
 
     client, _, _, _ = build_client(consumo_repo=consumo_repo, vecinos_repo=vecinos_repo)
     res = client.get(
-        f"/objetivos/sugerido/{SUMINISTRO}?mes=2026-06",
+        "/objetivos/sugerido?mes=2026-06",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
 
@@ -106,7 +106,7 @@ async def test_sugerido_devuelve_promedio_con_cinco_vecinos() -> None:
 def test_sugerido_retorna_422_con_mes_invalido() -> None:
     client, _, _, _ = build_client()
     res = client.get(
-        f"/objetivos/sugerido/{SUMINISTRO}?mes=no-valido",
+        "/objetivos/sugerido?mes=no-valido",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
     assert res.status_code == 422
@@ -120,7 +120,7 @@ def test_sugerido_retorna_422_con_mes_invalido() -> None:
 def test_estado_sin_objetivo() -> None:
     client, _, _, _ = build_client()
     res = client.get(
-        f"/objetivos/{SUMINISTRO}/estado?mes=2026-06",
+        "/objetivos/estado?mes=2026-06",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
     assert res.status_code == 200
@@ -137,7 +137,7 @@ async def test_estado_agotado() -> None:
 
     client, _, _, _ = build_client(objetivo_repo=objetivo_repo, consumo_repo=consumo_repo)
     res = client.get(
-        f"/objetivos/{SUMINISTRO}/estado?mes=2026-06&hoy=2026-06-15",
+        "/objetivos/estado?mes=2026-06&hoy=2026-06-15",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
     assert res.status_code == 200
@@ -158,7 +158,7 @@ async def test_estado_sobre_ritmo() -> None:
 
     client, _, _, _ = build_client(objetivo_repo=objetivo_repo, consumo_repo=consumo_repo)
     res = client.get(
-        f"/objetivos/{SUMINISTRO}/estado?mes=2026-06&hoy=2026-06-15",
+        "/objetivos/estado?mes=2026-06&hoy=2026-06-15",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
     body = res.json()
@@ -168,7 +168,7 @@ async def test_estado_sobre_ritmo() -> None:
 def test_estado_retorna_422_con_mes_invalido() -> None:
     client, _, _, _ = build_client()
     res = client.get(
-        f"/objetivos/{SUMINISTRO}/estado?mes=abc",
+        "/objetivos/estado?mes=abc",
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
     assert res.status_code == 422

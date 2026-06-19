@@ -1,3 +1,5 @@
+import os
+
 import httpx
 
 from domain.ports.factura_verificacion_port import FacturaVerificacionPort
@@ -6,8 +8,7 @@ _EPEC_URL = "https://www.epec.com.ar/api/contratos/no-ov/{nc}/{ct}"
 _HEADERS = {
     "accept": "application/json, text/plain, */*",
     "accept-language": "es-419,es;q=0.9",
-    "apikey": "web-prod",
-    "headername": "headerValue",
+    "apikey": os.environ.get("EPEC_API_KEY", "web-prod"),
     "referrer": "https://www.epec.com.ar/tramites/pagos",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
 }

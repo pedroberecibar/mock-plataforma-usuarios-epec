@@ -11,7 +11,7 @@ from domain.ports.vecinos_repository import VecinosRepository
 from interface.dependencies import (
     get_consumo_repo,
     get_proyeccion_repo,
-    get_usuario_actual,
+    get_suministro_actual,
     get_vecinos_repo,
 )
 
@@ -46,11 +46,10 @@ class HomeResponse(BaseModel):
     timestamp: datetime
 
 
-@router.get("/{suministro_id}", response_model=HomeResponse)
+@router.get("", response_model=HomeResponse)
 async def get_home(
-    suministro_id: str,
     mes: str | None = None,
-    _usuario: str = Depends(get_usuario_actual),
+    suministro_id: str = Depends(get_suministro_actual),
     consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
     vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
     proyeccion_repo: ProyeccionRepository = Depends(get_proyeccion_repo),

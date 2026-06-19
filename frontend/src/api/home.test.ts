@@ -24,12 +24,12 @@ describe("fetchHome", () => {
     mockFetch.mockReset();
   });
 
-  it("construye la URL con suministro y mes", async () => {
+  it("construye la URL con mes (suministro viene del JWT en backend)", async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => stubHome });
 
-    await fetchHome("mi-token", "SRV-001", "2026-06");
+    await fetchHome("mi-token", "2026-06");
 
-    expect(mockFetch).toHaveBeenCalledWith("/home/SRV-001?mes=2026-06", {
+    expect(mockFetch).toHaveBeenCalledWith("/home?mes=2026-06", {
       headers: { Authorization: "Bearer mi-token" },
     });
   });
@@ -37,7 +37,7 @@ describe("fetchHome", () => {
   it("retorna la respuesta parseada cuando la respuesta es ok", async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => stubHome });
 
-    const result = await fetchHome("tok", "SRV-001", "2026-06");
+    const result = await fetchHome("tok", "2026-06");
 
     expect(result.consumo_mes.total_kwh).toBe(120.5);
     expect(result.proyeccion.metodo_aplicado).toBe("reciente");
@@ -47,12 +47,12 @@ describe("fetchHome", () => {
   it("lanza error con HTTP status cuando la respuesta no es ok", async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
 
-    await expect(fetchHome("bad", "SRV-001", "2026-06")).rejects.toThrow("HTTP 401");
+    await expect(fetchHome("bad", "2026-06")).rejects.toThrow("HTTP 401");
   });
 
   it("lanza error HTTP 404 cuando el suministro no existe", async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-    await expect(fetchHome("tok", "SRV-X", "2026-06")).rejects.toThrow("HTTP 404");
+    await expect(fetchHome("tok", "2026-06")).rejects.toThrow("HTTP 404");
   });
 });

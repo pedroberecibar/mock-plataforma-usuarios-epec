@@ -34,7 +34,7 @@ def test_devuelve_url_correctamente() -> None:
         assert response.json()["url"] == "https://epec.com.ar/factura"
 
 
-def test_devuelve_500_si_epec_falla() -> None:
+def test_devuelve_503_si_epec_falla() -> None:
     client = build_client("https://epec.com.ar/factura")
 
     with patch("interface.factura_router.ObtenerLinkFacturaUseCase") as mock_uc:
@@ -46,8 +46,8 @@ def test_devuelve_500_si_epec_falla() -> None:
             params={"numero_cliente": "123456", "numero_contrato": "789012"},
         )
 
-        assert response.status_code == 500
-        assert "API caída" in response.json()["detail"]
+        assert response.status_code == 503
+        assert response.json()["detail"] == "Servicio de facturación no disponible"
 
 
 def test_devuelve_422_si_faltan_parametros() -> None:

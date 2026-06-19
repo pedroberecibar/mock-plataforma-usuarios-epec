@@ -19,11 +19,11 @@ export async function fetchSerieDiaria(
 }
 
 export async function fetchDetalleDia(
-  suministroId: string,
+  token: string,
   fecha: string
 ): Promise<DetalleDiaResponse> {
-  const url = `${BASE}/consumo/${suministroId}/dia?fecha=${fecha}`;
-  const resp = await fetch(url);
+  const url = `${BASE}/consumo/dia?fecha=${fecha}`;
+  const resp = await fetch(url, { headers: authHeaders(token) });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.json() as Promise<DetalleDiaResponse>;
 }

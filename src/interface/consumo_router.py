@@ -60,10 +60,10 @@ class AnomaliaResponse(BaseModel):
     desviacion_pct: float
 
 
-@router.get("/{suministro_id}/dia", response_model=DetalleDiaResponse)
+@router.get("/dia", response_model=DetalleDiaResponse)
 async def get_detalle_dia(
-    suministro_id: str,
     fecha: date,
+    suministro_id: str = Depends(get_suministro_actual),
     consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
     vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
 ) -> DetalleDiaResponse:

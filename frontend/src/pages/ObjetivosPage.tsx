@@ -24,6 +24,11 @@ function mesActualYYYYMM(): string {
   return `${now.getFullYear()}-${m}`;
 }
 
+function diasDelMesActual(): number {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+}
+
 const WARN_THRESHOLD = 0.8;
 
 export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPageProps) {
@@ -41,7 +46,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
 
     Promise.all([
       fetchObjetivo(token),
-      fetchObjetivoEstado(token, suministroId, mes).catch(() => null),
+      fetchObjetivoEstado(token, mes).catch(() => null),
     ]).then(([obj, est]) => {
       if (cancelled) return;
       setObjetivoState(obj);
@@ -77,7 +82,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
       setEstado("con_objetivo");
       // Recargar estado de indicadores
       const mes = mesActualYYYYMM();
-      const est = await fetchObjetivoEstado(token, suministroId, mes).catch(() => null);
+      const est = await fetchObjetivoEstado(token, mes).catch(() => null);
       setEstadoObj(est);
     } catch {
       setEstado("error");
@@ -243,6 +248,10 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
           )}
 
           {/* â”€â”€ Indicador 1: Tu objetivo vs tu zona â”€â”€ */}
+          {estadoObj && estadoObj.consumo_acumulado_kwh != null && objetivo && (
+            <IndicadoresAdicionales estadoObj={estadoObj} objetivo={objetivo} />
+          )}
+
           {estadoObj && estadoObj.promedio_vecinos_kwh != null && estadoObj.diferencia_pct != null && (
             <div style={{ marginBottom: space[6] }}>
               <Label>Tu objetivo vs tu zona</Label>
@@ -430,6 +439,86 @@ function Chip({
     }}>
       <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: accent }}>{label}</span>
       <span style={{ fontSize: fontSize.xs, color: fg.muted }}>{sublabel}</span>
+    </div>
+  );
+}
+
+function IndicadoresAdicionales({
+  estadoObj,
+  objetivo,
+}: {
+  estadoObj: ObjetivoEstadoResponse;
+  objetivo: ObjetivoResponse;
+}) {
+  const diasDelMes = diasDelMesActual();
+  const diasRestantes = Math.max(0, diasDelMes - estadoObj.dias_transcurridos);
+  const acumulado = estadoObj.consumo_acumulado_kwh ?? 0;
+  const kwh_restantes = Math.max(0, objetivo.valor_kwh - acumulado);
+  const kwh_por_dia = diasRestantes > 0 ? kwh_restantes / diasRestantes : null;
+
+  return (
+    <div style={{ marginBottom: space[6] }}>
+      <Label>Resumen del mes</Label>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+          gap: space[3],
+          marginTop: space[3],
+        }}
+      >
+        {estadoObj.consumo_promedio_diario_kwh != null && (
+          <MiniKpi
+            label="Promedio diario"
+            value={`${estadoObj.consumo_promedio_diario_kwh.toFixed(1)} kWh`}
+            sub="este mes"
+          />
+        )}
+        <MiniKpi
+          label="kWh restantes"
+          value={`${kwh_restantes.toFixed(0)} kWh`}
+          sub={`para cumplir el objetivo`}
+          accent={kwh_restantes <= 0 ? color.errorDark : color.green700}
+        />
+        {kwh_por_dia !== null && kwh_restantes > 0 && (
+          <MiniKpi
+            label="Podés usar por día"
+            value={`${kwh_por_dia.toFixed(1)} kWh`}
+            sub={`${diasRestantes} días restantes`}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniKpi({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  accent?: string;
+}) {
+  return (
+    <div
+      style={{
+        background: bg.page,
+        border: `1px solid #E8DFD0`,
+        borderRadius: radius.md,
+        padding: `${space[3]}px ${space[4]}px`,
+      }}
+    >
+      <p style={{ margin: 0, fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: fg.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        {label}
+      </p>
+      <p style={{ margin: `${space[1]}px 0 ${space[1]}px`, fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: accent ?? fg.primary, fontFamily: font.technical }}>
+        {value}
+      </p>
+      <p style={{ margin: 0, fontSize: fontSize.xs, color: fg.muted }}>{sub}</p>
     </div>
   );
 }

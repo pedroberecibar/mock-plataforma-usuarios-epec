@@ -37,7 +37,7 @@ export function HomePage({ token, suministroId, mes }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    fetchHome(token, suministroId, mesStr)
+    fetchHome(token, mesStr)
       .then(setData)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Error desconocido")

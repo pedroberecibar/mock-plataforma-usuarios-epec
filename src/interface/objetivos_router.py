@@ -74,7 +74,8 @@ async def set_objetivo(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     get_uc = GetObjetivoConsumoUseCase(repo)
     resultado = await get_uc.ejecutar(suministro_id)
-    assert resultado is not None
+    if resultado is None:
+        raise HTTPException(status_code=500, detail="Error interno al guardar objetivo")
     return _to_response(resultado)
 
 
@@ -95,6 +96,8 @@ class EstadoObjetivoResponse(BaseModel):
     excedente_kwh: float | None
     consumo_diario_real_kwh: float | None
     consumo_diario_objetivo_kwh: float | None
+    consumo_acumulado_kwh: float | None
+    consumo_promedio_diario_kwh: float | None
 
 
 def _parse_mes(mes_str: str) -> date:
@@ -105,9 +108,9 @@ def _parse_mes(mes_str: str) -> date:
         raise HTTPException(status_code=422, detail="mes debe tener formato YYYY-MM") from exc
 
 
-@router.get("/sugerido/{suministro_id}", response_model=ObjetivoSugeridoResponse)
+@router.get("/sugerido", response_model=ObjetivoSugeridoResponse)
 async def get_objetivo_sugerido(
-    suministro_id: str,
+    suministro_id: str = Depends(get_suministro_actual),
     mes: str = Query(default=None, description="YYYY-MM; si se omite se usa el mes actual"),
     vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
     consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
@@ -127,9 +130,9 @@ async def get_objetivo_sugerido(
     )
 
 
-@router.get("/{suministro_id}/estado", response_model=EstadoObjetivoResponse)
+@router.get("/estado", response_model=EstadoObjetivoResponse)
 async def get_estado_objetivo(
-    suministro_id: str,
+    suministro_id: str = Depends(get_suministro_actual),
     mes: str = Query(default=None, description="YYYY-MM; si se omite se usa el mes actual"),
     hoy: str = Query(default=None, description="YYYY-MM-DD; solo para tests"),
     objetivo_repo: ObjetivoConsumoRepository = Depends(get_objetivo_repo),
@@ -164,4 +167,6 @@ async def get_estado_objetivo(
         excedente_kwh=result.excedente_kwh,
         consumo_diario_real_kwh=result.consumo_diario_real_kwh,
         consumo_diario_objetivo_kwh=result.consumo_diario_objetivo_kwh,
+        consumo_acumulado_kwh=result.consumo_acumulado_kwh,
+        consumo_promedio_diario_kwh=result.consumo_promedio_diario_kwh,
     )

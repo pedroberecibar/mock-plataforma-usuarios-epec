@@ -57,8 +57,8 @@ def test_login_returns_401_for_wrong_password() -> None:
     assert response.status_code == 401
 
 
-def test_login_returns_200_when_no_password_hash_stored() -> None:
-    """Sin password_hash configurado el login es permitido (MVP: passwords son opcionales)."""
+def test_login_returns_401_when_no_password_hash_stored() -> None:
+    """Sin password_hash en BD el login es rechazado (usuario sin contraseña establecida)."""
     client = build_client(
         usuarios_suministros={"demo": "3037481"},
         password_hashes={},
@@ -66,4 +66,4 @@ def test_login_returns_200_when_no_password_hash_stored() -> None:
 
     response = client.post("/auth/login", json={"usuario": "demo", "password": "clave"})
 
-    assert response.status_code == 200
+    assert response.status_code == 401

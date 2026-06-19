@@ -32,20 +32,21 @@ export async function setObjetivo(token: string, valor_kwh: number): Promise<Obj
 }
 
 export async function fetchObjetivoSugerido(
-  suministroId: string,
+  token: string,
   mes: string,
 ): Promise<ObjetivoSugeridoResponse> {
-  const res = await fetch(`${BASE}/objetivos/sugerido/${suministroId}?mes=${mes}`);
+  const res = await fetch(`${BASE}/objetivos/sugerido?mes=${mes}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<ObjetivoSugeridoResponse>;
 }
 
 export async function fetchObjetivoEstado(
   token: string,
-  suministroId: string,
   mes: string,
 ): Promise<ObjetivoEstadoResponse> {
-  const res = await fetch(`${BASE}/objetivos/${suministroId}/estado?mes=${mes}`, {
+  const res = await fetch(`${BASE}/objetivos/estado?mes=${mes}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

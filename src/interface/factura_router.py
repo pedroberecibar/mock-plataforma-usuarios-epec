@@ -46,7 +46,11 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         try:
             url = await uc.ejecutar(numero_cliente, numero_contrato)
             return LinkResponse(url=url)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error al conectar con EPEC: {e}") from e
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception:
+            raise HTTPException(
+                status_code=503, detail="Servicio de facturación no disponible"
+            ) from None
 
     return router

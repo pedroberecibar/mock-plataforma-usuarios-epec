@@ -29,7 +29,7 @@ export function OnboardingObjetivoPage({ token, suministroId, onObjetivoGuardado
 
   useEffect(() => {
     let cancelled = false;
-    fetchObjetivoSugerido(suministroId, mesActualYYYYMM())
+    fetchObjetivoSugerido(token, mesActualYYYYMM())
       .then((s) => { if (!cancelled) { setSugerido(s); setCargando(false); } })
       .catch(() => { if (!cancelled) setCargando(false); });
     return () => { cancelled = true; };

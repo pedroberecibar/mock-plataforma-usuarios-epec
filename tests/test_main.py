@@ -1,10 +1,14 @@
 import asyncio
 
+from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from infrastructure.sqlite.models import Base, Usuario
 from main import create_app
+
+_ph = PasswordHasher()
+_TEST_PASSWORD = "mi-clave-segura"
 
 
 def test_create_app_wires_a_working_login_endpoint(monkeypatch, tmp_path) -> None:
@@ -17,14 +21,20 @@ def test_create_app_wires_a_working_login_endpoint(monkeypatch, tmp_path) -> Non
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         async with async_sessionmaker(engine, class_=AsyncSession)() as session:
-            session.add(Usuario(usuario="cliente1", suministro_id="3037481"))
+            session.add(
+                Usuario(
+                    usuario="cliente1",
+                    suministro_id="3037481",
+                    password_hash=_ph.hash(_TEST_PASSWORD),
+                )
+            )
             await session.commit()
         await engine.dispose()
 
     asyncio.run(_seed())
 
     client = TestClient(create_app())
-    response = client.post("/auth/login", json={"usuario": "cliente1", "password": "cualquiera"})
+    response = client.post("/auth/login", json={"usuario": "cliente1", "password": _TEST_PASSWORD})
 
     assert response.status_code == 200
     body = response.json()

@@ -1,10 +1,143 @@
 import { useEffect, useState } from "react";
 import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchSerieDiaria } from "../api/consumo";
-import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse } from "../api/types";
+import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, PuntoSerie } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
 import { PanelComparacion } from "../components/PanelComparacion";
 import { PanelDetalleDia } from "../components/PanelDetalleDia";
+
+interface SerieStats {
+  maxPunto: PuntoSerie | null;
+  minPunto: PuntoSerie | null;
+  promedio: number | null;
+  tendencia7d: "subiendo" | "bajando" | "estable" | null;
+}
+
+function calcularStats(serie: PuntoSerie[]): SerieStats {
+  const conDato = serie.filter((p) => p.kwh > 0);
+  if (conDato.length === 0) return { maxPunto: null, minPunto: null, promedio: null, tendencia7d: null };
+
+  const maxPunto = conDato.reduce((a, b) => (b.kwh > a.kwh ? b : a));
+  const minPunto = conDato.reduce((a, b) => (b.kwh < a.kwh ? b : a));
+  const promedio = conDato.reduce((s, p) => s + p.kwh, 0) / conDato.length;
+
+  let tendencia7d: SerieStats["tendencia7d"] = null;
+  if (conDato.length >= 8) {
+    const ultimos7 = conDato.slice(-7);
+    const anteriores7 = conDato.slice(-14, -7);
+    if (anteriores7.length >= 4) {
+      const avgUlt = ultimos7.reduce((s, p) => s + p.kwh, 0) / ultimos7.length;
+      const avgAnt = anteriores7.reduce((s, p) => s + p.kwh, 0) / anteriores7.length;
+      const diff = (avgUlt - avgAnt) / avgAnt;
+      if (diff > 0.05) tendencia7d = "subiendo";
+      else if (diff < -0.05) tendencia7d = "bajando";
+      else tendencia7d = "estable";
+    }
+  }
+
+  return { maxPunto, minPunto, promedio, tendencia7d };
+}
+
+function formatFechaDia(fecha: string): string {
+  const d = new Date(fecha + "T00:00:00");
+  const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  return `${dias[d.getDay()]} ${d.getDate()}`;
+}
+
+interface StatsBarConsumoProps {
+  stats: SerieStats;
+  onClickMax?: () => void;
+  onClickMin?: () => void;
+}
+
+function StatsBarConsumo({ stats, onClickMax, onClickMin }: StatsBarConsumoProps) {
+  if (!stats.maxPunto && !stats.minPunto && stats.promedio === null) return null;
+
+  const TENDENCIA_LABEL = { subiendo: "↑ Subiendo", bajando: "↓ Bajando", estable: "→ Estable" };
+  const TENDENCIA_COLOR = { subiendo: "#b22c2c", bajando: "#1a7a4a", estable: "#6B5A45" };
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 8,
+        marginBottom: 16,
+      }}
+    >
+      {stats.maxPunto && (
+        <StatCard
+          label="Día más alto"
+          value={`${stats.maxPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
+          sub={formatFechaDia(stats.maxPunto.fecha)}
+          accentColor="#b22c2c"
+          onClick={onClickMax}
+          clickable={!!onClickMax}
+        />
+      )}
+      {stats.minPunto && (
+        <StatCard
+          label="Día más bajo"
+          value={`${stats.minPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
+          sub={formatFechaDia(stats.minPunto.fecha)}
+          accentColor="#1a7a4a"
+          onClick={onClickMin}
+          clickable={!!onClickMin}
+        />
+      )}
+      {stats.promedio !== null && (
+        <StatCard
+          label="Promedio diario"
+          value={`${stats.promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
+          sub="este mes"
+          accentColor="#333"
+        />
+      )}
+      {stats.tendencia7d && (
+        <StatCard
+          label="Últimos 7 días"
+          value={TENDENCIA_LABEL[stats.tendencia7d]}
+          sub="vs semana anterior"
+          accentColor={TENDENCIA_COLOR[stats.tendencia7d]}
+        />
+      )}
+    </div>
+  );
+}
+
+interface StatCardProps {
+  label: string;
+  value: string;
+  sub: string;
+  accentColor: string;
+  onClick?: () => void;
+  clickable?: boolean;
+}
+
+function StatCard({ label, value, sub, accentColor, onClick, clickable }: StatCardProps) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        background: "#fff",
+        border: "1px solid #E8DFD0",
+        borderRadius: 8,
+        padding: "10px 14px",
+        cursor: clickable ? "pointer" : "default",
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 11, color: "#6B5A45", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        {label}
+      </p>
+      <p style={{ margin: "4px 0 2px", fontSize: 15, fontWeight: 700, color: accentColor }}>
+        {value}
+      </p>
+      <p style={{ margin: 0, fontSize: 11, color: "#999" }}>
+        {sub}
+      </p>
+    </div>
+  );
+}
 
 interface Props {
   token: string;
@@ -60,7 +193,7 @@ export function ConsumoPage({ token, suministroId }: Props) {
     setFechaSeleccionada(fecha);
     setDetalleDia(null);
     setLoadingDetalle(true);
-    fetchDetalleDia(suministroId, fecha)
+    fetchDetalleDia(token, fecha)
       .then(setDetalleDia)
       .catch(() => setDetalleDia(null))
       .finally(() => setLoadingDetalle(false));
@@ -98,6 +231,7 @@ export function ConsumoPage({ token, suministroId }: Props) {
   }
 
   const datosHasta = diario?.datos_hasta ?? comparacion?.datos_hasta ?? null;
+  const stats = calcularStats(diario?.serie ?? []);
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px", fontFamily: "sans-serif" }}>
@@ -155,7 +289,17 @@ export function ConsumoPage({ token, suministroId }: Props) {
 
       <section style={{ marginBottom: 32 }}>
         <h3 style={{ fontSize: 16, color: "#333", marginBottom: 12 }}>Consumo diario (mes actual)</h3>
-        <GraficoConsumoDiario serie={diario?.serie ?? []} onClickBarra={handleClickBarra} />
+        <StatsBarConsumo
+          stats={stats}
+          onClickMax={stats.maxPunto ? () => handleClickBarra(stats.maxPunto!.fecha) : undefined}
+          onClickMin={stats.minPunto ? () => handleClickBarra(stats.minPunto!.fecha) : undefined}
+        />
+        <GraficoConsumoDiario
+          serie={diario?.serie ?? []}
+          onClickBarra={handleClickBarra}
+          maxFecha={stats.maxPunto?.fecha}
+          minFecha={stats.minPunto?.fecha}
+        />
       </section>
 
       {fechaSeleccionada && (
