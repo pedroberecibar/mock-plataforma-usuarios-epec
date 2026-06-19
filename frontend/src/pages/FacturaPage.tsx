@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { fetchLinkFactura } from "../api/factura";
+import { useEffect, useState } from "react";
+import { evaluarVencimiento, fetchFacturaDatos, fetchLinkFactura } from "../api/factura";
+import type { FacturaDatosResponse } from "../api/types";
 import {
   bg, border, brand, color, fg,
   font, fontSize, fontWeight, radius, space,
@@ -43,12 +44,40 @@ const CONCEPTOS: Concepto[] = [
   },
 ];
 
+function diasHastaVencimiento(fechaStr: string): number {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const vcto = new Date(fechaStr + "T00:00:00");
+  return Math.round((vcto.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatFechaVcto(fechaStr: string): string {
+  const [y, m, d] = fechaStr.split("-");
+  const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
+}
+
 export function FacturaPage({ token }: Props) {
   const [numeroCliente, setNumeroCliente] = useState("");
   const [numeroContrato, setNumeroContrato] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandido, setExpandido] = useState<number | null>(null);
+  const [facturaDatos, setFacturaDatos] = useState<FacturaDatosResponse | null>(null);
+
+  useEffect(() => {
+    fetchFacturaDatos(token)
+      .then(setFacturaDatos)
+      .catch(() => { /* fire-and-forget — no bloquea la UI */ });
+
+    evaluarVencimiento(token).catch(() => { /* fire-and-forget */ });
+  }, [token]);
+
+  const diasVcto = facturaDatos?.fecha_vencimiento
+    ? diasHastaVencimiento(facturaDatos.fecha_vencimiento)
+    : null;
+  const mostrarBannerVencimiento = diasVcto !== null && diasVcto <= 5;
 
   async function handleIrAFactura(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +99,54 @@ export function FacturaPage({ token }: Props) {
 
   return (
     <div style={{ padding: space[6], fontFamily: font.sans, maxWidth: 700, margin: "0 auto" }}>
+
+      {/* Banner vencimiento próximo */}
+      {mostrarBannerVencimiento && facturaDatos?.fecha_vencimiento && (
+        <div
+          role="alert"
+          data-testid="banner-vencimiento"
+          style={{
+            background: "#fff8e1",
+            border: "1px solid #f9a825",
+            borderRadius: radius.md,
+            padding: `${space[3]}px ${space[4]}px`,
+            marginBottom: space[5],
+            display: "flex",
+            alignItems: "center",
+            gap: space[2],
+            fontFamily: font.sans,
+            fontSize: fontSize.sm,
+            color: "#5d4037",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <span>
+            Tu factura vence el{" "}
+            <strong>{formatFechaVcto(facturaDatos.fecha_vencimiento)}</strong>
+            {diasVcto === 0
+              ? " — ¡hoy!"
+              : diasVcto === 1
+                ? " — ¡mañana!"
+                : ` (en ${diasVcto} días)`}
+            . Recordá abonarla para evitar inconvenientes.
+          </span>
+        </div>
+      )}
+
+      {/* Fecha vencimiento (siempre visible si existe) */}
+      {facturaDatos?.fecha_vencimiento && !mostrarBannerVencimiento && (
+        <p
+          data-testid="fecha-vencimiento"
+          style={{
+            fontFamily: font.sans,
+            fontSize: fontSize.sm,
+            color: fg.muted,
+            marginBottom: space[4],
+          }}
+        >
+          Fecha de vencimiento: {formatFechaVcto(facturaDatos.fecha_vencimiento)}
+        </p>
+      )}
 
       {/* Conceptos */}
       <section style={{ marginBottom: space[8] }}>

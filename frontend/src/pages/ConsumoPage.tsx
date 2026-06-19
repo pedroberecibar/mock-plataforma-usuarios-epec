@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { fetchComparacion, fetchSerieDiaria } from "../api/consumo";
-import type { ComparacionResponse, DiarioResponse } from "../api/types";
+import { fetchComparacion, fetchDetalleDia, fetchSerieDiaria } from "../api/consumo";
+import type { ComparacionResponse, DetalleDiaResponse, DiarioResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
 import { PanelComparacion } from "../components/PanelComparacion";
+import { PanelDetalleDia } from "../components/PanelDetalleDia";
 
 interface Props {
   token: string;
@@ -29,6 +30,9 @@ export function ConsumoPage({ token, suministroId }: Props) {
   const [comparacion, setComparacion] = useState<ComparacionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
+  const [detalleDia, setDetalleDia] = useState<DetalleDiaResponse | null>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -48,6 +52,21 @@ export function ConsumoPage({ token, suministroId }: Props) {
       .finally(() => setLoading(false));
   }, [token, suministroId]);
 
+  function handleClickBarra(fecha: string) {
+    setFechaSeleccionada(fecha);
+    setDetalleDia(null);
+    setLoadingDetalle(true);
+    fetchDetalleDia(suministroId, fecha)
+      .then(setDetalleDia)
+      .catch(() => setDetalleDia(null))
+      .finally(() => setLoadingDetalle(false));
+  }
+
+  function handleCerrarDetalle() {
+    setFechaSeleccionada(null);
+    setDetalleDia(null);
+  }
+
   if (loading) {
     return <div style={{ padding: 24 }}>Cargando consumo...</div>;
   }
@@ -66,8 +85,17 @@ export function ConsumoPage({ token, suministroId }: Props) {
 
       <section style={{ marginBottom: 32 }}>
         <h3 style={{ fontSize: 16, color: "#333", marginBottom: 12 }}>Consumo diario (mes actual)</h3>
-        <GraficoConsumoDiario serie={diario?.serie ?? []} />
+        <GraficoConsumoDiario serie={diario?.serie ?? []} onClickBarra={handleClickBarra} />
       </section>
+
+      {fechaSeleccionada && (
+        <PanelDetalleDia
+          fecha={fechaSeleccionada}
+          detalle={detalleDia}
+          loading={loadingDetalle}
+          onCerrar={handleCerrarDetalle}
+        />
+      )}
 
       <section>
         <h3 style={{ fontSize: 16, color: "#333", marginBottom: 12 }}>Comparación histórica</h3>

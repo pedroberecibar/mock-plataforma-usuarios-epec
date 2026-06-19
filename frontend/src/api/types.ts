@@ -49,6 +49,18 @@ export interface ComparacionResponse {
   datos_hasta: string | null;
 }
 
+export interface FacturaDatosResponse {
+  fecha_vencimiento: string | null; // "YYYY-MM-DD"
+}
+
+export interface DetalleDiaResponse {
+  fecha: string; // "YYYY-MM-DD"
+  kwh_dia: number | null;
+  kwh_mismo_dia_anio_ant: number | null;
+  kwh_promedio_zona: number | null;
+  n_vecinos: number;
+}
+
 export interface ObjetivoSugeridoResponse {
   valor_kwh: number | null;
   n_vecinos: number;

@@ -3,13 +3,15 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from application.use_cases.get_detalle_dia import GetDetalleDiaUseCase
 from application.use_cases.obtener_comparacion_historica import (
     ObtenerComparacionHistoricaUseCase,
     PeriodoConsumo,
 )
 from application.use_cases.obtener_serie_diaria import ObtenerSerieDiariaUseCase
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
-from interface.dependencies import get_consumo_repo, get_usuario_actual
+from domain.ports.vecinos_repository import VecinosRepository
+from interface.dependencies import get_consumo_repo, get_usuario_actual, get_vecinos_repo
 
 router = APIRouter(prefix="/consumo", tags=["consumo"])
 
@@ -35,6 +37,31 @@ class ComparacionResponse(BaseModel):
     mes_anterior: PeriodoResponse
     mismo_mes_anio_anterior: PeriodoResponse
     datos_hasta: date | None
+
+
+class DetalleDiaResponse(BaseModel):
+    fecha: date
+    kwh_dia: float | None
+    kwh_mismo_dia_anio_ant: float | None
+    kwh_promedio_zona: float | None
+    n_vecinos: int
+
+
+@router.get("/{suministro_id}/dia", response_model=DetalleDiaResponse)
+async def get_detalle_dia(
+    suministro_id: str,
+    fecha: date,
+    consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+    vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
+) -> DetalleDiaResponse:
+    result = await GetDetalleDiaUseCase(consumo_repo, vecinos_repo).ejecutar(suministro_id, fecha)
+    return DetalleDiaResponse(
+        fecha=result.fecha,
+        kwh_dia=result.kwh_dia,
+        kwh_mismo_dia_anio_ant=result.kwh_mismo_dia_anio_ant,
+        kwh_promedio_zona=result.kwh_promedio_zona,
+        n_vecinos=result.n_vecinos,
+    )
 
 
 @router.get("/{suministro_id}/diario", response_model=DiarioResponse)

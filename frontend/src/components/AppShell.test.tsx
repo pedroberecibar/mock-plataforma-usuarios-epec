@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
-const NAV_LABELS = ["Inicio", "Consumo", "Objetivos", "Mi factura", "Configuración"];
+const NAV_LABELS = ["Inicio", "Consumo", "Objetivos", "Mi factura", "Alertas"];
 
 describe("AppShell", () => {
   it("renderiza el logo con alt=EPEC", () => {

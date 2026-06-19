@@ -2,6 +2,7 @@ from fastapi import Depends, Header, HTTPException
 
 from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
+from domain.ports.factura_source_reader import FacturaSourceReader
 from domain.ports.medicion_source_reader import MedicionSourceReader
 from domain.ports.notificacion_config_repository import NotificacionConfigRepository
 from domain.ports.notification_sender import NotificationSender
@@ -67,6 +68,12 @@ def get_objetivo_repo() -> ObjetivoConsumoRepository:
 def get_notification_sender() -> NotificationSender:
     raise NotImplementedError(
         "NotificationSender debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_factura_reader() -> FacturaSourceReader:
+    raise NotImplementedError(
+        "FacturaSourceReader debe ser wireado en el composition root (src/main.py)"
     )
 
 

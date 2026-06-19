@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
+from infrastructure.fakes.factura_source_reader import FakeFacturaSourceReader
 from infrastructure.fakes.notification_sender import FakeNotificationSender
 from infrastructure.smtp.notification_sender import SmtpNotificationSender
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
@@ -32,6 +33,7 @@ from interface.consumo_router import router as consumo_router
 from interface.dependencies import (
     get_auth_provider,
     get_consumo_repo,
+    get_factura_reader,
     get_medicion_reader,
     get_notificacion_config_repo,
     get_notification_sender,
@@ -194,7 +196,9 @@ def create_app() -> FastAPI:
             yield SQLiteObjetivoConsumoRepository(session)
 
     _notification_sender = _build_notification_sender()
+    _factura_reader = FakeFacturaSourceReader()
     app.dependency_overrides[get_notification_sender] = lambda: _notification_sender
+    app.dependency_overrides[get_factura_reader] = lambda: _factura_reader
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
     app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo

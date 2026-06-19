@@ -5,7 +5,9 @@ from pydantic import BaseModel, field_validator
 
 from application.use_cases.evaluar_alertas import EvaluarAlertasUseCase
 from application.use_cases.evaluar_objetivo_consumo import EvaluarObjetivoConsumoUseCase
+from application.use_cases.evaluar_vencimiento import EvaluarVencimientoUseCase
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
+from domain.ports.factura_source_reader import FacturaSourceReader
 from domain.ports.notificacion_config_repository import (
     TIPOS_ALERTA,
     NotificacionConfigRepository,
@@ -15,6 +17,7 @@ from domain.ports.objetivo_consumo_repository import ObjetivoConsumoRepository
 from interface.dependencies import (
     get_consumo_repo,
     get_email_actual,
+    get_factura_reader,
     get_notificacion_config_repo,
     get_notification_sender,
     get_objetivo_repo,
@@ -89,3 +92,27 @@ async def evaluar_objetivo(
     mes = hoy.replace(day=1)
     await uc.ejecutar(suministro_id, mes, hoy=hoy)
     return EvaluarObjetivoResponse(evaluado=True, mensaje="Objetivo evaluado correctamente")
+
+
+class EvaluarVencimientoResponse(BaseModel):
+    evaluado: bool
+    mensaje: str
+
+
+@router.post("/evaluar-vencimiento", response_model=EvaluarVencimientoResponse)
+async def evaluar_vencimiento(
+    suministro_id: str = Depends(get_suministro_actual),
+    email: str | None = Depends(get_email_actual),
+    factura_reader: FacturaSourceReader = Depends(get_factura_reader),
+    notif_repo: NotificacionConfigRepository = Depends(get_notificacion_config_repo),
+    notification_sender: NotificationSender = Depends(get_notification_sender),
+) -> EvaluarVencimientoResponse:
+    email_destino = email or f"{suministro_id}@epec.com.ar"
+    uc = EvaluarVencimientoUseCase(
+        factura_reader=factura_reader,
+        notificacion_repo=notif_repo,
+        notification_sender=notification_sender,
+    )
+    hoy = datetime.now(UTC).date()
+    await uc.ejecutar(suministro_id, email=email_destino, hoy=hoy)
+    return EvaluarVencimientoResponse(evaluado=True, mensaje="Vencimiento evaluado correctamente")

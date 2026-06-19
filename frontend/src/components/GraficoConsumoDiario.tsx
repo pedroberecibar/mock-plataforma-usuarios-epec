@@ -11,6 +11,7 @@ import type { PuntoSerie } from "../api/types";
 
 interface Props {
   serie: PuntoSerie[];
+  onClickBarra?: (fecha: string) => void;
 }
 
 function formatFecha(fecha: string): string {
@@ -18,7 +19,7 @@ function formatFecha(fecha: string): string {
   return `${parseInt(day)}`;
 }
 
-export function GraficoConsumoDiario({ serie }: Props) {
+export function GraficoConsumoDiario({ serie, onClickBarra }: Props) {
   if (serie.length === 0) {
     return (
       <div style={{ padding: 24, textAlign: "center", color: "#9e9e9e" }}>
@@ -29,7 +30,17 @@ export function GraficoConsumoDiario({ serie }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={serie} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+      <BarChart
+        data={serie}
+        margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
+        onClick={(payload) => {
+          if (onClickBarra && payload?.activePayload?.[0]) {
+            const punto = payload.activePayload[0].payload as PuntoSerie;
+            onClickBarra(punto.fecha);
+          }
+        }}
+        style={onClickBarra ? { cursor: "pointer" } : undefined}
+      >
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
         <XAxis
           dataKey="fecha"
