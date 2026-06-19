@@ -123,6 +123,99 @@ S0 Cimientos ──► S1 Ingesta/serie c(d) ──┬─► S2 Consumo (M2)
 
 **DoD:** NFR verificados, security-review + code-review aprobados antes de merge a `main`.
 
+## Sprint 7 — Barra de progreso, alerta OBJETIVO_SUPERADO y seed (completado 2026-06-18)
+
+**Meta:** instrumentar el seguimiento visual del objetivo y habilitar contraseñas en producción.
+
+- `EvaluarObjetivoConsumoUseCase`: compara consumo acumulado vs objetivo (threshold 80%), despacha `TipoAlerta.OBJETIVO_SUPERADO` por email.
+- `POST /alertas/evaluar-objetivo` en `alertas_router.py`; `get_email` en `UsuarioRepository`.
+- `ObjetivosPage`: barra `role="progressbar"` con color verde/warning/error (threshold 80%), alerta "superado" cuando `≥ 100%`.
+- `scripts/seed_passwords.py`: hashea con argon2id, nunca acepta passwords por CLI args, soporta `--db URL`.
+
+**DoD:** 222 tests backend + 52 frontend · mypy ok · ruff ok · tsc ok.
+
+---
+
+## Sprint 8 — Completar Objetivos de consumo (M6) — *CU-O01..O06 restantes*
+
+**Meta:** cerrar el único módulo Must con indicadores aún sin implementar.
+
+**Dependencia previa:** los casos borde del objetivo sugerido (punto abierto #3 y #4 del plan) deben estar resueltos antes de arrancar: mínimo de vecinos para respetar privacidad (Ley 25.326), tratamiento de suministros no residenciales en el radio, fallback cuando no hay datos del mismo mes año anterior.
+
+### Backend
+
+- `CalcularObjetivoSugeridoUseCase`: reutiliza `VecinosRepository.get_vecinos(radio=150)` + `ConsumoDiarioRepository` para obtener el promedio del mismo mes del año anterior entre los vecinos del radio. Puerto → Fake → SQLite adapter → test cada capa.
+- `GET /objetivos/sugerido/{suministro_id}?mes=YYYY-MM` → `{ valor_kwh, n_vecinos, sin_datos }`.
+- `GET /objetivos/{suministro_id}/estado?mes=YYYY-MM` → nuevo endpoint que calcula y devuelve los 3 indicadores:
+  - Indicador 1: `objetivo_kwh`, `promedio_vecinos_kwh`, `n_vecinos`, `diferencia_pct`.
+  - Indicador 2: `dias_transcurridos`, `dias_objetivo_consumidos`, `texto_dinamico` (enum: `bajo_ritmo | en_ritmo | sobre_ritmo | agotado`), `excedente_kwh` (solo si `agotado`).
+  - Indicador 3: `consumo_diario_real_kwh` (dato del día más reciente), `consumo_diario_objetivo_kwh` (objetivo / días del mes).
+
+### Frontend
+
+- **Onboarding primer login**: si `GET /objetivos` devuelve 404, redirigir a pantalla de bienvenida que muestra el objetivo sugerido con CTA "Aceptar sugerido" / "Ingresar mi objetivo". Guardar y navegar al Home.
+- **Indicador 1** en `ObjetivosPage`: chip comparativo objetivo vs promedio zonal (barra o porcentaje de diferencia).
+- **Indicador 2** en `ObjetivosPage`: texto dinámico según `texto_dinamico`, barra de días consumidos vs días transcurridos, palanca accionable cuando `sobre_ritmo` o `agotado`, excedente en kWh cuando `agotado`.
+- **Indicador 3** en `ObjetivosPage`: comparador (chip o barra mini) `consumo_diario_real_kwh` vs `consumo_diario_objetivo_kwh`.
+- Integrar trigger `POST /alertas/evaluar-objetivo` automáticamente al cargar `ObjetivosPage` (o desde `HomePage` al mount).
+
+**DoD:** flujo completo de primer login con sugerido; 3 indicadores renderizados con textos dinámicos y palancas; tests backend verdes por capa; tests frontend para cada indicador y caso borde de Indicador 2 (bajo_ritmo / en_ritmo / sobre_ritmo / agotado).
+
+---
+
+## Sprint 9 — Drill-down Consumo (M2) + Alerta de vencimiento (M3/M4) — *CU-C02, CU-F05*
+
+**Meta:** cerrar los últimos Must de M2 y M3.
+
+**Dependencia previa (alerta vencimiento):** decidir cómo llega la fecha de vencimiento de la factura al sistema (campo `fecha_vencimiento` en tabla `suministros`, o input manual del usuario, o derivación de ciclo de facturación). Resolver antes de arrancar la historia de vencimiento.
+
+### Drill-down Consumo (CU-C02)
+
+- Backend: `GET /consumo/{suministro_id}/dia/{fecha}` → consumo puntual del día + promedio diario personal del mes (para contexto).
+- Frontend `ConsumoPage`: al hacer click/tap en una barra de `GraficoConsumoDiario`, mostrar panel lateral o modal con consumo del día en kWh y comparación "X% respecto a tu promedio diario". Botón de retroceso vuelve a la vista mensual conservando el mes.
+
+### Alerta de vencimiento próximo (CU-F05)
+
+- Backend: `TipoAlerta.VENCIMIENTO_PROXIMO` en `evaluar_alertas.py` + asunto y cuerpo del email; se dispara cuando `hoy >= fecha_vencimiento - N días` (N configurable, default 3).
+- Endpoint `POST /alertas/evaluar-vencimiento` (o agregar al job de ingesta existente): evalúa todos los suministros con `fecha_vencimiento` configurada.
+- Frontend `AlertasPage`: mostrar alerta de tipo `vencimiento_proximo` con acceso directo al flujo de factura (≤ 3 taps al sitio de EPEC — CU-F04).
+
+**DoD:** click en barra diaria abre detalle del día; email de vencimiento se despacha correctamente en tests; `AlertasPage` renderiza el tipo vencimiento con acceso a factura.
+
+---
+
+## Sprint 10 — Hardening, NFR y Should *(equivale al S6 del plan original, extendido)*
+
+**Meta:** calidad de release — performance, privacidad, observabilidad y features Should diferidos.
+
+### Should diferidos (M2, M4)
+
+- **Consumo anómalo** (CU-C06): z-score sobre la serie `c(d)` del usuario; si un día supera el umbral, mostrar alerta en `ConsumoPage` ("El jueves tu consumo fue 40% mayor a tu promedio diario") con palanca accionable. El promedio de referencia es la misma serie `c(d)` de la Especificación técnica de proyección.
+- **Exportación CSV** (CU-C07): botón en `ConsumoPage` (solo en viewport web) que descarga un CSV con la serie diaria del rango seleccionado.
+- **Rate-limit de notificaciones** (CU-A06): agregar columna `ultimo_envio_por_tipo` en `notificaciones_config`; suprimir duplicados dentro de la ventana configurada sin bloquear alertas críticas.
+- **Email complementario** (CU-A05): asegurar que todos los tipos de alerta (vencimiento, consumo anómalo, objetivo superado) disparan email si el canal está habilitado.
+
+### NFR
+
+- Performance: medir y ajustar hasta carga inicial < 3 s en 3G simulado (Lighthouse CI).
+- Caché PWA: service worker con caché de la serie de consumo para uso offline básico; indicar "Datos sin conexión" cuando la caché está activa.
+- Responsive: smoke test visual en viewports 375px, 768px, 1280px.
+
+### Privacidad (CU-NF02)
+
+- Definir y aplicar el mínimo de vecinos antes de publicar comparación o sugerido (umbral k-anonymity mínima a acordar; si `n_vecinos < k`, devolver `sin_datos`).
+- Revisar que ningún endpoint filtre consumos individuales de terceros.
+- Opt-in analítica avanzada off por defecto.
+
+### Producción
+
+- Alembic: `alembic upgrade head` sobre la DB de producción + smoke test end-to-end con datos reales.
+- Observabilidad: structlog + Sentry/OTel básico.
+- Endurecimiento de seguridad: security-review (agente `security-reviewer`) + code-review (agente `code-reviewer`) obligatorios antes del merge final a `main`.
+- UAT con usuarios internos.
+
+**DoD:** NFR verificados por Lighthouse CI; security-review y code-review aprobados; zero Must pendientes; migración de producción ejecutada sin errores.
+
 ---
 
 ## Riesgos / puntos abiertos a destrabar en paralelo

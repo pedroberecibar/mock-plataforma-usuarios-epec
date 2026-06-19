@@ -1,10 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
+from application.use_cases.calcular_estado_objetivo import (
+    CalcularEstadoObjetivoUseCase,
+    EstadoObjetivoResult,
+    TextoDinamico,
+)
+from application.use_cases.calcular_objetivo_sugerido import CalcularObjetivoSugeridoUseCase
 from application.use_cases.get_objetivo_consumo import GetObjetivoConsumoUseCase, ObjetivoResult
 from application.use_cases.set_objetivo_consumo import SetObjetivoConsumoUseCase
+from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.objetivo_consumo_repository import ObjetivoConsumoRepository
-from interface.dependencies import get_objetivo_repo, get_suministro_actual
+from domain.ports.vecinos_repository import VecinosRepository
+from interface.dependencies import (
+    get_consumo_repo,
+    get_objetivo_repo,
+    get_suministro_actual,
+    get_vecinos_repo,
+)
 
 router = APIRouter(prefix="/objetivos", tags=["objetivos"])
 
@@ -61,3 +76,92 @@ async def set_objetivo(
     resultado = await get_uc.ejecutar(suministro_id)
     assert resultado is not None
     return _to_response(resultado)
+
+
+class ObjetivoSugeridoResponse(BaseModel):
+    valor_kwh: float | None
+    n_vecinos: int
+    sin_datos: bool
+
+
+class EstadoObjetivoResponse(BaseModel):
+    objetivo_kwh: float | None
+    promedio_vecinos_kwh: float | None
+    n_vecinos: int
+    diferencia_pct: float | None
+    dias_transcurridos: int
+    dias_objetivo_consumidos: float | None
+    texto_dinamico: TextoDinamico
+    excedente_kwh: float | None
+    consumo_diario_real_kwh: float | None
+    consumo_diario_objetivo_kwh: float | None
+
+
+def _parse_mes(mes_str: str) -> date:
+    try:
+        parts = mes_str.split("-")
+        return date(int(parts[0]), int(parts[1]), 1)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="mes debe tener formato YYYY-MM") from exc
+
+
+@router.get("/sugerido/{suministro_id}", response_model=ObjetivoSugeridoResponse)
+async def get_objetivo_sugerido(
+    suministro_id: str,
+    mes: str = Query(default=None, description="YYYY-MM; si se omite se usa el mes actual"),
+    vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
+    consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+) -> ObjetivoSugeridoResponse:
+    if mes is None:
+        hoy = date.today()
+        mes_date = date(hoy.year, hoy.month, 1)
+    else:
+        mes_date = _parse_mes(mes)
+
+    uc = CalcularObjetivoSugeridoUseCase(vecinos_repo, consumo_repo)
+    result = await uc.ejecutar(suministro_id, mes_date)
+    return ObjetivoSugeridoResponse(
+        valor_kwh=result.valor_kwh,
+        n_vecinos=result.n_vecinos,
+        sin_datos=result.sin_datos,
+    )
+
+
+@router.get("/{suministro_id}/estado", response_model=EstadoObjetivoResponse)
+async def get_estado_objetivo(
+    suministro_id: str,
+    mes: str = Query(default=None, description="YYYY-MM; si se omite se usa el mes actual"),
+    hoy: str = Query(default=None, description="YYYY-MM-DD; solo para tests"),
+    objetivo_repo: ObjetivoConsumoRepository = Depends(get_objetivo_repo),
+    consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+    vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
+) -> EstadoObjetivoResponse:
+    hoy_date: date | None = None
+    if hoy is not None:
+        try:
+            hoy_date = date.fromisoformat(hoy)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422, detail="hoy debe tener formato YYYY-MM-DD"
+            ) from exc
+
+    if mes is None:
+        hoy_real = hoy_date or date.today()
+        mes_date = date(hoy_real.year, hoy_real.month, 1)
+    else:
+        mes_date = _parse_mes(mes)
+
+    uc = CalcularEstadoObjetivoUseCase(objetivo_repo, consumo_repo, vecinos_repo)
+    result: EstadoObjetivoResult = await uc.ejecutar(suministro_id, mes_date, hoy=hoy_date)
+    return EstadoObjetivoResponse(
+        objetivo_kwh=result.objetivo_kwh,
+        promedio_vecinos_kwh=result.promedio_vecinos_kwh,
+        n_vecinos=result.n_vecinos,
+        diferencia_pct=result.diferencia_pct,
+        dias_transcurridos=result.dias_transcurridos,
+        dias_objetivo_consumidos=result.dias_objetivo_consumidos,
+        texto_dinamico=result.texto_dinamico,
+        excedente_kwh=result.excedente_kwh,
+        consumo_diario_real_kwh=result.consumo_diario_real_kwh,
+        consumo_diario_objetivo_kwh=result.consumo_diario_objetivo_kwh,
+    )

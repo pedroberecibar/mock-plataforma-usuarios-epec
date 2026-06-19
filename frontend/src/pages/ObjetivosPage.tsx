@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { color, fontSize, fontWeight, radius, space } from "../design-tokens";
-import { fetchObjetivo, setObjetivo, type ObjetivoResponse } from "../api/objetivos";
-import { fetchHome } from "../api/home";
+import {
+  evaluarObjetivo,
+  fetchObjetivoEstado,
+  fetchObjetivo,
+  setObjetivo,
+  type ObjetivoResponse,
+} from "../api/objetivos";
+import type { ObjetivoEstadoResponse } from "../api/types";
 
 interface ObjetivosPageProps {
   token: string;
@@ -24,7 +30,7 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
   const [estado, setEstado] = useState<Estado>("cargando");
   const [inputKwh, setInputKwh] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [consumoActual, setConsumoActual] = useState<number | null>(null);
+  const [estadoObj, setEstadoObj] = useState<ObjetivoEstadoResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,16 +38,19 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
 
     Promise.all([
       fetchObjetivo(token),
-      fetchHome(token, suministroId, mes).catch(() => null),
-    ]).then(([obj, home]) => {
+      fetchObjetivoEstado(token, suministroId, mes).catch(() => null),
+    ]).then(([obj, est]) => {
       if (cancelled) return;
       setObjetivoState(obj);
       setEstado(obj ? "con_objetivo" : "sin_objetivo");
       if (obj) setInputKwh(String(obj.valor_kwh));
-      setConsumoActual(home?.consumo_mes.total_kwh ?? null);
+      setEstadoObj(est);
     }).catch(() => {
       if (!cancelled) setEstado("error");
     });
+
+    // Trigger fire-and-forget
+    evaluarObjetivo(token);
 
     return () => { cancelled = true; };
   }, [token, suministroId]);
@@ -58,16 +67,27 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
       const nuevo = await setObjetivo(token, valor);
       setObjetivoState(nuevo);
       setEstado("con_objetivo");
+      // Recargar estado de indicadores
+      const mes = mesActualYYYYMM();
+      const est = await fetchObjetivoEstado(token, suministroId, mes).catch(() => null);
+      setEstadoObj(est);
     } catch {
       setEstado("error");
     }
   }
 
-  const pct = objetivo && consumoActual !== null
-    ? Math.min(consumoActual / objetivo.valor_kwh, 1)
+  // Para compatibilidad con tests existentes: cálculo del pct simple
+  const consumoActual = estadoObj
+    ? (estadoObj.dias_objetivo_consumidos != null && estadoObj.consumo_diario_objetivo_kwh != null
+        ? estadoObj.dias_objetivo_consumidos * estadoObj.consumo_diario_objetivo_kwh
+        : null)
     : null;
 
-  const superado = pct !== null && pct >= 1;
+  const pct = objetivo && estadoObj?.objetivo_kwh && consumoActual !== null
+    ? Math.min(consumoActual / estadoObj.objetivo_kwh, 1)
+    : null;
+
+  const superado = estadoObj?.texto_dinamico === "agotado";
   const enAviso = pct !== null && pct >= WARN_THRESHOLD && !superado;
 
   const barColor = superado
@@ -109,7 +129,8 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
             </div>
           )}
 
-          {pct !== null && consumoActual !== null && objetivo && (
+          {/* ── Barra de progreso (compatibilidad tests existentes) ── */}
+          {pct !== null && estadoObj?.objetivo_kwh && consumoActual !== null && objetivo && (
             <div style={{ marginBottom: space[6] }}>
               <Label>Consumo acumulado este mes</Label>
 
@@ -157,9 +178,66 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
               </div>
 
               <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
-                {consumoActual} de {objetivo.valor_kwh} kWh ({Math.round(pct * 100)}%)
+                {Math.round(consumoActual)} de {estadoObj.objetivo_kwh} kWh ({Math.round(pct * 100)}%)
               </p>
             </div>
+          )}
+
+          {/* ── Indicador 2: Días objetivo consumidos ── */}
+          {estadoObj && estadoObj.texto_dinamico !== "sin_objetivo" && (
+            <IndicadorDias estado={estadoObj} />
+          )}
+
+          {/* ── Indicador 3: Consumo diario real vs objetivo ── */}
+          {estadoObj && estadoObj.consumo_diario_real_kwh != null && estadoObj.consumo_diario_objetivo_kwh != null && (
+            <div style={{ marginBottom: space[6] }}>
+              <Label>Consumo diario real vs objetivo</Label>
+              <div style={{ display: "flex", alignItems: "center", gap: space[3], marginTop: space[2] }}>
+                <Chip
+                  label={`${estadoObj.consumo_diario_real_kwh.toFixed(1)} kWh`}
+                  sublabel="Último día"
+                  accent={estadoObj.consumo_diario_real_kwh <= estadoObj.consumo_diario_objetivo_kwh ? color.green700 : color.errorDark}
+                />
+                <span style={{ color: color.neutral400, fontSize: fontSize.sm }}>vs</span>
+                <Chip
+                  label={`${estadoObj.consumo_diario_objetivo_kwh.toFixed(1)} kWh`}
+                  sublabel="Objetivo diario"
+                  accent={color.neutral600}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── Indicador 1: Tu objetivo vs tu zona ── */}
+          {estadoObj && estadoObj.promedio_vecinos_kwh != null && estadoObj.diferencia_pct != null && (
+            <div style={{ marginBottom: space[6] }}>
+              <Label>Tu objetivo vs tu zona</Label>
+              <div style={{ marginTop: space[2] }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: `${space[1]}px ${space[3]}px`,
+                    borderRadius: radius.full,
+                    fontSize: fontSize.sm,
+                    fontWeight: fontWeight.semibold,
+                    background: estadoObj.diferencia_pct > 0 ? color.errorLight : color.green50,
+                    color: estadoObj.diferencia_pct > 0 ? color.errorDark : color.green700,
+                  }}
+                >
+                  {estadoObj.diferencia_pct > 0 ? "+" : ""}
+                  {estadoObj.diferencia_pct.toFixed(1)}% vs zona ({estadoObj.n_vecinos} vecinos)
+                </span>
+                <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
+                  Promedio zonal: {Math.round(estadoObj.promedio_vecinos_kwh)} kWh/mes
+                </p>
+              </div>
+            </div>
+          )}
+
+          {estadoObj && estadoObj.promedio_vecinos_kwh == null && estadoObj.texto_dinamico !== "sin_objetivo" && (
+            <p style={{ fontSize: fontSize.xs, color: color.neutral400, marginBottom: space[4] }}>
+              Sin datos suficientes de tu zona
+            </p>
           )}
 
           <Label>{objetivo ? "Modificar objetivo" : "Configurar objetivo"}</Label>
@@ -213,6 +291,108 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
       {estado === "guardando" && (
         <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Guardando…</p>
       )}
+    </div>
+  );
+}
+
+function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
+  const { texto_dinamico, dias_objetivo_consumidos, dias_transcurridos, excedente_kwh } = estado;
+
+  const mensajes: Record<string, string> = {
+    bajo_ritmo: "Vas bien, estás por debajo de tu ritmo objetivo.",
+    en_ritmo: "Vas en línea con tu objetivo.",
+    sobre_ritmo: "Atención, estás consumiendo más rápido que tu objetivo.",
+    agotado: "Ya alcanzaste tu objetivo de consumo de este mes.",
+  };
+
+  const colores: Record<string, { bg: string; text: string }> = {
+    bajo_ritmo:  { bg: color.green50, text: color.green700 },
+    en_ritmo:    { bg: color.green50, text: color.green700 },
+    sobre_ritmo: { bg: color.warningLight, text: color.warningDark },
+    agotado:     { bg: color.errorLight, text: color.errorDark },
+  };
+
+  const c = colores[texto_dinamico] ?? { bg: color.neutral100, text: color.neutral700 };
+  const barPct = dias_objetivo_consumidos != null
+    ? Math.min(dias_objetivo_consumidos / dias_transcurridos, 1)
+    : 0;
+
+  return (
+    <div style={{ marginBottom: space[6] }}>
+      <Label>Días de consumo</Label>
+      <p
+        data-testid="indicador-2-texto"
+        style={{
+          marginTop:    space[2],
+          padding:      `${space[2]}px ${space[3]}px`,
+          borderRadius: radius.sm,
+          fontSize:     fontSize.sm,
+          fontWeight:   fontWeight.medium,
+          background:   c.bg,
+          color:        c.text,
+        }}
+      >
+        {mensajes[texto_dinamico]}
+        {texto_dinamico === "agotado" && excedente_kwh != null && (
+          <> Excedente: {excedente_kwh.toFixed(1)} kWh.</>
+        )}
+      </p>
+
+      {dias_objetivo_consumidos != null && (
+        <>
+          <div
+            style={{
+              marginTop:    space[2],
+              height:       8,
+              background:   color.neutral200,
+              borderRadius: radius.full,
+              overflow:     "hidden",
+            }}
+          >
+            <div style={{
+              height:      "100%",
+              width:       `${Math.round(barPct * 100)}%`,
+              background:  c.text,
+              borderRadius: radius.full,
+              transition:  "width 0.3s ease",
+            }} />
+          </div>
+          <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
+            {dias_objetivo_consumidos.toFixed(1)} de {dias_transcurridos} días objetivo consumidos
+          </p>
+        </>
+      )}
+
+      {(texto_dinamico === "sobre_ritmo" || texto_dinamico === "agotado") && (
+        <p style={{ fontSize: fontSize.xs, color: color.neutral600, marginTop: space[2] }}>
+          💡 Palanca: revisá tus electrodomésticos de mayor consumo o postponé el uso de lavarropas/lavavajillas a horarios de menor demanda.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Chip({
+  label,
+  sublabel,
+  accent,
+}: {
+  label: string;
+  sublabel: string;
+  accent: string;
+}) {
+  return (
+    <div style={{
+      display:      "flex",
+      flexDirection: "column",
+      alignItems:   "center",
+      padding:      `${space[2]}px ${space[4]}px`,
+      border:       `1px solid ${accent}`,
+      borderRadius: radius.md,
+      minWidth:     80,
+    }}>
+      <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: accent }}>{label}</span>
+      <span style={{ fontSize: fontSize.xs, color: color.neutral500 }}>{sublabel}</span>
     </div>
   );
 }

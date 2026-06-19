@@ -48,3 +48,29 @@ export interface ComparacionResponse {
   mismo_mes_anio_anterior: PeriodoConsumo;
   datos_hasta: string | null;
 }
+
+export interface ObjetivoSugeridoResponse {
+  valor_kwh: number | null;
+  n_vecinos: number;
+  sin_datos: boolean;
+}
+
+export type TextoDinamico =
+  | "bajo_ritmo"
+  | "en_ritmo"
+  | "sobre_ritmo"
+  | "agotado"
+  | "sin_objetivo";
+
+export interface ObjetivoEstadoResponse {
+  objetivo_kwh: number | null;
+  promedio_vecinos_kwh: number | null;
+  n_vecinos: number;
+  diferencia_pct: number | null;
+  dias_transcurridos: number;
+  dias_objetivo_consumidos: number | null;
+  texto_dinamico: TextoDinamico;
+  excedente_kwh: number | null;
+  consumo_diario_real_kwh: number | null;
+  consumo_diario_objetivo_kwh: number | null;
+}

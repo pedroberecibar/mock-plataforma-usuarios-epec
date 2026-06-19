@@ -2,72 +2,146 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ObjetivosPage } from "./ObjetivosPage";
 import * as objetivosApi from "../api/objetivos";
-import * as homeApi from "../api/home";
-import type { HomeResponse } from "../api/types";
+import type { ObjetivoEstadoResponse } from "../api/types";
 
 vi.mock("../api/objetivos");
-vi.mock("../api/home");
 
 const TOKEN = "tok";
 const SUMINISTRO = "S001";
 
 const OBJETIVO = { valor_kwh: 200, origen: "manual", vigente_desde: "2026-06-01" };
 
-function makeHome(total_kwh: number | null): HomeResponse {
+function makeEstado(overrides: Partial<ObjetivoEstadoResponse> = {}): ObjetivoEstadoResponse {
   return {
-    consumo_mes: { total_kwh, vs_mes_anterior_pct: null, vs_anio_anterior_pct: null },
-    comparacion_zona: { promedio_vecinos_kwh: null, n_vecinos: 0, diferencia_pct: null },
-    proyeccion: { mes: "2026-06", metodo_aplicado: "lineal", bandera_confianza: "alta", rango_inferior_kwh: null, rango_superior_kwh: null },
-    datos_hasta: null,
-    timestamp: "2026-06-18T12:00:00Z",
+    objetivo_kwh: 200,
+    promedio_vecinos_kwh: null,
+    n_vecinos: 0,
+    diferencia_pct: null,
+    dias_transcurridos: 15,
+    dias_objetivo_consumidos: 14,
+    texto_dinamico: "en_ritmo",
+    excedente_kwh: null,
+    consumo_diario_real_kwh: 7,
+    consumo_diario_objetivo_kwh: 6.67,
+    ...overrides,
   };
 }
 
 beforeEach(() => {
   vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue(OBJETIVO);
-  vi.mocked(homeApi.fetchHome).mockResolvedValue(makeHome(120));
+  vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(makeEstado());
+  vi.mocked(objetivosApi.evaluarObjetivo).mockResolvedValue(undefined);
 });
 
-describe("ObjetivosPage — barra de progreso", () => {
+describe("ObjetivosPage — barra de progreso (tests existentes)", () => {
   it("muestra la barra de progreso cuando hay objetivo y consumo", async () => {
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.getByRole("progressbar")).not.toBeNull());
   });
 
-  it("muestra el porcentaje consumido (60% = 120 de 200 kWh)", async () => {
+  it("no muestra barra de progreso cuando no hay objetivo configurado", async () => {
+    vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue(null);
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(makeEstado({ objetivo_kwh: null, texto_dinamico: "sin_objetivo" }));
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
-    await waitFor(() => expect(screen.getByText(/60\s*%/)).not.toBeNull());
+    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
   });
 
-  it("muestra los kWh acumulados vs objetivo", async () => {
-    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
-    await waitFor(() => expect(screen.getByText(/120.*200\s*kWh/)).not.toBeNull());
-  });
-
-  it("muestra advertencia cuando el consumo supera el 80% del objetivo (180/200)", async () => {
-    vi.mocked(homeApi.fetchHome).mockResolvedValue(makeHome(180));
+  it("muestra advertencia cuando el consumo supera el 80% del objetivo", async () => {
+    // consumoActual = 25 × 6.67 ≈ 166.7 kWh → pct = 0.83 → enAviso
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ dias_objetivo_consumidos: 25, texto_dinamico: "sobre_ritmo" })
+    );
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.getByRole("alert")).not.toBeNull());
   });
 
-  it("muestra alerta de superado cuando el consumo iguala o supera el objetivo (200/200)", async () => {
-    vi.mocked(homeApi.fetchHome).mockResolvedValue(makeHome(200));
+  it("muestra alerta de superado cuando el objetivo está agotado", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({
+        texto_dinamico: "agotado",
+        excedente_kwh: 50,
+        dias_objetivo_consumidos: 30,
+      })
+    );
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => {
       const alert = screen.getByRole("alert");
       expect(alert.textContent).toMatch(/superado|objetivo alcanzado/i);
     });
   });
+});
 
-  it("no muestra barra de progreso cuando no hay objetivo configurado", async () => {
-    vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue(null);
+describe("ObjetivosPage — Indicador 2 (texto_dinamico)", () => {
+  it("muestra 'Vas bien' cuando texto_dinamico=bajo_ritmo", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ texto_dinamico: "bajo_ritmo", dias_objetivo_consumidos: 8 })
+    );
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByTestId("indicador-2-texto").textContent).toMatch(/Vas bien/i)
+    );
   });
 
-  it("no muestra barra de progreso cuando el consumo del mes es null", async () => {
-    vi.mocked(homeApi.fetchHome).mockResolvedValue(makeHome(null));
+  it("muestra 'en línea' cuando texto_dinamico=en_ritmo", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ texto_dinamico: "en_ritmo" })
+    );
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByTestId("indicador-2-texto").textContent).toMatch(/en línea/i)
+    );
+  });
+
+  it("muestra advertencia cuando texto_dinamico=sobre_ritmo", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ texto_dinamico: "sobre_ritmo", dias_objetivo_consumidos: 20 })
+    );
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() =>
+      expect(screen.getByTestId("indicador-2-texto").textContent).toMatch(/más rápido/i)
+    );
+  });
+
+  it("muestra excedente cuando texto_dinamico=agotado", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ texto_dinamico: "agotado", excedente_kwh: 40, dias_objetivo_consumidos: 30 })
+    );
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => {
+      const txt = screen.getByTestId("indicador-2-texto").textContent ?? "";
+      expect(txt).toMatch(/alcanzaste/i);
+      expect(txt).toMatch(/40/);
+    });
+  });
+});
+
+describe("ObjetivosPage — Indicador 1 (vs zona)", () => {
+  it("muestra diferencia_pct positiva cuando el objetivo está por encima de la zona", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ promedio_vecinos_kwh: 160, diferencia_pct: 25.0, n_vecinos: 6 })
+    );
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() =>
+      expect(screen.getByText(/\+25/)).not.toBeNull()
+    );
+  });
+
+  it("muestra 'Sin datos suficientes' cuando promedio_vecinos_kwh es null", async () => {
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ promedio_vecinos_kwh: null, diferencia_pct: null, n_vecinos: 0 })
+    );
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() =>
+      expect(screen.getByText(/Sin datos suficientes/i)).not.toBeNull()
+    );
+  });
+});
+
+describe("ObjetivosPage — Trigger alerta", () => {
+  it("llama a evaluarObjetivo al montar", async () => {
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() =>
+      expect(vi.mocked(objetivosApi.evaluarObjetivo)).toHaveBeenCalledWith(TOKEN)
+    );
   });
 });

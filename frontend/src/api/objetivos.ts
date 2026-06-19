@@ -1,3 +1,5 @@
+import type { ObjetivoEstadoResponse, ObjetivoSugeridoResponse } from "./types";
+
 const BASE = import.meta.env.VITE_API_URL ?? "";
 
 export interface ObjetivoResponse {
@@ -27,4 +29,36 @@ export async function setObjetivo(token: string, valor_kwh: number): Promise<Obj
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<ObjetivoResponse>;
+}
+
+export async function fetchObjetivoSugerido(
+  suministroId: string,
+  mes: string,
+): Promise<ObjetivoSugeridoResponse> {
+  const res = await fetch(`${BASE}/objetivos/sugerido/${suministroId}?mes=${mes}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<ObjetivoSugeridoResponse>;
+}
+
+export async function fetchObjetivoEstado(
+  token: string,
+  suministroId: string,
+  mes: string,
+): Promise<ObjetivoEstadoResponse> {
+  const res = await fetch(`${BASE}/objetivos/${suministroId}/estado?mes=${mes}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<ObjetivoEstadoResponse>;
+}
+
+export async function evaluarObjetivo(token: string): Promise<void> {
+  try {
+    await fetch(`${BASE}/alertas/evaluar-objetivo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // fire-and-forget: ignorar errores silenciosamente
+  }
 }
