@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from application.use_cases.obtener_link_factura import ObtenerLinkFacturaUseCase
@@ -34,8 +34,8 @@ def build_router(epec_base_url: str | None) -> APIRouter:
 
     @router.get("/link", response_model=LinkResponse)
     async def get_link_factura(
-        numero_cliente: str,
-        numero_contrato: str,
+        numero_cliente: str = Query(..., pattern=r"^\d+$"),
+        numero_contrato: str = Query(..., pattern=r"^\d+$"),
         _usuario: str = Depends(get_usuario_actual),
         verificacion_port: FacturaVerificacionPort = Depends(get_factura_verificacion),
     ) -> LinkResponse:
