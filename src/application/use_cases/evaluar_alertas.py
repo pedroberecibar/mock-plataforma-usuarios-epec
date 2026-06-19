@@ -71,6 +71,5 @@ class EvaluarAlertasUseCase:
                 asunto=ASUNTOS[tipo_str],
                 cuerpo=CUERPOS[tipo_str],
             )
-            await self._notificacion_repo.registrar_enviada(
-                suministro_id, tipo_str, datetime.now(UTC).replace(tzinfo=None)
-            )
+            ts_envio = datetime.combine(hoy, datetime.now(UTC).time())
+            await self._notificacion_repo.registrar_enviada(suministro_id, tipo_str, ts_envio)
