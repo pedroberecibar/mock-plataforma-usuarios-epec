@@ -13,6 +13,7 @@ import type { ObjetivoEstadoResponse } from "../api/types";
 interface ObjetivosPageProps {
   token: string;
   suministroId: string;
+  onLogout?: () => void;
 }
 
 type Estado = "cargando" | "sin_objetivo" | "con_objetivo" | "editando" | "guardando" | "error";
@@ -25,7 +26,7 @@ function mesActualYYYYMM(): string {
 
 const WARN_THRESHOLD = 0.8;
 
-export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
+export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPageProps) {
   const [objetivo, setObjetivoState] = useState<ObjetivoResponse | null>(null);
   const [estado, setEstado] = useState<Estado>("cargando");
   const [inputKwh, setInputKwh] = useState("");
@@ -45,8 +46,13 @@ export function ObjetivosPage({ token, suministroId }: ObjetivosPageProps) {
       setEstado(obj ? "con_objetivo" : "sin_objetivo");
       if (obj) setInputKwh(String(obj.valor_kwh));
       setEstadoObj(est);
-    }).catch(() => {
-      if (!cancelled) setEstado("error");
+    }).catch((err: unknown) => {
+      if (cancelled) return;
+      if (err instanceof Error && err.message.includes("401")) {
+        onLogout?.();
+      } else {
+        setEstado("error");
+      }
     });
 
     // Trigger fire-and-forget
