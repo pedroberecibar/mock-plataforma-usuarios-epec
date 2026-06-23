@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
-import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchHoraPico, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
+import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
 import { fetchObjetivoEstado } from "../api/objetivos";
-import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, HoraPicoResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
+import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
-import { PanelComparacion } from "../components/PanelComparacion";
 import { PanelDetalleDia } from "../components/PanelDetalleDia";
 import { PanelVecinosComparacion } from "../components/PanelVecinosComparacion";
 import { PageHeader } from "../components/PageHeader";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { AlertBanner } from "../components/AlertBanner";
-import { SectionTitle } from "../components/SectionTitle";
-import { StatMiniCard } from "../components/StatMiniCard";
 import {
   bg,
   brand,
@@ -21,6 +18,7 @@ import {
   fontSize,
   fontWeight,
   radius,
+  shadow,
   space,
 } from "../design-tokens";
 
@@ -69,66 +67,112 @@ const TENDENCIA_COLOR = {
   estable:  fg.secondary,
 };
 
-interface StatsBarConsumoProps {
-  stats: SerieStats;
-  horaPico?: HoraPicoResponse | null;
-  onClickMax?: () => void;
-  onClickMin?: () => void;
+function formatMes(fecha: string): string {
+  const [year, month] = fecha.split("-");
+  const d = new Date(parseInt(year), parseInt(month) - 1, 1);
+  return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
 }
 
-function StatsBarConsumo({ stats, horaPico, onClickMax, onClickMin }: StatsBarConsumoProps) {
-  if (!stats.maxPunto && !stats.minPunto && stats.promedio === null && !horaPico) return null;
+// Card fila superior: número kWh hero (igual estilo que home)
+function KpiCard({ label, sublabel, kwh }: { label: string; sublabel: string; kwh: number | null }) {
+  return (
+    <div style={{
+      background:   bg.surfaceFeat,
+      borderRadius: `${radius.lg}px`,
+      boxShadow:    shadow.sm,
+      padding:      `${space[5]}px`,
+      fontFamily:   font.sans,
+    }}>
+      <p style={{
+        margin:        0,
+        fontSize:      fontSize.xs,
+        fontWeight:    fontWeight.semibold,
+        color:         fg.secondary,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+      }}>
+        {label}
+      </p>
+      <p style={{ margin: `${space[1]}px 0`, fontSize: fontSize.xs, color: fg.muted }}>
+        {sublabel}
+      </p>
+      {kwh !== null ? (
+        <p style={{
+          margin:        0,
+          fontFamily:    font.technical,
+          fontSize:      fontSize["2xl"],
+          fontWeight:    fontWeight.light,
+          color:         fg.link,
+          lineHeight:    1.2,
+          letterSpacing: "-0.02em",
+        }}>
+          {kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })}
+          <span style={{
+            fontFamily:  font.sans,
+            fontSize:    fontSize.sm,
+            fontWeight:  fontWeight.regular,
+            color:       fg.secondary,
+            marginLeft:  space[1],
+          }}>kWh</span>
+        </p>
+      ) : (
+        <p style={{ margin: 0, fontSize: fontSize.md, color: fg.muted }}>—</p>
+      )}
+    </div>
+  );
+}
 
+// Card fila inferior: stat con valor destacado (igual estilo que home, sin borde)
+function StatFeatCard({
+  label, value, sub, accentColor, onClick,
+}: {
+  label: string; value: string; sub: string; accentColor?: string; onClick?: () => void;
+}) {
+  const clickable = !!onClick;
   return (
     <div
+      onClick={onClick}
       style={{
-        display:             "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap:                 space[2],
-        marginBottom:        space[4],
+        background:   bg.surfaceFeat,
+        borderRadius: `${radius.lg}px`,
+        boxShadow:    shadow.sm,
+        padding:      `${space[4]}px ${space[5]}px`,
+        fontFamily:   font.sans,
+        cursor:       clickable ? "pointer" : "default",
+        transition:   clickable ? "box-shadow 150ms ease, transform 150ms ease" : undefined,
       }}
+      onMouseEnter={clickable ? (e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow = shadow.md;
+        (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+      } : undefined}
+      onMouseLeave={clickable ? (e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow = shadow.sm;
+        (e.currentTarget as HTMLElement).style.transform = "";
+      } : undefined}
     >
-      {stats.maxPunto && (
-        <StatMiniCard
-          label="Día más alto"
-          value={`${stats.maxPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
-          sub={formatFechaDia(stats.maxPunto.fecha)}
-          accentColor={color.errorDark}
-          onClick={onClickMax}
-        />
-      )}
-      {stats.minPunto && (
-        <StatMiniCard
-          label="Día más bajo"
-          value={`${stats.minPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
-          sub={formatFechaDia(stats.minPunto.fecha)}
-          accentColor={color.successDark}
-          onClick={onClickMin}
-        />
-      )}
-      {stats.promedio !== null && (
-        <StatMiniCard
-          label="Promedio diario"
-          value={`${stats.promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
-          sub="este mes"
-        />
-      )}
-      {stats.tendencia7d && (
-        <StatMiniCard
-          label="Últimos 7 días"
-          value={TENDENCIA_LABEL[stats.tendencia7d]}
-          sub="vs semana anterior"
-          accentColor={TENDENCIA_COLOR[stats.tendencia7d]}
-        />
-      )}
-      {horaPico && (
-        <StatMiniCard
-          label="Hora pico del mes"
-          value={`${String(horaPico.hora_pico).padStart(2, "0")}:00 hs`}
-          sub={`${horaPico.kwh_promedio.toFixed(1)} kWh promedio`}
-          accentColor={color.successDark}
-        />
-      )}
+      <p style={{
+        margin:        0,
+        fontSize:      fontSize.xs,
+        fontWeight:    fontWeight.semibold,
+        color:         fg.secondary,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+      }}>
+        {label}
+      </p>
+      <p style={{
+        margin:     `${space[1]}px 0`,
+        fontFamily: font.technical,
+        fontSize:   fontSize.md,
+        fontWeight: fontWeight.bold,
+        color:      accentColor ?? fg.primary,
+        lineHeight: 1.2,
+      }}>
+        {value}
+      </p>
+      <p style={{ margin: 0, fontSize: fontSize.xs, color: fg.muted }}>
+        {sub}
+      </p>
     </div>
   );
 }
@@ -164,7 +208,6 @@ export function ConsumoPage({ token, suministroId }: Props) {
   const [detalleDia, setDetalleDia] = useState<DetalleDiaResponse | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [detalleHorario, setDetalleHorario] = useState<SerieHorariaResponse | null>(null);
-  const [horaPico, setHoraPico] = useState<HoraPicoResponse | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -175,14 +218,12 @@ export function ConsumoPage({ token, suministroId }: Props) {
       fetchComparacion(token, suministroId, mesActualStr()),
       fetchAnomalia(token, mesActualStr()).catch(() => null),
       fetchObjetivoEstado(token, mesActualStr()).catch(() => null),
-      fetchHoraPico(token, mesActualStr()).catch(() => null),
     ])
-      .then(([d, c, a, oe, hp]) => {
+      .then(([d, c, a, oe]) => {
         setDiario(d);
         setComparacion(c);
         setAnomalia(a);
         setObjetivoEstado(oe);
-        setHoraPico(hp);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Error al cargar datos");
@@ -296,14 +337,79 @@ export function ConsumoPage({ token, suministroId }: Props) {
             </div>
           )}
 
+          {/* Resumen del mes: dos filas de 4 cards */}
           <section style={{ marginBottom: space[8] }}>
-            <SectionTitle marginBottom={space[4]}>Consumo diario (mes actual)</SectionTitle>
-            <StatsBarConsumo
-              stats={stats}
-              horaPico={horaPico}
-              onClickMax={stats.maxPunto ? () => handleClickBarra(stats.maxPunto!.fecha) : undefined}
-              onClickMin={stats.minPunto ? () => handleClickBarra(stats.minPunto!.fecha) : undefined}
-            />
+            {/* Fila superior: totales históricos */}
+            <div style={{
+              display:             "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap:                 space[3],
+              marginBottom:        space[3],
+            }}>
+              <KpiCard
+                label="Consumo mes actual"
+                sublabel={comparacion ? formatMes(comparacion.mes_actual.mes) : ""}
+                kwh={comparacion?.mes_actual.total_kwh ?? null}
+              />
+              <KpiCard
+                label="Mes anterior"
+                sublabel={comparacion ? formatMes(comparacion.mes_anterior.mes) : ""}
+                kwh={comparacion?.mes_anterior.total_kwh ?? null}
+              />
+              <KpiCard
+                label="Mismo mes año anterior"
+                sublabel={comparacion ? formatMes(comparacion.mismo_mes_anio_anterior.mes) : ""}
+                kwh={comparacion?.mismo_mes_anio_anterior.total_kwh ?? null}
+              />
+              <KpiCard
+                label="Promedio diario"
+                sublabel="este mes"
+                kwh={stats.promedio ?? null}
+              />
+            </div>
+
+            {/* Fila inferior: stats del mes actual */}
+            <div style={{
+              display:             "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap:                 space[3],
+              marginBottom:        space[6],
+            }}>
+              <StatFeatCard
+                label="Día más alto"
+                value={stats.maxPunto
+                  ? `${stats.maxPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`
+                  : "—"}
+                sub={stats.maxPunto ? formatFechaDia(stats.maxPunto.fecha) : ""}
+                accentColor={color.errorDark}
+                onClick={stats.maxPunto ? () => handleClickBarra(stats.maxPunto!.fecha) : undefined}
+              />
+              <StatFeatCard
+                label="Día más bajo"
+                value={stats.minPunto
+                  ? `${stats.minPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`
+                  : "—"}
+                sub={stats.minPunto ? formatFechaDia(stats.minPunto.fecha) : ""}
+                accentColor={color.successDark}
+                onClick={stats.minPunto ? () => handleClickBarra(stats.minPunto!.fecha) : undefined}
+              />
+              <StatFeatCard
+                label="Promedio diario"
+                value={stats.promedio !== null
+                  ? `${stats.promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`
+                  : "—"}
+                sub="este mes"
+              />
+              <StatFeatCard
+                label="Últimos 7 días"
+                value={stats.tendencia7d ? TENDENCIA_LABEL[stats.tendencia7d] : "—"}
+                sub="vs semana anterior"
+                accentColor={stats.tendencia7d ? TENDENCIA_COLOR[stats.tendencia7d] : fg.muted}
+              />
+            </div>
+          </section>
+
+          <section style={{ marginBottom: space[8] }}>
             <GraficoConsumoDiario
               serie={diario?.serie ?? []}
               onClickBarra={handleClickBarra}
@@ -321,17 +427,6 @@ export function ConsumoPage({ token, suministroId }: Props) {
               serieHoraria={detalleHorario?.serie}
             />
           )}
-
-          <section style={{ marginBottom: space[8] }}>
-            <SectionTitle marginBottom={space[4]}>Comparación histórica</SectionTitle>
-            {comparacion ? (
-              <PanelComparacion
-                mesActual={comparacion.mes_actual}
-                mesAnterior={comparacion.mes_anterior}
-                mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
-              />
-            ) : null}
-          </section>
 
           {comparacion && (
             <section style={{ marginBottom: space[8] }}>

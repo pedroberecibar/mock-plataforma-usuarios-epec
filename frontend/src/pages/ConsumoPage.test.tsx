@@ -19,12 +19,6 @@ const COMPARACION_VACIA = {
   datos_hasta: null,
 };
 
-const HORA_PICO_RESP = {
-  hora_pico: 20,
-  kwh_promedio: 0.8,
-  perfil_24h: Array.from({ length: 24 }, (_, h) => ({ hora: h, kwh: h === 20 ? 0.8 : 0.3 })),
-};
-
 const SERIE_HORARIA_RESP = {
   fecha: "2026-06-15",
   serie: Array.from({ length: 24 }, (_, h) => ({ hora: h, kwh: 0.3 + (h === 20 ? 0.5 : 0) })),
@@ -35,7 +29,6 @@ beforeEach(() => {
   vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_VACIA);
   vi.mocked(consumoApi.fetchAnomalia).mockResolvedValue(null);
   vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(null);
-  vi.mocked(consumoApi.fetchHoraPico).mockResolvedValue(HORA_PICO_RESP);
   vi.mocked(consumoApi.fetchSerieHoraria).mockResolvedValue(SERIE_HORARIA_RESP);
   vi.mocked(consumoApi.fetchDetalleDia).mockResolvedValue({
     fecha: "2026-06-15",
@@ -76,23 +69,20 @@ describe("ConsumoPage", () => {
     expect(vi.mocked(consumoApi.fetchDetalleDia)).not.toHaveBeenCalled();
   });
 
-  it("llama a fetchHoraPico al montar y muestra la card hora pico", async () => {
-    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
-    await waitFor(() => {
-      expect(vi.mocked(consumoApi.fetchHoraPico)).toHaveBeenCalledWith(
-        TOKEN,
-        expect.stringMatching(/^\d{4}-\d{2}$/)
-      );
-    });
-    await waitFor(() => expect(screen.getByText("Hora pico del mes")).not.toBeNull());
-    expect(screen.getByText("20:00 hs")).not.toBeNull();
-  });
-
-  it("no muestra card hora pico cuando fetchHoraPico retorna null", async () => {
-    vi.mocked(consumoApi.fetchHoraPico).mockResolvedValue(null);
+  it("muestra las cards de comparación histórica en fila superior", async () => {
+    const COMPARACION_CON_DATOS = {
+      mes_actual:              { mes: "2026-06-01", serie: [], total_kwh: 252.8 },
+      mes_anterior:            { mes: "2026-05-01", serie: [], total_kwh: 333.3 },
+      mismo_mes_anio_anterior: { mes: "2025-06-01", serie: [], total_kwh: 444.7 },
+      zona_mes_actual:         { promedio_vecinos_kwh: null, n_vecinos: 0, diferencia_pct: null, serie: [] },
+      datos_hasta: null,
+    };
+    vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_CON_DATOS);
     render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
-    expect(screen.queryByText("Hora pico del mes")).toBeNull();
+    expect(screen.getByText("Consumo mes actual")).not.toBeNull();
+    expect(screen.getByText("Mes anterior")).not.toBeNull();
+    expect(screen.getByText("Mismo mes año anterior")).not.toBeNull();
   });
 
   it("muestra skeletons de carga en lugar de texto plano", () => {
