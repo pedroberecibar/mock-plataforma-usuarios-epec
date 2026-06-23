@@ -6,6 +6,8 @@ import {
   font, fontSize, fontWeight, radius, space,
   cardStyle,
 } from "../design-tokens";
+import { PageHeader } from "../components/PageHeader";
+import { LoadingSkeleton } from "../components/LoadingSkeleton";
 
 interface Props {
   token: string;
@@ -76,52 +78,51 @@ export function AlertasPage({ token }: Props) {
   }
 
   return (
-    <div style={{ padding: space[6], fontFamily: font.sans, maxWidth: 680, margin: "0 auto" }}>
+    <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
+      <PageHeader title="Alertas" />
 
-      <h2 style={pageTitleStyle}>Configuración de notificaciones</h2>
-      <p style={{ ...captionStyle, marginBottom: space[6] }}>
-        Elegí qué avisos querés recibir por correo electrónico.
-      </p>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: `${space[10]}px` }}>
+        <p style={{ ...captionStyle, marginBottom: space[6] }}>
+          Elegí qué avisos querés recibir por correo electrónico.
+        </p>
 
-      {error && (
-        <p role="alert" style={errorStyle}>{error}</p>
-      )}
+        {error && (
+          <p role="alert" style={errorStyle}>{error}</p>
+        )}
 
-      {loading ? (
-        <p style={captionStyle}>Cargando configuración…</p>
-      ) : (
-        <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
-          {/* Section header */}
-          <div style={sectionHeaderStyle}>
-            <IconMail />
-            <span style={{ fontWeight: fontWeight.semibold, fontSize: fontSize.sm, color: fg.primary }}>
-              Alertas por email
-            </span>
+        {loading ? (
+          <LoadingSkeleton variant="card" />
+        ) : (
+          <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
+            <div style={sectionHeaderStyle}>
+              <IconMail />
+              <span style={{ fontWeight: fontWeight.semibold, fontSize: fontSize.sm, color: fg.primary }}>
+                Alertas por email
+              </span>
+            </div>
+
+            <div>
+              {ALERTA_META.map((meta, index) => (
+                <ToggleRow
+                  key={meta.tipo}
+                  meta={meta}
+                  habilitado={config.get(meta.tipo) ?? false}
+                  disabled={saving === meta.tipo}
+                  isLast={index === ALERTA_META.length - 1}
+                  onChange={(v) => handleToggle(meta.tipo, v)}
+                />
+              ))}
+            </div>
           </div>
+        )}
 
-          {/* Toggle items */}
-          <div>
-            {ALERTA_META.map((meta, index) => (
-              <ToggleRow
-                key={meta.tipo}
-                meta={meta}
-                habilitado={config.get(meta.tipo) ?? false}
-                disabled={saving === meta.tipo}
-                isLast={index === ALERTA_META.length - 1}
-                onChange={(v) => handleToggle(meta.tipo, v)}
-              />
-            ))}
-          </div>
+        <div style={infoNoticeStyle}>
+          <IconInfo />
+          <span style={{ fontSize: fontSize.sm, color: fg.secondary, lineHeight: 1.5 }}>
+            Los avisos se envían al correo electrónico asociado a tu cuenta. Podés cambiar
+            esta configuración en cualquier momento.
+          </span>
         </div>
-      )}
-
-      {/* Info notice */}
-      <div style={infoNoticeStyle}>
-        <IconInfo />
-        <span style={{ fontSize: fontSize.sm, color: fg.secondary, lineHeight: 1.5 }}>
-          Los avisos se envían al correo electrónico asociado a tu cuenta. Podés cambiar
-          esta configuración en cualquier momento.
-        </span>
       </div>
     </div>
   );
@@ -142,12 +143,12 @@ function ToggleRow({ meta, habilitado, disabled, isLast, onChange }: ToggleRowPr
   return (
     <div
       style={{
-        display:      "flex",
-        alignItems:   "center",
+        display:        "flex",
+        alignItems:     "center",
         justifyContent: "space-between",
-        padding:      `${space[4]}px ${space[5]}px`,
-        borderBottom: isLast ? "none" : `1px solid ${border.default}`,
-        gap:          space[4],
+        padding:        `${space[4]}px ${space[5]}px`,
+        borderBottom:   isLast ? "none" : `1px solid ${border.default}`,
+        gap:            space[4],
       }}
     >
       <div>
@@ -248,15 +249,6 @@ function IconInfo() {
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
-const pageTitleStyle: React.CSSProperties = {
-  fontFamily:   font.sans,
-  fontSize:     fontSize.xl,
-  fontWeight:   fontWeight.semibold,
-  color:        fg.primary,
-  margin:       0,
-  marginBottom: space[2],
-};
-
 const captionStyle: React.CSSProperties = {
   fontFamily: font.sans,
   fontSize:   fontSize.sm,
@@ -266,33 +258,33 @@ const captionStyle: React.CSSProperties = {
 };
 
 const sectionHeaderStyle: React.CSSProperties = {
-  display:       "flex",
-  alignItems:    "center",
-  gap:           space[2],
-  padding:       `${space[3]}px ${space[5]}px`,
-  background:    bg.muted,
-  borderBottom:  `1px solid ${border.default}`,
+  display:      "flex",
+  alignItems:   "center",
+  gap:          space[2],
+  padding:      `${space[3]}px ${space[5]}px`,
+  background:   bg.muted,
+  borderBottom: `1px solid ${border.default}`,
 };
 
 const infoNoticeStyle: React.CSSProperties = {
-  display:       "flex",
-  alignItems:    "flex-start",
-  gap:           space[2],
-  marginTop:     space[5],
-  padding:       `${space[3]}px ${space[4]}px`,
-  background:    bg.muted,
-  borderRadius:  radius.md,
-  border:        `1px solid ${border.default}`,
+  display:      "flex",
+  alignItems:   "flex-start",
+  gap:          space[2],
+  marginTop:    space[5],
+  padding:      `${space[3]}px ${space[4]}px`,
+  background:   bg.muted,
+  borderRadius: radius.md,
+  border:       `1px solid ${border.default}`,
 };
 
 const errorStyle: React.CSSProperties = {
-  fontFamily:    font.sans,
-  fontSize:      fontSize.sm,
-  color:         color.error,
-  background:    color.errorLight,
-  border:        `1px solid ${color.error}`,
-  borderRadius:  radius.sm,
-  padding:       `${space[2]}px ${space[3]}px`,
-  margin:        0,
-  marginBottom:  space[4],
+  fontFamily:   font.sans,
+  fontSize:     fontSize.sm,
+  color:        color.error,
+  background:   color.errorLight,
+  border:       `1px solid ${color.error}`,
+  borderRadius: radius.sm,
+  padding:      `${space[2]}px ${space[3]}px`,
+  margin:       0,
+  marginBottom: space[4],
 };

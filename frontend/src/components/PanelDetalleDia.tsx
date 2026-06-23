@@ -1,10 +1,23 @@
-import type { DetalleDiaResponse } from "../api/types";
+import type { DetalleDiaResponse, PuntoSerieHoraria } from "../api/types";
+import { GraficoConsumoHorario } from "./GraficoConsumoHorario";
+import {
+  bg,
+  cardFeaturedStyle,
+  fg,
+  font,
+  fontSize,
+  fontWeight,
+  labelStyle,
+  radius,
+  space,
+} from "../design-tokens";
 
 interface Props {
   fecha: string;
   detalle: DetalleDiaResponse | null;
   loading: boolean;
   onCerrar: () => void;
+  serieHoraria?: PuntoSerieHoraria[];
 }
 
 function formatFechaLarga(fecha: string): string {
@@ -13,26 +26,35 @@ function formatFechaLarga(fecha: string): string {
   return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`;
 }
 
-export function PanelDetalleDia({ fecha, detalle, loading, onCerrar }: Props) {
+export function PanelDetalleDia({ fecha, detalle, loading, onCerrar, serieHoraria }: Props) {
+  const horaMaxima = serieHoraria && serieHoraria.length > 0
+    ? serieHoraria.reduce((a, b) => (b.kwh > a.kwh ? b : a)).hora
+    : undefined;
+
   return (
     <section
       data-testid="panel-detalle"
-      style={{
-        marginBottom: 32,
-        background: "#f9fbe7",
-        border: "1px solid #c5e1a5",
-        borderRadius: 8,
-        padding: "16px 20px",
-      }}
+      style={{ ...cardFeaturedStyle, marginBottom: space[8] }}
     >
-      <h3 style={{ fontSize: 15, color: "#33691e", margin: "0 0 12px" }}>
+      <h3 style={{
+        fontFamily:   font.sans,
+        fontSize:     fontSize.sm,
+        fontWeight:   fontWeight.semibold,
+        color:        fg.link,
+        margin:       `0 0 ${space[3]}px`,
+        letterSpacing: "0.01em",
+      }}>
         Detalle — {formatFechaLarga(fecha)}
       </h3>
 
-      {loading && <p style={{ color: "#555", margin: 0 }}>Cargando detalle...</p>}
+      {loading && (
+        <p style={{ fontFamily: font.sans, fontSize: fontSize.sm, color: fg.secondary, margin: 0 }}>
+          Cargando detalle...
+        </p>
+      )}
 
       {!loading && detalle && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: space[3] }}>
           <DetalleCard
             label="Este día"
             valor={detalle.kwh_dia}
@@ -52,16 +74,25 @@ export function PanelDetalleDia({ fecha, detalle, loading, onCerrar }: Props) {
         </div>
       )}
 
+      {serieHoraria && (
+        <div style={{ marginTop: space[4] }}>
+          <p style={labelStyle}>Consumo por hora</p>
+          <GraficoConsumoHorario serie={serieHoraria} horaMaxima={horaMaxima} />
+        </div>
+      )}
+
       <button
         onClick={onCerrar}
         style={{
-          marginTop: 12,
+          marginTop:  space[3],
           background: "none",
-          border: "none",
-          color: "#558b2f",
-          cursor: "pointer",
-          fontSize: 13,
-          padding: 0,
+          border:     "none",
+          color:      fg.link,
+          cursor:     "pointer",
+          fontFamily: font.sans,
+          fontSize:   fontSize.sm,
+          fontWeight: fontWeight.medium,
+          padding:    0,
         }}
       >
         Cerrar
@@ -84,15 +115,28 @@ function DetalleCard({ label, valor, sinDatos, testId }: DetalleCardProps) {
     <div
       data-testid={testId}
       style={{
-        background: "#fff",
-        border: "1px solid #dcedc8",
-        borderRadius: 6,
-        padding: "12px 14px",
-        textAlign: "center",
+        background:   bg.surface,
+        borderRadius: radius.sm,
+        padding:      `${space[3]}px ${space[4]}px`,
+        textAlign:    "center",
       }}
     >
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, color: "#2e7d32" }}>
+      <div style={{
+        fontFamily:    font.sans,
+        fontSize:      fontSize.xs,
+        fontWeight:    fontWeight.medium,
+        color:         fg.secondary,
+        marginBottom:  space[1],
+        letterSpacing: "0.02em",
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontFamily: font.technical,
+        fontSize:   fontSize.lg,
+        fontWeight: fontWeight.semibold,
+        color:      fg.link,
+      }}>
         {sinDatos
           ? "—"
           : valor !== null

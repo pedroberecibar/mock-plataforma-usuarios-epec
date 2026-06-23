@@ -1,6 +1,6 @@
 import type { ConsumoMesResponse } from "../api/types";
 import {
-  cardStyle,
+  cardFeaturedStyle,
   labelStyle,
   color,
   font,
@@ -29,7 +29,7 @@ function DeltaChip({ value, label }: DeltaChipProps) {
           fontFamily:   font.sans,
           fontSize:     fontSize.xs,
           color:        fg.muted,
-          background:   color.neutral100,
+          background:   "rgba(180,170,155,0.25)",
           borderRadius: radius.xs,
           padding:      `${space[1]}px ${space[2]}px`,
           fontWeight:   fontWeight.medium,
@@ -41,26 +41,26 @@ function DeltaChip({ value, label }: DeltaChipProps) {
     );
   }
 
-  const sube = value > 0;
-  const chipBg    = sube ? color.errorLight    : color.successLight;
-  const chipColor = sube ? color.error         : color.success;
+  const sube      = value > 0;
+  const chipBg    = sube ? "rgba(192,57,43,0.08)"  : "rgba(18,78,47,0.10)";
+  const chipColor = sube ? color.errorDark          : color.successDark;
   const arrow     = sube ? "▲" : "▼";
 
   return (
     <span
       style={{
-        display:      "inline-flex",
-        alignItems:   "center",
-        gap:          3,
-        background:   chipBg,
-        color:        chipColor,
+        display:    "inline-flex",
+        alignItems: "center",
+        gap:        3,
+        background: chipBg,
+        color:      chipColor,
         borderRadius: radius.xs,
-        padding:      `${space[1]}px ${space[2]}px`,
-        fontSize:     fontSize.xs,
-        fontWeight:   fontWeight.semibold,
-        fontFamily:   font.sans,
-        lineHeight:   lineHeight.normal,
-        whiteSpace:   "nowrap",
+        padding:    `${space[1]}px ${space[2]}px`,
+        fontSize:   fontSize.xs,
+        fontWeight: fontWeight.semibold,
+        fontFamily: font.sans,
+        lineHeight: lineHeight.normal,
+        whiteSpace: "nowrap",
       }}
     >
       {arrow} {Math.abs(value).toFixed(1)}% {label}
@@ -72,15 +72,15 @@ export function BloqueConsumoMes({ consumoMes }: Props) {
   const { total_kwh, vs_mes_anterior_pct, vs_anio_anterior_pct } = consumoMes;
 
   return (
-    <section aria-label="consumo del mes" style={cardStyle}>
+    <section aria-label="consumo del mes" style={cardFeaturedStyle}>
       <p style={labelStyle}>Consumo este mes</p>
 
       <p
         style={{
           fontFamily:    font.technical,
-          fontSize:      fontSize["4xl"],  // display-lg: 48px
-          fontWeight:    fontWeight.bold,
-          color:         fg.link,          // primary #00361d
+          fontSize:      fontSize["4xl"],
+          fontWeight:    fontWeight.light,
+          color:         fg.link,
           lineHeight:    lineHeight.tight,
           margin:        0,
           marginBottom:  space[3],
@@ -91,8 +91,8 @@ export function BloqueConsumoMes({ consumoMes }: Props) {
         <span
           style={{
             fontFamily: font.sans,
-            fontSize:   fontSize.xl,    // unit-display: 24px
-            fontWeight: fontWeight.light,  // 300
+            fontSize:   fontSize.xl,
+            fontWeight: fontWeight.light,
             color:      fg.secondary,
             marginLeft: space[2],
           }}

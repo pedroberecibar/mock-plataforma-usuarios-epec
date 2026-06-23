@@ -1,3 +1,5 @@
+import { fg, font, fontSize, radius, space } from "../design-tokens";
+
 interface Props {
   datosHasta: string | null;
 }
@@ -6,9 +8,9 @@ export function CartelLatencia({ datosHasta }: Props) {
   if (!datosHasta) return null;
 
   const fecha = new Date(datosHasta + "T00:00:00").toLocaleDateString("es-AR", {
-    day: "numeric",
+    day:   "numeric",
     month: "long",
-    year: "numeric",
+    year:  "numeric",
   });
 
   return (
@@ -16,13 +18,14 @@ export function CartelLatencia({ datosHasta }: Props) {
       role="status"
       aria-label="latencia de datos"
       style={{
-        background: "#fff8e1",
-        border: "1px solid #ffe082",
-        borderRadius: 6,
-        padding: "8px 14px",
-        fontSize: 13,
-        color: "#5d4037",
-        marginBottom: 16,
+        background:   "rgba(230,145,10,0.06)",
+        borderLeft:   "3px solid #e6910a",
+        borderRadius: `0 ${radius.sm}px ${radius.sm}px 0`,
+        padding:      `${space[2]}px ${space[4]}px`,
+        fontFamily:   font.sans,
+        fontSize:     fontSize.sm,
+        color:        fg.secondary,
+        marginBottom: space[4],
       }}
     >
       ⚡ Datos disponibles hasta el <strong>{fecha}</strong>. La ingesta se actualiza

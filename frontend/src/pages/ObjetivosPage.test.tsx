@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { ObjetivosPage } from "./ObjetivosPage";
 import * as objetivosApi from "../api/objetivos";
 import type { ObjetivoEstadoResponse } from "../api/types";
@@ -143,5 +143,20 @@ describe("ObjetivosPage — Trigger alerta", () => {
     await waitFor(() =>
       expect(vi.mocked(objetivosApi.evaluarObjetivo)).toHaveBeenCalledWith(TOKEN)
     );
+  });
+});
+
+describe("ObjetivosPage — Design system (Etapa 6)", () => {
+  it("renderiza PageHeader con título 'Objetivo de consumo'", async () => {
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.getByRole("progressbar")).not.toBeNull());
+    const banner = screen.getByRole("banner");
+    expect(within(banner).getByText("Objetivo de consumo")).not.toBeNull();
+  });
+
+  it("muestra skeletons de carga en lugar de texto plano", () => {
+    vi.mocked(objetivosApi.fetchObjetivo).mockReturnValue(new Promise(() => {}));
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    expect(screen.getAllByTestId("skeleton-block").length).toBeGreaterThan(0);
   });
 });

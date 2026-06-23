@@ -1,11 +1,17 @@
+import type React from "react";
 import { useEffect, useState } from "react";
-import { evaluarVencimiento, fetchFacturaDatos, fetchLinkFactura } from "../api/factura";
+import { evaluarVencimiento, fetchFacturaDatos } from "../api/factura";
 import type { FacturaDatosResponse } from "../api/types";
 import {
-  bg, border, brand, color, fg,
+  bg, brand, fg,
   font, fontSize, fontWeight, radius, space,
-  cardStyle, labelStyle,
+  cardStyle,
 } from "../design-tokens";
+import { PageHeader } from "../components/PageHeader";
+import { AlertBanner } from "../components/AlertBanner";
+import { SectionTitle } from "../components/SectionTitle";
+
+const EPEC_PAGOS_URL = "https://www.epec.com.ar/tramites/pagos";
 
 interface Props {
   token: string;
@@ -59,17 +65,13 @@ function formatFechaVcto(fechaStr: string): string {
 }
 
 export function FacturaPage({ token }: Props) {
-  const [numeroCliente, setNumeroCliente] = useState("");
-  const [numeroContrato, setNumeroContrato] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [expandido, setExpandido] = useState<number | null>(null);
   const [facturaDatos, setFacturaDatos] = useState<FacturaDatosResponse | null>(null);
 
   useEffect(() => {
     fetchFacturaDatos(token)
       .then(setFacturaDatos)
-      .catch(() => { /* fire-and-forget — no bloquea la UI */ });
+      .catch(() => { /* fire-and-forget */ });
 
     evaluarVencimiento(token).catch(() => { /* fire-and-forget */ });
   }, [token]);
@@ -79,186 +81,114 @@ export function FacturaPage({ token }: Props) {
     : null;
   const mostrarBannerVencimiento = diasVcto !== null && diasVcto <= 5;
 
-  async function handleIrAFactura(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const url = await fetchLinkFactura(token, numeroCliente, numeroContrato);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      if (err instanceof Error && err.message === "no_configurado") {
-        setError("El acceso a la factura EPEC aún no está configurado. Ingresá directamente en epec.com.ar.");
-      } else {
-        setError("No se pudo generar el enlace. Intentá de nuevo.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
-    <div style={{ padding: space[6], fontFamily: font.sans, maxWidth: 700, margin: "0 auto" }}>
+    <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
+      <PageHeader title="Mi Factura" />
 
-      {/* Banner vencimiento próximo */}
-      {mostrarBannerVencimiento && facturaDatos?.fecha_vencimiento && (
-        <div
-          role="alert"
-          data-testid="banner-vencimiento"
-          style={{
-            background: "#fff8e1",
-            border: "1px solid #f9a825",
-            borderRadius: radius.md,
-            padding: `${space[3]}px ${space[4]}px`,
-            marginBottom: space[5],
-            display: "flex",
-            alignItems: "center",
-            gap: space[2],
-            fontFamily: font.sans,
-            fontSize: fontSize.sm,
-            color: "#5d4037",
-          }}
-        >
-          <span style={{ fontSize: 18 }}>⚠️</span>
-          <span>
-            Tu factura vence el{" "}
-            <strong>{formatFechaVcto(facturaDatos.fecha_vencimiento)}</strong>
-            {diasVcto === 0
-              ? " — ¡hoy!"
-              : diasVcto === 1
-                ? " — ¡mañana!"
-                : ` (en ${diasVcto} días)`}
-            . Recordá abonarla para evitar inconvenientes.
-          </span>
-        </div>
-      )}
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: `${space[10]}px` }}>
 
-      {/* Fecha vencimiento (siempre visible si existe) */}
-      {facturaDatos?.fecha_vencimiento && !mostrarBannerVencimiento && (
-        <p
-          data-testid="fecha-vencimiento"
-          style={{
-            fontFamily: font.sans,
-            fontSize: fontSize.sm,
-            color: fg.muted,
-            marginBottom: space[4],
-          }}
-        >
-          Fecha de vencimiento: {formatFechaVcto(facturaDatos.fecha_vencimiento)}
-        </p>
-      )}
+        {mostrarBannerVencimiento && facturaDatos?.fecha_vencimiento && (
+          <div style={{ marginBottom: space[5] }}>
+            <AlertBanner variant="warning" data-testid="banner-vencimiento">
+              ⚠️ Tu factura vence el{" "}
+              <strong>{formatFechaVcto(facturaDatos.fecha_vencimiento)}</strong>
+              {diasVcto === 0
+                ? " — ¡hoy!"
+                : diasVcto === 1
+                  ? " — ¡mañana!"
+                  : ` (en ${diasVcto} días)`}
+              . Recordá abonarla para evitar inconvenientes.
+            </AlertBanner>
+          </div>
+        )}
 
-      {/* Conceptos */}
-      <section style={{ marginBottom: space[8] }}>
-        <h2 style={sectionTitleStyle}>Conceptos de tu factura</h2>
-        <p style={{ ...captionStyle, marginBottom: space[4] }}>
-          Tu factura EPEC se mide en kWh. Estos son los conceptos que la componen:
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: space[2] }}>
-          {CONCEPTOS.map((c, i) => (
-            <div key={c.titulo} style={{ ...cardStyle, padding: `${space[3]}px ${space[4]}px` }}>
-              <button
-                onClick={() => setExpandido(expandido === i ? null : i)}
-                aria-expanded={expandido === i}
-                style={{
-                  display:        "flex",
-                  alignItems:     "center",
-                  justifyContent: "space-between",
-                  width:          "100%",
-                  background:     "none",
-                  border:         "none",
-                  cursor:         "pointer",
-                  padding:        0,
-                  fontFamily:     font.sans,
-                  fontSize:       fontSize.base,
-                  fontWeight:     fontWeight.medium,
-                  color:          fg.primary,
-                  textAlign:      "left",
-                }}
-              >
-                {c.titulo}
-                <ChevronIcon open={expandido === i} />
-              </button>
-              {expandido === i && (
-                <p style={{ ...captionStyle, marginTop: space[2], marginBottom: 0 }}>
-                  {c.descripcion}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Link a factura EPEC */}
-      <section>
-        <h2 style={sectionTitleStyle}>Ver, descargar y pagar tu factura</h2>
-        <div style={{ ...cardStyle, padding: space[6] }}>
-          <p style={{ ...captionStyle, marginBottom: space[5] }}>
-            Ingresá tu Nº de cliente y Nº de contrato para ir directamente a tu factura en el sitio de EPEC.
+        {facturaDatos?.fecha_vencimiento && !mostrarBannerVencimiento && (
+          <p
+            data-testid="fecha-vencimiento"
+            style={{
+              fontFamily:   font.sans,
+              fontSize:     fontSize.sm,
+              color:        fg.muted,
+              marginBottom: space[4],
+            }}
+          >
+            Fecha de vencimiento: {formatFechaVcto(facturaDatos.fecha_vencimiento)}
           </p>
-          <form onSubmit={handleIrAFactura} noValidate>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: space[4], marginBottom: space[5] }}>
-              <div>
-                <label htmlFor="numero-cliente" style={labelStyle}>Nº de cliente</label>
-                <input
-                  id="numero-cliente"
-                  type="text"
-                  value={numeroCliente}
-                  onChange={(e) => setNumeroCliente(e.target.value)}
-                  placeholder="Ej: 123456"
-                  required
-                  disabled={loading}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label htmlFor="numero-contrato" style={labelStyle}>Nº de contrato</label>
-                <input
-                  id="numero-contrato"
-                  type="text"
-                  value={numeroContrato}
-                  onChange={(e) => setNumeroContrato(e.target.value)}
-                  placeholder="Ej: 789012"
-                  required
-                  disabled={loading}
-                  style={inputStyle}
-                />
-              </div>
-            </div>
+        )}
 
-            {error && (
-              <p role="alert" style={errorStyle}>{error}</p>
-            )}
+        <section style={{ marginBottom: space[8] }}>
+          <SectionTitle marginBottom={space[3]}>Conceptos de tu factura</SectionTitle>
+          <p style={{ ...captionStyle, marginBottom: space[4] }}>
+            Tu factura EPEC se mide en kWh. Estos son los conceptos que la componen:
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: space[2] }}>
+            {CONCEPTOS.map((c, i) => (
+              <div key={c.titulo} style={{ ...cardStyle, padding: `${space[3]}px ${space[4]}px` }}>
+                <button
+                  onClick={() => setExpandido(expandido === i ? null : i)}
+                  aria-expanded={expandido === i}
+                  style={{
+                    display:        "flex",
+                    alignItems:     "center",
+                    justifyContent: "space-between",
+                    width:          "100%",
+                    background:     "none",
+                    border:         "none",
+                    cursor:         "pointer",
+                    padding:        0,
+                    fontFamily:     font.sans,
+                    fontSize:       fontSize.base,
+                    fontWeight:     fontWeight.medium,
+                    color:          fg.primary,
+                    textAlign:      "left",
+                  }}
+                >
+                  {c.titulo}
+                  <ChevronIcon open={expandido === i} />
+                </button>
+                {expandido === i && (
+                  <p style={{ ...captionStyle, marginTop: space[2], marginBottom: 0 }}>
+                    {c.descripcion}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
 
-            <button
-              type="submit"
-              disabled={loading || !numeroCliente || !numeroContrato}
+        <section>
+          <SectionTitle marginBottom={space[3]}>Ver, descargar y pagar tu factura</SectionTitle>
+          <div style={{ ...cardStyle, padding: space[6] }}>
+            <p style={{ ...captionStyle, marginBottom: space[5] }}>
+              Accedé al portal oficial de EPEC para ver tus facturas, descargarlas y realizar el pago online.
+            </p>
+            <a
+              data-testid="enlace-epec"
+              href={EPEC_PAGOS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
-                display:      "inline-flex",
-                alignItems:   "center",
-                gap:          space[2],
-                background:   brand.primary,
-                color:        color.white,
-                border:       "none",
-                borderRadius: radius.md,
-                padding:      `${space[3]}px ${space[5]}px`,
-                fontSize:     fontSize.base,
-                fontWeight:   fontWeight.semibold,
-                fontFamily:   font.sans,
-                cursor:       loading || !numeroCliente || !numeroContrato ? "not-allowed" : "pointer",
-                opacity:      loading || !numeroCliente || !numeroContrato ? 0.6 : 1,
+                display:        "inline-flex",
+                alignItems:     "center",
+                gap:            space[2],
+                background:     brand.primary,
+                color:          fg.onDark,
+                borderRadius:   radius.md,
+                padding:        `${space[3]}px ${space[5]}px`,
+                fontSize:       fontSize.base,
+                fontWeight:     fontWeight.semibold,
+                fontFamily:     font.sans,
+                textDecoration: "none",
               }}
             >
-              <IconExternalLink />
-              {loading ? "Abriendo…" : "Ir a mi factura"}
-            </button>
-          </form>
-
-          <p style={{ ...captionStyle, marginTop: space[4], color: fg.muted }}>
-            Te avisaremos por notificación cuando tu próxima factura esté disponible.
-          </p>
-        </div>
-      </section>
+              Ver mi factura
+            </a>
+            <p style={{ ...captionStyle, marginTop: space[4], color: fg.muted }}>
+              Te avisaremos por notificación cuando tu próxima factura esté disponible.
+            </p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -279,60 +209,13 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
-function IconExternalLink() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-      <polyline points="15 3 21 3 21 9" />
-      <line x1="10" y1="14" x2="21" y2="3" />
-    </svg>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
-const sectionTitleStyle: React.CSSProperties = {
-  fontFamily:   font.sans,
-  fontSize:     fontSize.lg,
-  fontWeight:   fontWeight.semibold,
-  color:        fg.primary,
-  margin:       0,
-  marginBottom: space[3],
-};
-
 const captionStyle: React.CSSProperties = {
-  fontFamily:  font.sans,
-  fontSize:    fontSize.sm,
-  color:       fg.secondary,
-  margin:      0,
-  lineHeight:  1.5,
+  fontFamily: font.sans,
+  fontSize:   fontSize.sm,
+  color:      fg.secondary,
+  margin:     0,
+  lineHeight: 1.5,
 };
-
-const inputStyle: React.CSSProperties = {
-  display:      "block",
-  width:        "100%",
-  boxSizing:    "border-box",
-  fontFamily:   font.sans,
-  fontSize:     fontSize.base,
-  color:        fg.primary,
-  background:   bg.surface,
-  border:       `1px solid ${border.default}`,
-  borderRadius: radius.md,
-  padding:      `${space[3]}px ${space[4]}px`,
-  outline:      "none",
-};
-
-const errorStyle: React.CSSProperties = {
-  fontFamily:   font.sans,
-  fontSize:     fontSize.sm,
-  color:        color.error,
-  background:   color.errorLight,
-  border:       `1px solid ${color.error}`,
-  borderRadius: radius.sm,
-  padding:      `${space[2]}px ${space[3]}px`,
-  margin:       0,
-  marginBottom: space[4],
-};
-
-import type React from "react";

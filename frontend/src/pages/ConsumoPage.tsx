@@ -1,10 +1,28 @@
 import { useEffect, useState } from "react";
-import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchSerieDiaria } from "../api/consumo";
-import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, PuntoSerie } from "../api/types";
+import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchHoraPico, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
+import { fetchObjetivoEstado } from "../api/objetivos";
+import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, HoraPicoResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
 import { PanelComparacion } from "../components/PanelComparacion";
 import { PanelDetalleDia } from "../components/PanelDetalleDia";
+import { PanelVecinosComparacion } from "../components/PanelVecinosComparacion";
+import { PageHeader } from "../components/PageHeader";
+import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { AlertBanner } from "../components/AlertBanner";
+import { SectionTitle } from "../components/SectionTitle";
+import { StatMiniCard } from "../components/StatMiniCard";
+import {
+  bg,
+  brand,
+  color,
+  fg,
+  font,
+  fontSize,
+  fontWeight,
+  radius,
+  space,
+} from "../design-tokens";
 
 interface SerieStats {
   maxPunto: PuntoSerie | null;
@@ -44,97 +62,73 @@ function formatFechaDia(fecha: string): string {
   return `${dias[d.getDay()]} ${d.getDate()}`;
 }
 
+const TENDENCIA_LABEL = { subiendo: "↑ Subiendo", bajando: "↓ Bajando", estable: "→ Estable" };
+const TENDENCIA_COLOR = {
+  subiendo: color.errorDark,
+  bajando:  color.successDark,
+  estable:  fg.secondary,
+};
+
 interface StatsBarConsumoProps {
   stats: SerieStats;
+  horaPico?: HoraPicoResponse | null;
   onClickMax?: () => void;
   onClickMin?: () => void;
 }
 
-function StatsBarConsumo({ stats, onClickMax, onClickMin }: StatsBarConsumoProps) {
-  if (!stats.maxPunto && !stats.minPunto && stats.promedio === null) return null;
-
-  const TENDENCIA_LABEL = { subiendo: "↑ Subiendo", bajando: "↓ Bajando", estable: "→ Estable" };
-  const TENDENCIA_COLOR = { subiendo: "#b22c2c", bajando: "#1a7a4a", estable: "#6B5A45" };
+function StatsBarConsumo({ stats, horaPico, onClickMax, onClickMin }: StatsBarConsumoProps) {
+  if (!stats.maxPunto && !stats.minPunto && stats.promedio === null && !horaPico) return null;
 
   return (
     <div
       style={{
-        display: "grid",
+        display:             "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: 8,
-        marginBottom: 16,
+        gap:                 space[2],
+        marginBottom:        space[4],
       }}
     >
       {stats.maxPunto && (
-        <StatCard
+        <StatMiniCard
           label="Día más alto"
           value={`${stats.maxPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
           sub={formatFechaDia(stats.maxPunto.fecha)}
-          accentColor="#b22c2c"
+          accentColor={color.errorDark}
           onClick={onClickMax}
-          clickable={!!onClickMax}
         />
       )}
       {stats.minPunto && (
-        <StatCard
+        <StatMiniCard
           label="Día más bajo"
           value={`${stats.minPunto.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
           sub={formatFechaDia(stats.minPunto.fecha)}
-          accentColor="#1a7a4a"
+          accentColor={color.successDark}
           onClick={onClickMin}
-          clickable={!!onClickMin}
         />
       )}
       {stats.promedio !== null && (
-        <StatCard
+        <StatMiniCard
           label="Promedio diario"
           value={`${stats.promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`}
           sub="este mes"
-          accentColor="#333"
         />
       )}
       {stats.tendencia7d && (
-        <StatCard
+        <StatMiniCard
           label="Últimos 7 días"
           value={TENDENCIA_LABEL[stats.tendencia7d]}
           sub="vs semana anterior"
           accentColor={TENDENCIA_COLOR[stats.tendencia7d]}
         />
       )}
-    </div>
-  );
-}
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  sub: string;
-  accentColor: string;
-  onClick?: () => void;
-  clickable?: boolean;
-}
-
-function StatCard({ label, value, sub, accentColor, onClick, clickable }: StatCardProps) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        background: "#fff",
-        border: "1px solid #E8DFD0",
-        borderRadius: 8,
-        padding: "10px 14px",
-        cursor: clickable ? "pointer" : "default",
-      }}
-    >
-      <p style={{ margin: 0, fontSize: 11, color: "#6B5A45", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        {label}
-      </p>
-      <p style={{ margin: "4px 0 2px", fontSize: 15, fontWeight: 700, color: accentColor }}>
-        {value}
-      </p>
-      <p style={{ margin: 0, fontSize: 11, color: "#999" }}>
-        {sub}
-      </p>
+      {horaPico && (
+        <StatMiniCard
+          label="Hora pico del mes"
+          value={`${String(horaPico.hora_pico).padStart(2, "0")}:00 hs`}
+          sub={`${horaPico.kwh_promedio.toFixed(1)} kWh promedio`}
+          accentColor={color.successDark}
+        />
+      )}
     </div>
   );
 }
@@ -161,6 +155,7 @@ function hoy(): string {
 export function ConsumoPage({ token, suministroId }: Props) {
   const [diario, setDiario] = useState<DiarioResponse | null>(null);
   const [comparacion, setComparacion] = useState<ComparacionResponse | null>(null);
+  const [objetivoEstado, setObjetivoEstado] = useState<ObjetivoEstadoResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [anomalia, setAnomalia] = useState<AnomaliaResponse | null>(null);
@@ -168,6 +163,8 @@ export function ConsumoPage({ token, suministroId }: Props) {
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const [detalleDia, setDetalleDia] = useState<DetalleDiaResponse | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [detalleHorario, setDetalleHorario] = useState<SerieHorariaResponse | null>(null);
+  const [horaPico, setHoraPico] = useState<HoraPicoResponse | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -177,11 +174,15 @@ export function ConsumoPage({ token, suministroId }: Props) {
       fetchSerieDiaria(token, suministroId, primerDiaMes(), hoy()),
       fetchComparacion(token, suministroId, mesActualStr()),
       fetchAnomalia(token, mesActualStr()).catch(() => null),
+      fetchObjetivoEstado(token, mesActualStr()).catch(() => null),
+      fetchHoraPico(token, mesActualStr()).catch(() => null),
     ])
-      .then(([d, c, a]) => {
+      .then(([d, c, a, oe, hp]) => {
         setDiario(d);
         setComparacion(c);
         setAnomalia(a);
+        setObjetivoEstado(oe);
+        setHoraPico(hp);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Error al cargar datos");
@@ -192,11 +193,15 @@ export function ConsumoPage({ token, suministroId }: Props) {
   function handleClickBarra(fecha: string) {
     setFechaSeleccionada(fecha);
     setDetalleDia(null);
+    setDetalleHorario(null);
     setLoadingDetalle(true);
     fetchDetalleDia(token, fecha)
       .then(setDetalleDia)
       .catch(() => setDetalleDia(null))
       .finally(() => setLoadingDetalle(false));
+    fetchSerieHoraria(token, fecha)
+      .then(setDetalleHorario)
+      .catch(() => setDetalleHorario(null));
   }
 
   function handleExportarCsv() {
@@ -220,107 +225,126 @@ export function ConsumoPage({ token, suministroId }: Props) {
   function handleCerrarDetalle() {
     setFechaSeleccionada(null);
     setDetalleDia(null);
+    setDetalleHorario(null);
   }
 
+  const exportButton = (
+    <button
+      onClick={handleExportarCsv}
+      disabled={descargandoCsv}
+      data-testid="btn-exportar-csv"
+      className="export-csv-btn"
+      style={{
+        padding:      `${space[2]}px ${space[4]}px`,
+        background:   brand.primary,
+        color:        fg.onDark,
+        border:       "none",
+        borderRadius: radius.sm,
+        fontSize:     fontSize.sm,
+        fontWeight:   fontWeight.medium,
+        fontFamily:   font.sans,
+        cursor:       descargandoCsv ? "wait" : "pointer",
+      }}
+    >
+      {descargandoCsv ? "Descargando..." : "Exportar CSV"}
+    </button>
+  );
+
   if (loading) {
-    return <div style={{ padding: 24 }}>Cargando consumo...</div>;
+    return (
+      <div style={{ background: bg.page, minHeight: "100%" }}>
+        <PageHeader title="Mi Consumo" actions={exportButton} />
+        <div style={{ padding: `${space[10]}px`, maxWidth: 1400, margin: "0 auto" }}>
+          <LoadingSkeleton variant="card" />
+          <div style={{ height: space[6] }} />
+          <LoadingSkeleton variant="chart" />
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div style={{ padding: 24, color: "#c62828" }}>Error: {error}</div>;
+    return (
+      <div style={{ background: bg.page, minHeight: "100%" }}>
+        <PageHeader title="Mi Consumo" actions={exportButton} />
+        <div style={{ padding: `${space[10]}px`, maxWidth: 1400, margin: "0 auto" }}>
+          <AlertBanner variant="error">Error: {error}</AlertBanner>
+        </div>
+      </div>
+    );
   }
 
   const datosHasta = diario?.datos_hasta ?? comparacion?.datos_hasta ?? null;
   const stats = calcularStats(diario?.serie ?? []);
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px", fontFamily: "sans-serif" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 22, color: "#1b5e20" }}>Mi Consumo</h2>
-        {/* Botón visible solo en viewport ≥ 768px (función de alta densidad web, CU-C07) */}
-        <button
-          onClick={handleExportarCsv}
-          disabled={descargandoCsv}
-          data-testid="btn-exportar-csv"
-          style={{
-            display: "none",
-            padding: "8px 16px",
-            background: "#124e2f",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: descargandoCsv ? "wait" : "pointer",
-          }}
-          className="export-csv-btn"
-        >
-          {descargandoCsv ? "Descargando..." : "Exportar CSV"}
-        </button>
-      </div>
+    <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
+      <PageHeader title="Mi Consumo" actions={exportButton} />
 
-      <CartelLatencia datosHasta={datosHasta} />
+      <main aria-label="consumo del cliente">
+        <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${space[10]}px` }}>
 
-      {anomalia && (
-        <div
-          role="alert"
-          data-testid="banner-anomalia"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 16px",
-            marginBottom: 16,
-            background: "rgba(230,145,10,0.10)",
-            border: "1px solid rgba(230,145,10,0.35)",
-            borderRadius: 8,
-            fontSize: 14,
-            color: "#7a4a00",
-          }}
-        >
-          <span style={{ fontSize: 18 }}>⚡</span>
-          <span>
-            El {new Date(anomalia.fecha + "T00:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric" })} tu consumo fue{" "}
-            <strong>{Math.round(anomalia.desviacion_pct)}% mayor</strong> a tu promedio diario
-            ({anomalia.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh).
-          </span>
+          <CartelLatencia datosHasta={datosHasta} />
+
+          {anomalia && (
+            <div style={{ marginBottom: space[4] }}>
+              <AlertBanner variant="warning">
+                ⚡ El {new Date(anomalia.fecha + "T00:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric" })} tu consumo fue{" "}
+                <strong>{Math.round(anomalia.desviacion_pct)}% mayor</strong> a tu promedio diario
+                ({anomalia.kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh).
+              </AlertBanner>
+            </div>
+          )}
+
+          <section style={{ marginBottom: space[8] }}>
+            <SectionTitle marginBottom={space[4]}>Consumo diario (mes actual)</SectionTitle>
+            <StatsBarConsumo
+              stats={stats}
+              horaPico={horaPico}
+              onClickMax={stats.maxPunto ? () => handleClickBarra(stats.maxPunto!.fecha) : undefined}
+              onClickMin={stats.minPunto ? () => handleClickBarra(stats.minPunto!.fecha) : undefined}
+            />
+            <GraficoConsumoDiario
+              serie={diario?.serie ?? []}
+              onClickBarra={handleClickBarra}
+              maxFecha={stats.maxPunto?.fecha}
+              minFecha={stats.minPunto?.fecha}
+            />
+          </section>
+
+          {fechaSeleccionada && (
+            <PanelDetalleDia
+              fecha={fechaSeleccionada}
+              detalle={detalleDia}
+              loading={loadingDetalle}
+              onCerrar={handleCerrarDetalle}
+              serieHoraria={detalleHorario?.serie}
+            />
+          )}
+
+          <section style={{ marginBottom: space[8] }}>
+            <SectionTitle marginBottom={space[4]}>Comparación histórica</SectionTitle>
+            {comparacion ? (
+              <PanelComparacion
+                mesActual={comparacion.mes_actual}
+                mesAnterior={comparacion.mes_anterior}
+                mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
+              />
+            ) : null}
+          </section>
+
+          {comparacion && (
+            <section style={{ marginBottom: space[8] }}>
+              <PanelVecinosComparacion
+                zona={comparacion.zona_mes_actual}
+                mesActual={comparacion.mes_actual}
+                mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
+                objetivoDiarioKwh={objetivoEstado?.consumo_diario_objetivo_kwh ?? null}
+              />
+            </section>
+          )}
         </div>
-      )}
-
-      <section style={{ marginBottom: 32 }}>
-        <h3 style={{ fontSize: 16, color: "#333", marginBottom: 12 }}>Consumo diario (mes actual)</h3>
-        <StatsBarConsumo
-          stats={stats}
-          onClickMax={stats.maxPunto ? () => handleClickBarra(stats.maxPunto!.fecha) : undefined}
-          onClickMin={stats.minPunto ? () => handleClickBarra(stats.minPunto!.fecha) : undefined}
-        />
-        <GraficoConsumoDiario
-          serie={diario?.serie ?? []}
-          onClickBarra={handleClickBarra}
-          maxFecha={stats.maxPunto?.fecha}
-          minFecha={stats.minPunto?.fecha}
-        />
-      </section>
-
-      {fechaSeleccionada && (
-        <PanelDetalleDia
-          fecha={fechaSeleccionada}
-          detalle={detalleDia}
-          loading={loadingDetalle}
-          onCerrar={handleCerrarDetalle}
-        />
-      )}
-
-      <section>
-        <h3 style={{ fontSize: 16, color: "#333", marginBottom: 12 }}>Comparación histórica</h3>
-        {comparacion ? (
-          <PanelComparacion
-            mesActual={comparacion.mes_actual}
-            mesAnterior={comparacion.mes_anterior}
-            mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
-          />
-        ) : null}
-      </section>
+      </main>
     </div>
   );
 }

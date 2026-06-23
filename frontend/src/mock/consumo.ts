@@ -3,6 +3,8 @@ import type {
   ComparacionResponse,
   DetalleDiaResponse,
   DiarioResponse,
+  HoraPicoResponse,
+  SerieHorariaResponse,
 } from "../api/types";
 import { fixture } from "./_fixtures";
 
@@ -46,4 +48,26 @@ export async function fetchAnomalia(
   _mes: string
 ): Promise<AnomaliaResponse | null> {
   return fixture<AnomaliaResponse | null>("anomalia");
+}
+
+export async function fetchHoraPico(
+  _token: string,
+  _mes: string
+): Promise<HoraPicoResponse | null> {
+  const perfil = Array.from({ length: 24 }, (_, h) => ({
+    hora: h,
+    kwh: h >= 18 && h <= 22 ? 0.75 + Math.random() * 0.3 : 0.2 + Math.random() * 0.2,
+  }));
+  return { hora_pico: 20, kwh_promedio: 0.85, perfil_24h: perfil };
+}
+
+export async function fetchSerieHoraria(
+  _token: string,
+  fecha: string
+): Promise<SerieHorariaResponse> {
+  const serie = Array.from({ length: 24 }, (_, h) => ({
+    hora: h,
+    kwh: h >= 18 && h <= 22 ? 0.7 + Math.random() * 0.4 : 0.15 + Math.random() * 0.25,
+  }));
+  return { fecha, serie };
 }

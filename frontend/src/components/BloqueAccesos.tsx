@@ -1,4 +1,3 @@
-import type React from "react";
 import {
   cardStyle,
   labelStyle,
@@ -7,84 +6,67 @@ import {
   font,
   fontSize,
   fontWeight,
-  lineHeight,
   radius,
   space,
-  fg,
-  border,
 } from "../design-tokens";
+import type { Vista } from "./AppShell";
+
+interface AccesoItem {
+  label: string;
+  vista: Vista;
+}
+
+const ACCESOS: AccesoItem[] = [
+  { label: "Mi Consumo",  vista: "consumo" },
+  { label: "Mi Factura",  vista: "factura" },
+  { label: "Objetivos",   vista: "objetivos" },
+  { label: "Alertas",     vista: "alertas" },
+];
 
 interface Props {
   suministroId: string;
+  onNavegar?: (vista: Vista) => void;
 }
 
-interface BtnPrimaryStyle extends React.CSSProperties {
-  // typed so hover is handled via onMouseEnter/onMouseLeave
-}
-
-const btnBase: React.CSSProperties = {
-  display:      "inline-block",
-  padding:      `${space[2] + 2}px ${space[5]}px`,
-  borderRadius: radius.sm,
-  fontSize:     fontSize.sm,
-  fontWeight:   fontWeight.medium,
-  fontFamily:   font.sans,
-  lineHeight:   lineHeight.normal,
-  cursor:       "pointer",
-  border:       "none",
-  textDecoration: "none",
-  transition:   "background 150ms ease",
-};
-
-const btnPrimary: BtnPrimaryStyle = {
-  ...btnBase,
-  background: brand.primary,
-  color:      color.white,
-};
-
-const btnDisabled: React.CSSProperties = {
-  ...btnBase,
-  background: color.neutral100,
-  color:      fg.muted,
-  border:     `1px solid ${border.default}`,
-  cursor:     "not-allowed",
-  opacity:    0.8,
-};
-
-export function BloqueAccesos({ suministroId }: Props) {
-  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    (e.currentTarget as HTMLAnchorElement).style.background = brand.hover;
-  };
-  const handleMouseLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    (e.currentTarget as HTMLAnchorElement).style.background = brand.primary;
-  };
-
+export function BloqueAccesos({ onNavegar }: Props) {
   return (
     <section aria-label="accesos rápidos" style={cardStyle}>
       <p style={labelStyle}>Accesos rápidos</p>
-      <div style={{ display: "flex", gap: space[2], flexWrap: "wrap" as const, marginTop: space[3] }}>
-        <a
-          href={`/consumo?id=${suministroId}`}
-          style={btnPrimary}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          Ver consumo detallado
-        </a>
-        <button
-          disabled
-          style={btnDisabled}
-          aria-disabled="true"
-        >
-          Mi factura (próximamente)
-        </button>
-        <button
-          disabled
-          style={btnDisabled}
-          aria-disabled="true"
-        >
-          Alertas (próximamente)
-        </button>
+      <div style={{
+        display:        "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap:            space[2],
+        marginTop:      space[3],
+      }}>
+        {ACCESOS.map(({ label, vista }) => (
+          <button
+            key={vista}
+            onClick={() => onNavegar?.(vista)}
+            style={{
+              display:      "block",
+              width:        "100%",
+              padding:      `${space[3]}px ${space[4]}px`,
+              background:   brand.primary,
+              color:        color.white,
+              border:       "none",
+              borderRadius: radius.md,
+              fontSize:     fontSize.sm,
+              fontWeight:   fontWeight.semibold,
+              fontFamily:   font.sans,
+              cursor:       "pointer",
+              textAlign:    "center" as const,
+              transition:   "background 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = brand.hover;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = brand.primary;
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </section>
   );
