@@ -16,3 +16,9 @@ class ConsumoDiarioRepository(ABC):
     @abstractmethod
     async def get_ultima_fecha(self, suministro_id: str) -> date | None:
         """Última fecha con dato disponible para el suministro; None si no hay datos."""
+
+    @abstractmethod
+    async def get_serie_promedio_zona(
+        self, vecino_ids: list[str], desde: date, hasta: date
+    ) -> list[tuple[date, float]]:
+        """Promedio de consumo diario entre vecino_ids, agrupado por fecha."""

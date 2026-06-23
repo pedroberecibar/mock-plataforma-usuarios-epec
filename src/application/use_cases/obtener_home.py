@@ -1,3 +1,4 @@
+import asyncio
 import calendar
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -52,6 +53,11 @@ class ObtenerHomeUseCase:
         days_in_month = calendar.monthrange(mes.year, mes.month)[1]
         mes_fin = mes_inicio.replace(day=days_in_month)
 
+        # Kick off vecinos early: while SQLite queries run, Oracle (or cache) starts in background
+        vecinos_task: asyncio.Task[list[str]] = asyncio.ensure_future(
+            self._vecinos_repo.get_vecinos(suministro_id, 150.0)
+        )
+
         current_serie = await self._consumo_repo.get_serie(suministro_id, mes_inicio, mes_fin)
         total_kwh: float | None = sum(kwh for _, kwh in current_serie) if current_serie else None
         dias_transcurridos = len(current_serie)
@@ -69,8 +75,10 @@ class ObtenerHomeUseCase:
             vs_anio_anterior_pct=vs_anio_anterior_pct,
         )
 
+        # Collect vecinos result (likely already done if cache hit, otherwise wait up to 3s)
+        vecinos = await vecinos_task
         comparacion_zona = await self._calcular_zona(
-            suministro_id, mes_inicio, mes_fin, total_kwh, dias_transcurridos
+            suministro_id, mes_inicio, mes_fin, total_kwh, dias_transcurridos, vecinos
         )
 
         proyeccion = await self._proyeccion_repo.get_proyeccion(suministro_id, mes_inicio)
@@ -148,8 +156,8 @@ class ObtenerHomeUseCase:
         mes_fin: date,
         total_kwh: float | None,
         dias_transcurridos: int,
+        vecinos: list[str],
     ) -> ComparacionZona:
-        vecinos = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
         n_vecinos = len(vecinos)
 
         if n_vecinos < _MIN_VECINOS or dias_transcurridos == 0:
@@ -163,7 +171,7 @@ class ObtenerHomeUseCase:
             if serie:
                 vecino_totals.append(sum(kwh for _, kwh in serie))
 
-        if not vecino_totals:
+        if len(vecino_totals) < _MIN_VECINOS:
             return ComparacionZona(
                 promedio_vecinos_kwh=None, n_vecinos=n_vecinos, diferencia_pct=None
             )

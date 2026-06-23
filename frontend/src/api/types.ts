@@ -21,6 +21,7 @@ export interface ComparacionZonaResponse {
   promedio_vecinos_kwh: number | null;
   n_vecinos: number;
   diferencia_pct: number | null;
+  serie: PuntoSerie[];
 }
 
 export interface HomeResponse {
@@ -46,11 +47,19 @@ export interface ComparacionResponse {
   mes_actual: PeriodoConsumo;
   mes_anterior: PeriodoConsumo;
   mismo_mes_anio_anterior: PeriodoConsumo;
+  zona_mes_actual: ComparacionZonaResponse | null;
   datos_hasta: string | null;
 }
 
 export interface FacturaDatosResponse {
   fecha_vencimiento: string | null; // "YYYY-MM-DD"
+}
+
+export interface DocumentoPago {
+  periodo: string;
+  nro_factura: string;
+  importe: number;
+  fecha_vencimiento: string;
 }
 
 export interface DetalleDiaResponse {
@@ -81,6 +90,22 @@ export interface AnomaliaResponse {
   desviacion_pct: number;
 }
 
+export interface PuntoSerieHoraria {
+  hora: number; // 0-23
+  kwh: number;
+}
+
+export interface SerieHorariaResponse {
+  fecha: string; // "YYYY-MM-DD"
+  serie: PuntoSerieHoraria[];
+}
+
+export interface HoraPicoResponse {
+  hora_pico: number; // 0-23
+  kwh_promedio: number;
+  perfil_24h: PuntoSerieHoraria[];
+}
+
 export interface ObjetivoEstadoResponse {
   objetivo_kwh: number | null;
   promedio_vecinos_kwh: number | null;
@@ -92,4 +117,6 @@ export interface ObjetivoEstadoResponse {
   excedente_kwh: number | null;
   consumo_diario_real_kwh: number | null;
   consumo_diario_objetivo_kwh: number | null;
+  consumo_acumulado_kwh: number | null;
+  consumo_promedio_diario_kwh: number | null;
 }

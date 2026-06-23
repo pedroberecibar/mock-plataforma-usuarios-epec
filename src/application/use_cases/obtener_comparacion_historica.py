@@ -3,6 +3,9 @@ from dataclasses import dataclass
 from datetime import date
 
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
+from domain.ports.vecinos_repository import VecinosRepository
+
+_MIN_VECINOS = 5
 
 
 @dataclass(frozen=True)
@@ -13,10 +16,19 @@ class PeriodoConsumo:
 
 
 @dataclass(frozen=True)
+class ZonaResumen:
+    promedio_vecinos_kwh: float | None
+    n_vecinos: int
+    diferencia_pct: float | None
+    serie: list[tuple[date, float]]
+
+
+@dataclass(frozen=True)
 class ComparacionHistorica:
     mes_actual: PeriodoConsumo
     mes_anterior: PeriodoConsumo
     mismo_mes_anio_anterior: PeriodoConsumo
+    zona_mes_actual: ZonaResumen
     datos_hasta: date | None
 
 
@@ -44,8 +56,13 @@ async def _get_periodo(
 
 
 class ObtenerComparacionHistoricaUseCase:
-    def __init__(self, repo: ConsumoDiarioRepository) -> None:
+    def __init__(
+        self,
+        repo: ConsumoDiarioRepository,
+        vecinos_repo: VecinosRepository | None = None,
+    ) -> None:
         self._repo = repo
+        self._vecinos_repo = vecinos_repo
 
     async def ejecutar(self, suministro_id: str, mes: date) -> ComparacionHistorica:
         actual = _primer_dia(mes)
@@ -56,10 +73,61 @@ class ObtenerComparacionHistoricaUseCase:
         mes_anterior = await _get_periodo(self._repo, suministro_id, anterior)
         mismo_mes_anio_anterior = await _get_periodo(self._repo, suministro_id, anio_anterior)
         datos_hasta = await self._repo.get_ultima_fecha(suministro_id)
+        zona_mes_actual = await self._calcular_zona(
+            suministro_id, actual, mes_actual.total_kwh, len(mes_actual.serie)
+        )
 
         return ComparacionHistorica(
             mes_actual=mes_actual,
             mes_anterior=mes_anterior,
             mismo_mes_anio_anterior=mismo_mes_anio_anterior,
+            zona_mes_actual=zona_mes_actual,
             datos_hasta=datos_hasta,
+        )
+
+    async def _calcular_zona(
+        self,
+        suministro_id: str,
+        mes_inicio: date,
+        total_kwh: float | None,
+        dias_transcurridos: int,
+    ) -> ZonaResumen:
+        _empty = ZonaResumen(promedio_vecinos_kwh=None, n_vecinos=0, diferencia_pct=None, serie=[])
+        if self._vecinos_repo is None:
+            return _empty
+
+        vecinos = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
+        n_vecinos = len(vecinos)
+        if n_vecinos < _MIN_VECINOS or dias_transcurridos == 0 or total_kwh is None:
+            return ZonaResumen(
+                promedio_vecinos_kwh=None, n_vecinos=n_vecinos, diferencia_pct=None, serie=[]
+            )
+
+        mes_fin = _ultimo_dia(mes_inicio)
+
+        # Validar umbral de privacidad con totales individuales
+        vecino_totals: list[float] = []
+        for vecino_id in vecinos:
+            serie_v = await self._repo.get_serie(vecino_id, mes_inicio, mes_fin)
+            if serie_v:
+                vecino_totals.append(sum(kwh for _, kwh in serie_v))
+
+        if len(vecino_totals) < _MIN_VECINOS:
+            return ZonaResumen(
+                promedio_vecinos_kwh=None, n_vecinos=n_vecinos, diferencia_pct=None, serie=[]
+            )
+
+        promedio = sum(vecino_totals) / len(vecino_totals)
+        diferencia_pct: float | None = None
+        if promedio > 0:
+            diferencia_pct = round((total_kwh - promedio) / promedio * 100, 2)
+
+        # Serie diaria de promedio de vecinos para el gráfico
+        serie_zona = await self._repo.get_serie_promedio_zona(vecinos, mes_inicio, mes_fin)
+
+        return ZonaResumen(
+            promedio_vecinos_kwh=round(promedio, 2),
+            n_vecinos=n_vecinos,
+            diferencia_pct=diferencia_pct,
+            serie=serie_zona,
         )

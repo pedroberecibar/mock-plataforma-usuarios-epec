@@ -42,3 +42,47 @@ async def test_crear_placeholder_es_idempotente(
     await repo.crear_placeholder("SRV-001")
     await repo.crear_placeholder("SRV-001")
     assert await repo.existe("SRV-001")
+
+
+async def test_upsert_coordenadas_crea_suministro_si_no_existe(
+    repo: SQLiteSuministroRepository,
+    db_session: AsyncSession,
+) -> None:
+    await repo.upsert_coordenadas("SRV-NEW", -31.45, -64.14)
+    result = await db_session.execute(select(Suministro).where(Suministro.id == "SRV-NEW"))
+    row = result.scalar_one()
+    assert row.lat == -31.45
+    assert row.lon == -64.14
+
+
+async def test_upsert_coordenadas_actualiza_placeholder_con_ceros(
+    repo: SQLiteSuministroRepository,
+    db_session: AsyncSession,
+) -> None:
+    await repo.crear_placeholder("SRV-001")
+    await repo.upsert_coordenadas("SRV-001", -31.45, -64.14)
+    result = await db_session.execute(select(Suministro).where(Suministro.id == "SRV-001"))
+    row = result.scalar_one()
+    assert row.lat == -31.45
+    assert row.lon == -64.14
+
+
+async def test_upsert_coordenadas_es_idempotente(
+    repo: SQLiteSuministroRepository,
+    db_session: AsyncSession,
+) -> None:
+    await repo.upsert_coordenadas("SRV-001", -31.45, -64.14)
+    await repo.upsert_coordenadas("SRV-001", -31.45, -64.14)
+    result = await db_session.execute(select(Suministro).where(Suministro.id == "SRV-001"))
+    assert result.scalar_one().lat == -31.45
+
+
+async def test_crear_placeholder_no_pisa_coordenadas_reales(
+    repo: SQLiteSuministroRepository,
+    db_session: AsyncSession,
+) -> None:
+    await repo.upsert_coordenadas("SRV-001", -31.45, -64.14)
+    await repo.crear_placeholder("SRV-001")  # ON CONFLICT DO NOTHING → no debe pisar
+    result = await db_session.execute(select(Suministro).where(Suministro.id == "SRV-001"))
+    row = result.scalar_one()
+    assert row.lat == -31.45  # coordenadas reales intactas

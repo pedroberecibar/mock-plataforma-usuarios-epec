@@ -1,4 +1,4 @@
-import type { FacturaDatosResponse } from "./types";
+import type { DocumentoPago, FacturaDatosResponse } from "./types";
 
 function authHeaders(token: string): HeadersInit {
   return { Authorization: `Bearer ${token}` };
@@ -15,6 +15,18 @@ export async function fetchLinkFactura(
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const data = (await resp.json()) as { url: string };
   return data.url;
+}
+
+export async function fetchDocumentosFactura(
+  token: string,
+  numeroCliente: string,
+  numeroContrato: string
+): Promise<DocumentoPago[]> {
+  const params = new URLSearchParams({ numero_cliente: numeroCliente, numero_contrato: numeroContrato });
+  const resp = await fetch(`/factura/documentos?${params}`, { headers: authHeaders(token) });
+  if (resp.status === 503) throw new Error("no_configurado");
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json() as Promise<DocumentoPago[]>;
 }
 
 export async function fetchFacturaDatos(token: string): Promise<FacturaDatosResponse> {

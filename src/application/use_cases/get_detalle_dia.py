@@ -38,7 +38,7 @@ class GetDetalleDiaUseCase:
         vecinos_ids = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
         totales_vecinos: list[float] = []
         for vid in vecinos_ids:
-            serie_v = await self._consumo_repo.get_serie(vid, fecha_ant, fecha_ant)
+            serie_v = await self._consumo_repo.get_serie(vid, fecha, fecha)
             if serie_v:
                 totales_vecinos.append(serie_v[0][1])
 

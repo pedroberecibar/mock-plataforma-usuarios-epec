@@ -15,6 +15,7 @@ class Suministro(Base):
     lat: Mapped[float]
     lon: Mapped[float]
     suministro_referencia: Mapped[str]
+    tarifa_codigo: Mapped[str | None] = mapped_column(nullable=True, default=None)
 
 
 class ConsumoDiario(Base):
@@ -22,6 +23,15 @@ class ConsumoDiario(Base):
 
     suministro_id: Mapped[str] = mapped_column(ForeignKey("suministros.id"), primary_key=True)
     fecha: Mapped[date] = mapped_column(primary_key=True)
+    kwh: Mapped[float]
+
+
+class ConsumoHorario(Base):
+    __tablename__ = "consumo_horario"
+
+    suministro_id: Mapped[str] = mapped_column(ForeignKey("suministros.id"), primary_key=True)
+    fecha: Mapped[date] = mapped_column(primary_key=True)
+    hora: Mapped[int] = mapped_column(primary_key=True)  # 0-23
     kwh: Mapped[float]
 
 
@@ -81,3 +91,11 @@ class NotificacionEnviada(Base):
     suministro_id: Mapped[str]
     tipo_alerta: Mapped[str]
     fecha_envio: Mapped[datetime]
+
+
+class VecinosCache(Base):
+    __tablename__ = "vecinos_cache"
+
+    suministro_id: Mapped[str] = mapped_column(primary_key=True)
+    vecinos_json: Mapped[str]
+    updated_at: Mapped[datetime]

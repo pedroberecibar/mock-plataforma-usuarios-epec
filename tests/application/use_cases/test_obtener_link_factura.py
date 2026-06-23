@@ -1,6 +1,7 @@
 import pytest
 
 from application.use_cases.obtener_link_factura import ObtenerLinkFacturaUseCase
+from domain.documento_pago import DocumentoPago
 from domain.ports.factura_verificacion_port import FacturaVerificacionPort
 
 
@@ -12,6 +13,11 @@ class _FakeVerificacion(FacturaVerificacionPort):
     async def verificar_contrato(self, numero_cliente: str, numero_contrato: str) -> bool:
         self.llamadas.append((numero_cliente, numero_contrato))
         return self._resultado
+
+    async def obtener_documentos(
+        self, numero_cliente: str, numero_contrato: str
+    ) -> list[DocumentoPago]:
+        return []
 
 
 async def test_ejecutar_llama_port_con_los_datos_correctos() -> None:

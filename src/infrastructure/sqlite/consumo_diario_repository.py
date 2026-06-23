@@ -42,3 +42,18 @@ class SQLiteConsumoDiarioRepository(ConsumoDiarioRepository):
             )
         )
         return result.scalar_one_or_none()
+
+    async def get_serie_promedio_zona(
+        self, vecino_ids: list[str], desde: date, hasta: date
+    ) -> list[tuple[date, float]]:
+        if not vecino_ids:
+            return []
+        result = await self._session.execute(
+            select(ConsumoDiario.fecha, func.avg(ConsumoDiario.kwh).label("kwh_promedio"))
+            .where(ConsumoDiario.suministro_id.in_(vecino_ids))
+            .where(ConsumoDiario.fecha >= desde)
+            .where(ConsumoDiario.fecha <= hasta)
+            .group_by(ConsumoDiario.fecha)
+            .order_by(ConsumoDiario.fecha)
+        )
+        return [(row.fecha, round(row.kwh_promedio, 2)) for row in result]

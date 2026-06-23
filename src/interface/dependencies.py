@@ -2,6 +2,7 @@ from fastapi import Depends, Header, HTTPException
 
 from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
+from domain.ports.consumo_horario_repository import ConsumoHorarioRepository
 from domain.ports.factura_source_reader import FacturaSourceReader
 from domain.ports.factura_verificacion_port import FacturaVerificacionPort
 from domain.ports.medicion_source_reader import MedicionSourceReader
@@ -33,6 +34,12 @@ def get_notificacion_config_repo() -> NotificacionConfigRepository:
 def get_consumo_repo() -> ConsumoDiarioRepository:
     raise NotImplementedError(
         "ConsumoDiarioRepository debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_consumo_horario_repo() -> ConsumoHorarioRepository:
+    raise NotImplementedError(
+        "ConsumoHorarioRepository debe ser wireado en el composition root (src/main.py)"
     )
 
 

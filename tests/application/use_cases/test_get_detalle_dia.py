@@ -46,7 +46,7 @@ async def test_detalle_dia_completo(
     vecinos_repo._vecinos["S001"] = vecinos
     kwh_vecinos = [8.0, 9.0, 11.0, 10.5, 9.5]
     for vid, kwh in zip(vecinos, kwh_vecinos, strict=True):
-        await consumo_repo.upsert_consumo(vid, FECHA_ANT, kwh)
+        await consumo_repo.upsert_consumo(vid, FECHA, kwh)
 
     uc = GetDetalleDiaUseCase(consumo_repo, vecinos_repo)
     result = await uc.ejecutar("S001", FECHA)
@@ -75,7 +75,7 @@ async def test_detalle_dia_sin_consumo_propio(
     vecinos = [f"V{i}" for i in range(5)]
     vecinos_repo._vecinos["S001"] = vecinos
     for vid in vecinos:
-        await consumo_repo.upsert_consumo(vid, FECHA_ANT, 10.0)
+        await consumo_repo.upsert_consumo(vid, FECHA, 10.0)
 
     uc = GetDetalleDiaUseCase(consumo_repo, vecinos_repo)
     result = await uc.ejecutar("S001", FECHA)
@@ -101,7 +101,7 @@ async def test_detalle_dia_privacidad_menos_de_cinco_vecinos(
     vecinos = [f"V{i}" for i in range(4)]  # solo 4
     vecinos_repo._vecinos["S001"] = vecinos
     for vid in vecinos:
-        await consumo_repo.upsert_consumo(vid, FECHA_ANT, 10.0)
+        await consumo_repo.upsert_consumo(vid, FECHA, 10.0)
 
     uc = GetDetalleDiaUseCase(consumo_repo, vecinos_repo)
     result = await uc.ejecutar("S001", FECHA)

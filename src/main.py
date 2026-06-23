@@ -21,9 +21,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
 from infrastructure.epec.epec_factura_verificacion import EpecFacturaVerificacion
 from infrastructure.fakes.factura_source_reader import FakeFacturaSourceReader
+from infrastructure.fakes.medicion_horaria_source_reader import FakeMedicionHorariaSourceReader
 from infrastructure.fakes.notification_sender import FakeNotificationSender
 from infrastructure.smtp.notification_sender import SmtpNotificationSender
+from infrastructure.sqlite.cached_vecinos_repository import CachedVecinosRepository
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
+from infrastructure.sqlite.consumo_horario_repository import SQLiteConsumoHorarioRepository
 from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
 from infrastructure.sqlite.objetivo_consumo_repository import SQLiteObjetivoConsumoRepository
 from infrastructure.sqlite.proyeccion_repository import SQLiteProyeccionRepository
@@ -35,6 +38,7 @@ from interface.auth_router import router as auth_router
 from interface.consumo_router import router as consumo_router
 from interface.dependencies import (
     get_auth_provider,
+    get_consumo_horario_repo,
     get_consumo_repo,
     get_factura_reader,
     get_factura_verificacion,
@@ -121,6 +125,8 @@ def create_app() -> FastAPI:
 
     oracle_available = all(os.environ.get(v) for v in _ORACLE_VARS)
     oracle_reader = None
+    oracle_horaria_reader = None
+    _oracle_vecinos = None
     if oracle_available:
         # Registra el dir de Instant Client para DLL search (os.add_dll_directory
         # actúa en el proceso actual — os.environ["PATH"] no es suficiente en Windows)
@@ -128,9 +134,13 @@ def create_app() -> FastAPI:
         if instant_client and hasattr(os, "add_dll_directory"):
             os.add_dll_directory(instant_client)
 
+        from infrastructure.oracle.medicion_horaria_reader import OracleMedicionHorariaReader
         from infrastructure.oracle.medicion_reader import OracleMedicionReader
+        from infrastructure.oracle.vecinos_repository import OracleVecinosRepository
 
         oracle_reader = OracleMedicionReader()
+        oracle_horaria_reader = OracleMedicionHorariaReader()
+        _oracle_vecinos = OracleVecinosRepository()
 
     def _build_notification_sender() -> SmtpNotificationSender | FakeNotificationSender:
         smtp_host = os.environ.get("SMTP_HOST")
@@ -153,6 +163,17 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        from infrastructure.sqlite.models import Base
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        _horaria_reader = (
+            oracle_horaria_reader
+            if oracle_horaria_reader is not None
+            else FakeMedicionHorariaSourceReader()
+        )
+
         scheduler_task: asyncio.Task[None] | None = None
         if oracle_reader is not None:
             from infrastructure.ingestion_scheduler import run_scheduler
@@ -173,6 +194,8 @@ def create_app() -> FastAPI:
                     interval_horas=interval_horas,
                     equipos=equipos,
                     notification_sender=_build_notification_sender(),
+                    oracle_vecinos=_oracle_vecinos,
+                    horaria_reader=_horaria_reader,
                 )
             )
         yield
@@ -225,6 +248,10 @@ def create_app() -> FastAPI:
         async with session_factory() as session:
             yield SQLiteObjetivoConsumoRepository(session)
 
+    async def _get_consumo_horario_repo() -> AsyncGenerator[SQLiteConsumoHorarioRepository, None]:
+        async with session_factory() as session:
+            yield SQLiteConsumoHorarioRepository(session)
+
     _notification_sender = _build_notification_sender()
     _factura_reader = FakeFacturaSourceReader()
     _factura_verificacion = EpecFacturaVerificacion()
@@ -232,6 +259,7 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_factura_reader] = lambda: _factura_reader
     app.dependency_overrides[get_factura_verificacion] = lambda: _factura_verificacion
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
+    app.dependency_overrides[get_consumo_horario_repo] = _get_consumo_horario_repo
     app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo
     app.dependency_overrides[get_proyeccion_repo] = _get_proyeccion_repo
@@ -241,12 +269,16 @@ def create_app() -> FastAPI:
 
     if oracle_reader is not None:
         from infrastructure.ingestion_scheduler import _NonBlockingReader
-        from infrastructure.oracle.vecinos_repository import OracleVecinosRepository
 
         _non_blocking_reader = _NonBlockingReader(oracle_reader)
         app.dependency_overrides[get_medicion_reader] = lambda: _non_blocking_reader
-        _oracle_vecinos = OracleVecinosRepository()
-        app.dependency_overrides[get_vecinos_repo] = lambda: _oracle_vecinos
+
+        async def _get_cached_vecinos_repo() -> AsyncGenerator[CachedVecinosRepository, None]:
+            async with session_factory() as session:
+                assert _oracle_vecinos is not None
+                yield CachedVecinosRepository(_oracle_vecinos, session)
+
+        app.dependency_overrides[get_vecinos_repo] = _get_cached_vecinos_repo
     else:
 
         def _oracle_no_configurado() -> None:

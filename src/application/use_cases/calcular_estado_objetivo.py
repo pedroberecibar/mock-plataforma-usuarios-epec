@@ -31,6 +31,10 @@ class EstadoObjetivoResult:
     consumo_diario_real_kwh: float | None
     consumo_diario_objetivo_kwh: float | None
 
+    # Indicadores adicionales
+    consumo_acumulado_kwh: float | None
+    consumo_promedio_diario_kwh: float | None
+
 
 class CalcularEstadoObjetivoUseCase:
     def __init__(
@@ -70,6 +74,8 @@ class CalcularEstadoObjetivoUseCase:
                 excedente_kwh=None,
                 consumo_diario_real_kwh=None,
                 consumo_diario_objetivo_kwh=None,
+                consumo_acumulado_kwh=None,
+                consumo_promedio_diario_kwh=None,
             )
 
         objetivo_kwh, _, _ = objetivo
@@ -117,6 +123,12 @@ class CalcularEstadoObjetivoUseCase:
         if serie:
             consumo_diario_real = serie[-1][1]  # último día con dato
 
+        # --- Indicadores adicionales ---
+        dias_con_dato = len(serie)
+        consumo_promedio_diario: float | None = (
+            round(consumo_acumulado / dias_con_dato, 2) if dias_con_dato > 0 else None
+        )
+
         return EstadoObjetivoResult(
             objetivo_kwh=objetivo_kwh,
             promedio_vecinos_kwh=promedio_vecinos,
@@ -128,4 +140,6 @@ class CalcularEstadoObjetivoUseCase:
             excedente_kwh=excedente_kwh,
             consumo_diario_real_kwh=consumo_diario_real,
             consumo_diario_objetivo_kwh=consumo_diario_objetivo,
+            consumo_acumulado_kwh=round(consumo_acumulado, 2),
+            consumo_promedio_diario_kwh=consumo_promedio_diario,
         )

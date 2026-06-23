@@ -1,8 +1,9 @@
 from infrastructure.sqlite.models import Base
 
 EXPECTED_TABLES = {
-    "suministros": {"id", "lat", "lon", "suministro_referencia"},
+    "suministros": {"id", "lat", "lon", "suministro_referencia", "tarifa_codigo"},
     "consumo_diario": {"suministro_id", "fecha", "kwh"},
+    "consumo_horario": {"suministro_id", "fecha", "hora", "kwh"},
     "objetivo_consumo": {"id", "suministro_id", "valor_kwh", "origen", "vigente_desde"},
     "proyeccion_mensual": {
         "suministro_id",
@@ -18,6 +19,7 @@ EXPECTED_TABLES = {
     "factura_redireccion": {"id", "numero_cliente", "numero_contrato"},
     "usuarios": {"usuario", "suministro_id", "email", "password_hash"},
     "notificaciones_enviadas": {"id", "suministro_id", "tipo_alerta", "fecha_envio"},
+    "vecinos_cache": {"suministro_id", "vecinos_json", "updated_at"},
 }
 
 

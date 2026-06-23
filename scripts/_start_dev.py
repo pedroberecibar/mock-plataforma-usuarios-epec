@@ -4,6 +4,7 @@ No commitear datos de prod. Usar start-backend.ps1 en producción.
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,6 +21,20 @@ if _env_file.exists():
 
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./data/plataforma_clientes.db")
 os.environ.setdefault("INGEST_DESDE_INICIAL", "2026-06-01")
+
+# Seed de vecinos reales antes de arrancar (--skip-if-fresh evita re-ingesta si < 24h)
+_seed_script = _root / "scripts" / "seed_vecinos_reales.py"
+if _seed_script.exists():
+    print("[_start_dev] Ejecutando seed de vecinos reales...", flush=True)
+    result = subprocess.run(
+        [sys.executable, str(_seed_script), "--skip-if-fresh"],
+        env=os.environ,
+    )
+    if result.returncode != 0:
+        print(
+            "[_start_dev] Advertencia: seed_vecinos_reales.py terminó con error — continuando.",
+            flush=True,
+        )
 
 sys.path.insert(0, str(_root / "src"))
 import uvicorn  # noqa: E402

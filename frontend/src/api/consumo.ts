@@ -1,4 +1,4 @@
-import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse } from "./types";
+import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, HoraPicoResponse, SerieHorariaResponse } from "./types";
 
 const BASE = "";
 
@@ -47,4 +47,24 @@ export async function fetchAnomalia(
   const resp = await fetch(url, { headers: authHeaders(token) });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.json() as Promise<AnomaliaResponse | null>;
+}
+
+export async function fetchSerieHoraria(
+  token: string,
+  fecha: string
+): Promise<SerieHorariaResponse> {
+  const url = `${BASE}/consumo/horario?fecha=${fecha}`;
+  const resp = await fetch(url, { headers: authHeaders(token) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json() as Promise<SerieHorariaResponse>;
+}
+
+export async function fetchHoraPico(
+  token: string,
+  mes: string
+): Promise<HoraPicoResponse | null> {
+  const url = `${BASE}/consumo/hora-pico?mes=${mes}`;
+  const resp = await fetch(url, { headers: authHeaders(token) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json() as Promise<HoraPicoResponse | null>;
 }

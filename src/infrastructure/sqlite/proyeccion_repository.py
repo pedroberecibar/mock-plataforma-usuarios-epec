@@ -59,4 +59,4 @@ class SQLiteProyeccionRepository(ProyeccionRepository):
             )
         )
         await self._session.execute(stmt)
-        await self._session.flush()
+        await self._session.commit()

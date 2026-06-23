@@ -23,6 +23,11 @@ coverage.xml
 # SQLite (datos locales de desarrollo, no son fuente)
 data/*.db
 data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+*.db
+*.db-shm
+*.db-wal
 
 # Node
 node_modules/
@@ -58,6 +63,13 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Capturas de pantalla generadas por agent-browser (artefactos temporales)
+*.png
+screenshots/
+
+# Serena (análisis estático, no fuente)
+.serena/
 
 # Claude Code (archivos internos del harness, no del proyecto)
 .claude/scheduled_tasks.lock

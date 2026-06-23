@@ -6,14 +6,18 @@ from pydantic import BaseModel
 
 from application.use_cases.detectar_anomalia_consumo import DetectarAnomaliaConsumoUseCase
 from application.use_cases.get_detalle_dia import GetDetalleDiaUseCase
+from application.use_cases.identificar_hora_pico import IdentificarHoraPicoUseCase
 from application.use_cases.obtener_comparacion_historica import (
     ObtenerComparacionHistoricaUseCase,
     PeriodoConsumo,
 )
 from application.use_cases.obtener_serie_diaria import ObtenerSerieDiariaUseCase
+from application.use_cases.obtener_serie_horaria import ObtenerSerieHorariaUseCase
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
+from domain.ports.consumo_horario_repository import ConsumoHorarioRepository
 from domain.ports.vecinos_repository import VecinosRepository
 from interface.dependencies import (
+    get_consumo_horario_repo,
     get_consumo_repo,
     get_suministro_actual,
     get_vecinos_repo,
@@ -38,10 +42,18 @@ class PeriodoResponse(BaseModel):
     total_kwh: float | None
 
 
+class ZonaResumenResponse(BaseModel):
+    promedio_vecinos_kwh: float | None
+    n_vecinos: int
+    diferencia_pct: float | None
+    serie: list[PuntoSerie]
+
+
 class ComparacionResponse(BaseModel):
     mes_actual: PeriodoResponse
     mes_anterior: PeriodoResponse
     mismo_mes_anio_anterior: PeriodoResponse
+    zona_mes_actual: ZonaResumenResponse
     datos_hasta: date | None
 
 
@@ -96,13 +108,16 @@ async def get_comparacion_historica(
     mes: str,
     suministro_id: str = Depends(get_suministro_actual),
     repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+    vecinos_repo: VecinosRepository = Depends(get_vecinos_repo),
 ) -> ComparacionResponse:
     try:
         mes_date = datetime.strptime(mes, "%Y-%m").date()
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="mes debe tener formato YYYY-MM") from exc
 
-    resultado = await ObtenerComparacionHistoricaUseCase(repo).ejecutar(suministro_id, mes_date)
+    resultado = await ObtenerComparacionHistoricaUseCase(repo, vecinos_repo).ejecutar(
+        suministro_id, mes_date
+    )
 
     def _to_periodo(periodo: PeriodoConsumo) -> PeriodoResponse:
         return PeriodoResponse(
@@ -115,6 +130,12 @@ async def get_comparacion_historica(
         mes_actual=_to_periodo(resultado.mes_actual),
         mes_anterior=_to_periodo(resultado.mes_anterior),
         mismo_mes_anio_anterior=_to_periodo(resultado.mismo_mes_anio_anterior),
+        zona_mes_actual=ZonaResumenResponse(
+            promedio_vecinos_kwh=resultado.zona_mes_actual.promedio_vecinos_kwh,
+            n_vecinos=resultado.zona_mes_actual.n_vecinos,
+            diferencia_pct=resultado.zona_mes_actual.diferencia_pct,
+            serie=[PuntoSerie(fecha=f, kwh=kwh) for f, kwh in resultado.zona_mes_actual.serie],
+        ),
         datos_hasta=resultado.datos_hasta,
     )
 
@@ -138,6 +159,56 @@ async def get_anomalia_consumo(
         kwh=resultado.kwh,
         z_score=resultado.z_score,
         desviacion_pct=resultado.desviacion_pct,
+    )
+
+
+class PuntoSerieHoraria(BaseModel):
+    hora: int
+    kwh: float
+
+
+class SerieHorariaResponse(BaseModel):
+    fecha: date
+    serie: list[PuntoSerieHoraria]
+
+
+class HoraPicoResponse(BaseModel):
+    hora_pico: int
+    kwh_promedio: float
+    perfil_24h: list[PuntoSerieHoraria]
+
+
+@router.get("/horario", response_model=SerieHorariaResponse)
+async def get_consumo_horario(
+    fecha: date,
+    suministro_id: str = Depends(get_suministro_actual),
+    repo: ConsumoHorarioRepository = Depends(get_consumo_horario_repo),
+) -> SerieHorariaResponse:
+    resultado = await ObtenerSerieHorariaUseCase(repo).ejecutar(suministro_id, fecha)
+    return SerieHorariaResponse(
+        fecha=resultado.fecha,
+        serie=[PuntoSerieHoraria(hora=h, kwh=kwh) for h, kwh in resultado.puntos],
+    )
+
+
+@router.get("/hora-pico", response_model=HoraPicoResponse | None)
+async def get_hora_pico(
+    mes: str,
+    suministro_id: str = Depends(get_suministro_actual),
+    repo: ConsumoHorarioRepository = Depends(get_consumo_horario_repo),
+) -> HoraPicoResponse | None:
+    try:
+        mes_date = datetime.strptime(mes, "%Y-%m").date()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="mes debe tener formato YYYY-MM") from exc
+
+    resultado = await IdentificarHoraPicoUseCase(repo).ejecutar(suministro_id, mes_date)
+    if resultado is None:
+        return None
+    return HoraPicoResponse(
+        hora_pico=resultado.hora_pico,
+        kwh_promedio=resultado.kwh_promedio,
+        perfil_24h=[PuntoSerieHoraria(hora=h, kwh=kwh) for h, kwh in resultado.perfil_24h],
     )
 
 

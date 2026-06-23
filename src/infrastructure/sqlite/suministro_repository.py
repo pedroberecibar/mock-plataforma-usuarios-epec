@@ -23,3 +23,14 @@ class SQLiteSuministroRepository(SuministroRepository):
             .on_conflict_do_nothing(index_elements=["id"])
         )
         await self._session.execute(stmt)
+
+    async def upsert_coordenadas(self, suministro_id: str, lat: float, lon: float) -> None:
+        stmt = (
+            insert(Suministro)
+            .values(id=suministro_id, lat=lat, lon=lon, suministro_referencia=suministro_id)
+            .on_conflict_do_update(
+                index_elements=["id"],
+                set_={"lat": lat, "lon": lon},
+            )
+        )
+        await self._session.execute(stmt)

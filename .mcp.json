@@ -1,12 +1,11 @@
 {
   "mcpServers": {
-    "serena": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
-    },
-    "vault": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${VAULT_PATH}"]
+    "agent-browser": {
+      "command": "D:\\Usuarios\\pberecibar\\Documents\\nodejs\\node-v24.15.0-win-x64\\node.exe",
+      "args": [
+        "C:\\Users\\pberecibar\\AppData\\Roaming\\npm\\node_modules\\agent-browser\\bin\\agent-browser.js",
+        "mcp"
+      ]
     }
   }
 }

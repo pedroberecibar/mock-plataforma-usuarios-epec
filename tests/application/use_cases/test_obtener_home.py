@@ -128,6 +128,23 @@ async def test_comparacion_zona_pocos_vecinos_sin_datos_privacidad() -> None:
     assert result.comparacion_zona.diferencia_pct is None
 
 
+async def test_comparacion_zona_vecinos_sin_datos_ese_mes_privacidad() -> None:
+    consumo = FakeConsumoDiarioRepository()
+    await _seed_mes(consumo, "S1", 2026, 6, 20.0, 10)
+    # 5 vecinos en el radio geográfico, pero solo 3 tienen datos en junio
+    vecinos = FakeVecinosRepository(vecinos={"S1": ["S2", "S3", "S4", "S5", "S6"]})
+    for i in range(2, 5):  # S2, S3, S4
+        await _seed_mes(consumo, f"S{i}", 2026, 6, 10.0, 10)
+    # S5, S6 no tienen datos en junio
+
+    uc = _make_uc(consumo, vecinos, FakeProyeccionRepository())
+    result = await uc.ejecutar("S1", date(2026, 6, 1))
+
+    assert result.comparacion_zona.n_vecinos == 5  # 5 en radio
+    assert result.comparacion_zona.promedio_vecinos_kwh is None  # 3 con datos < 5
+    assert result.comparacion_zona.diferencia_pct is None
+
+
 async def test_comparacion_zona_con_suficientes_vecinos() -> None:
     consumo = FakeConsumoDiarioRepository()
     await _seed_mes(consumo, "S1", 2026, 6, 20.0, 10)  # S1: 200 kWh

@@ -11,6 +11,7 @@ from application.use_cases.obtener_comparacion_historica import (
     ObtenerComparacionHistoricaUseCase,
 )
 from infrastructure.fakes.consumo_diario_repository import FakeConsumoDiarioRepository
+from infrastructure.fakes.vecinos_repository import FakeVecinosRepository
 
 
 async def _repo_con_junio_2026() -> FakeConsumoDiarioRepository:
@@ -99,3 +100,85 @@ async def test_aislado_por_suministro() -> None:
     resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
 
     assert all(kwh != 99.0 for _, kwh in resultado.mes_actual.serie)
+
+
+async def test_zona_sin_vecinos_devuelve_n_vecinos_cero() -> None:
+    repo = FakeConsumoDiarioRepository()
+    await repo.upsert_consumo("S1", date(2026, 6, 1), 10.0)
+    vecinos_repo = FakeVecinosRepository({})
+
+    uc = ObtenerComparacionHistoricaUseCase(repo, vecinos_repo)
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    assert resultado.zona_mes_actual.n_vecinos == 0
+    assert resultado.zona_mes_actual.promedio_vecinos_kwh is None
+    assert resultado.zona_mes_actual.diferencia_pct is None
+
+
+async def test_zona_con_vecinos_suficientes_calcula_diferencia() -> None:
+    repo = FakeConsumoDiarioRepository()
+    # Suministro principal: 100 kWh en junio 2026
+    for d in range(1, 11):
+        await repo.upsert_consumo("S1", date(2026, 6, d), 10.0)
+    # 6 vecinos con 80 kWh cada uno → promedio 80
+    for i in range(1, 7):
+        for d in range(1, 11):
+            await repo.upsert_consumo(f"V{i}", date(2026, 6, d), 8.0)
+    vecinos_repo = FakeVecinosRepository({"S1": [f"V{i}" for i in range(1, 7)]})
+
+    uc = ObtenerComparacionHistoricaUseCase(repo, vecinos_repo)
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    assert resultado.zona_mes_actual.n_vecinos == 6
+    assert resultado.zona_mes_actual.promedio_vecinos_kwh == 80.0
+    # 100 vs 80 → +25%
+    assert resultado.zona_mes_actual.diferencia_pct == 25.0
+
+
+async def test_zona_sin_vecinos_repo_devuelve_zona_vacia() -> None:
+    """Sin vecinos_repo inyectado, zona_mes_actual retorna n_vecinos=0."""
+    repo = FakeConsumoDiarioRepository()
+    await repo.upsert_consumo("S1", date(2026, 6, 1), 10.0)
+
+    uc = ObtenerComparacionHistoricaUseCase(repo)
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    assert resultado.zona_mes_actual.n_vecinos == 0
+    assert resultado.zona_mes_actual.promedio_vecinos_kwh is None
+
+
+async def test_zona_serie_diaria_promedio_correcto() -> None:
+    """serie de zona contiene el promedio de vecinos por cada día."""
+    repo = FakeConsumoDiarioRepository()
+    for d in range(1, 6):
+        await repo.upsert_consumo("S1", date(2026, 6, d), 10.0)
+    # 6 vecinos: los 3 primeros consumen 6 kWh/día, los 3 últimos 12 kWh/día → promedio 9 kWh/día
+    for i in range(1, 4):
+        for d in range(1, 6):
+            await repo.upsert_consumo(f"V{i}", date(2026, 6, d), 6.0)
+    for i in range(4, 7):
+        for d in range(1, 6):
+            await repo.upsert_consumo(f"V{i}", date(2026, 6, d), 12.0)
+    vecinos_repo = FakeVecinosRepository({"S1": [f"V{i}" for i in range(1, 7)]})
+
+    uc = ObtenerComparacionHistoricaUseCase(repo, vecinos_repo)
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    zona = resultado.zona_mes_actual
+    assert len(zona.serie) == 5
+    assert all(abs(kwh - 9.0) < 0.01 for _, kwh in zona.serie)
+    assert zona.serie[0][0] == date(2026, 6, 1)
+
+
+async def test_zona_serie_vacia_cuando_menos_de_cinco_vecinos() -> None:
+    """Con menos de 5 vecinos la serie de zona queda vacía (privacidad)."""
+    repo = FakeConsumoDiarioRepository()
+    await repo.upsert_consumo("S1", date(2026, 6, 1), 10.0)
+    for i in range(1, 4):
+        await repo.upsert_consumo(f"V{i}", date(2026, 6, 1), 8.0)
+    vecinos_repo = FakeVecinosRepository({"S1": [f"V{i}" for i in range(1, 4)]})
+
+    uc = ObtenerComparacionHistoricaUseCase(repo, vecinos_repo)
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    assert resultado.zona_mes_actual.serie == []

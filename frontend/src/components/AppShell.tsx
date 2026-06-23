@@ -2,6 +2,19 @@ import type React from "react";
 import { bg, color, font, fontSize, fontWeight, space, radius, brand } from "../design-tokens";
 
 // ---------------------------------------------------------------------------
+// Vista → página title mapping (used by mobile top bar)
+// ---------------------------------------------------------------------------
+export type Vista = "home" | "consumo" | "objetivos" | "factura" | "alertas";
+
+const VISTA_LABELS: Record<Vista, string> = {
+  home:      "Inicio",
+  consumo:   "Mi Consumo",
+  objetivos: "Objetivos",
+  factura:   "Mi Factura",
+  alertas:   "Alertas",
+};
+
+// ---------------------------------------------------------------------------
 // SVG icons — inline, no external dependency
 // ---------------------------------------------------------------------------
 const IconHome = () => (
@@ -53,8 +66,6 @@ const IconLogout = () => (
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-export type Vista = "home" | "consumo" | "objetivos" | "factura" | "alertas";
-
 interface NavItem {
   label: string;
   vista: Vista | null;
@@ -63,11 +74,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Inicio",        vista: "home",      icon: <IconHome />,     disabled: false },
-  { label: "Consumo",       vista: "consumo",   icon: <IconBarChart />, disabled: false },
-  { label: "Objetivos",     vista: "objetivos", icon: <IconTarget />,   disabled: false },
-  { label: "Mi factura",    vista: "factura",   icon: <IconReceipt />,  disabled: false },
-  { label: "Alertas",       vista: "alertas",   icon: <IconBell />,     disabled: false },
+  { label: "Inicio",     vista: "home",      icon: <IconHome />,     disabled: false },
+  { label: "Consumo",    vista: "consumo",   icon: <IconBarChart />, disabled: false },
+  { label: "Objetivos",  vista: "objetivos", icon: <IconTarget />,   disabled: false },
+  { label: "Mi factura", vista: "factura",   icon: <IconReceipt />,  disabled: false },
+  { label: "Alertas",    vista: "alertas",   icon: <IconBell />,     disabled: false },
 ];
 
 interface AppShellProps {
@@ -102,6 +113,45 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
 
   return (
     <div style={{ display: "flex", fontFamily: font.sans, minHeight: "100vh" }}>
+
+      {/* ── Mobile top bar — CSS shows on mobile, hides on desktop ── */}
+      <nav
+        className="app-topbar"
+        data-testid="mobile-topbar"
+        aria-label="Barra superior"
+        style={{
+          background:     C.bg,
+          height:         60,
+          alignItems:     "center",
+          justifyContent: "space-between",
+          padding:        `0 ${space[5]}px`,
+          position:       "fixed",
+          top:            0,
+          left:           0,
+          right:          0,
+          zIndex:         50,
+          flexShrink:     0,
+        }}
+      >
+        <img
+          src="/epec-logo-white.png"
+          alt="EPEC logo"
+          style={{ width: 32, height: 32, borderRadius: radius.xs, background: color.white, padding: 3, objectFit: "contain" }}
+        />
+        <span style={{
+          color:         color.white,
+          fontSize:      fontSize.base,
+          fontWeight:    fontWeight.semibold,
+          fontFamily:    font.sans,
+          letterSpacing: "0.01em",
+          position:      "absolute",
+          left:          "50%",
+          transform:     "translateX(-50%)",
+        }}>
+          {VISTA_LABELS[vistaActiva]}
+        </span>
+        <div style={{ width: 32 }} />
+      </nav>
 
       {/* ── Desktop sidebar — CSS hides on mobile ── */}
       <nav
@@ -228,8 +278,8 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
         </div>
       </nav>
 
-      {/* ── Main content — offset by sidebar width ── */}
-      <div style={{ flex: 1, marginLeft: 256, background: C.content, minHeight: "100vh" }}>
+      {/* ── Main content — CSS controls margin based on viewport ── */}
+      <div className="app-content" style={{ flex: 1, background: C.content, minHeight: "100vh" }}>
         {children}
       </div>
 
@@ -354,16 +404,28 @@ function BottomNavItem({ item, isActive, onNavegar }: BottomNavItemProps) {
         alignItems:     "center",
         gap:            2,
         color:          textColor,
+        opacity:        isActive ? 1 : 0.55,
         fontSize:       10,
+        fontWeight:     isActive ? fontWeight.semibold : fontWeight.regular,
         textDecoration: "none",
         cursor:         item.disabled ? "not-allowed" : "pointer",
         pointerEvents:  item.disabled ? "none" : "auto",
         userSelect:     "none",
         padding:        `${space[2]}px ${space[3]}px`,
+        transition:     "opacity 150ms ease",
       }}
     >
       {item.icon}
       {item.label}
+      {isActive && (
+        <div style={{
+          width:        4,
+          height:       4,
+          background:   color.green300,
+          borderRadius: radius.full,
+          marginTop:    1,
+        }} />
+      )}
     </a>
   );
 }

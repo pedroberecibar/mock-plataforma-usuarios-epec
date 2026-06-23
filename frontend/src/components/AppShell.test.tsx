@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
 const NAV_LABELS = ["Inicio", "Consumo", "Objetivos", "Mi factura", "Alertas"];
+const VISTA_TITLES: Array<{ vista: Parameters<typeof AppShell>[0]["vistaActiva"]; title: string }> = [
+  { vista: "home",      title: "Inicio" },
+  { vista: "consumo",   title: "Mi Consumo" },
+  { vista: "objetivos", title: "Objetivos" },
+  { vista: "factura",   title: "Mi Factura" },
+  { vista: "alertas",   title: "Alertas" },
+];
 
 describe("AppShell", () => {
   it("renderiza el logo con alt=EPEC", () => {
@@ -88,6 +95,27 @@ describe("AppShell", () => {
     );
     expect(screen.getByTestId("contenido-hijo")).toBeTruthy();
   });
+
+  it("renderiza el top bar móvil con data-testid", () => {
+    render(
+      <AppShell vistaActiva="home" onNavegar={vi.fn()} onLogout={vi.fn()}>
+        <div />
+      </AppShell>,
+    );
+    expect(screen.getByTestId("mobile-topbar")).toBeDefined();
+  });
+
+  it.each(VISTA_TITLES)(
+    "top bar muestra el título '$title' cuando vistaActiva='$vista'",
+    ({ vista, title }) => {
+      render(
+        <AppShell vistaActiva={vista} onNavegar={vi.fn()} onLogout={vi.fn()}>
+          <div />
+        </AppShell>,
+      );
+      expect(screen.getByTestId("mobile-topbar").textContent).toContain(title);
+    },
+  );
 
   it('click en "Cerrar sesión" llama onLogout', async () => {
     const onLogout = vi.fn();

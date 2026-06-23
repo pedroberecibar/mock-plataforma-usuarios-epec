@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from application.use_cases.obtener_documentos_factura import ObtenerDocumentosFacturaUseCase
 from application.use_cases.obtener_link_factura import ObtenerLinkFacturaUseCase
 from domain.ports.factura_source_reader import FacturaSourceReader
 from domain.ports.factura_verificacion_port import FacturaVerificacionPort
@@ -22,6 +23,12 @@ def build_router(epec_base_url: str | None) -> APIRouter:
 
     class FacturaDatosResponse(BaseModel):
         fecha_vencimiento: date | None
+
+    class DocumentoPagoResponse(BaseModel):
+        periodo: str
+        nro_factura: str
+        importe: float
+        fecha_vencimiento: str
 
     @router.get("/datos", response_model=FacturaDatosResponse)
     async def get_factura_datos(
@@ -46,6 +53,32 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         try:
             url = await uc.ejecutar(numero_cliente, numero_contrato)
             return LinkResponse(url=url)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception:
+            raise HTTPException(
+                status_code=503, detail="Servicio de facturación no disponible"
+            ) from None
+
+    @router.get("/documentos", response_model=list[DocumentoPagoResponse])
+    async def get_documentos_factura(
+        numero_cliente: str = Query(..., pattern=r"^\d+$"),
+        numero_contrato: str = Query(..., pattern=r"^\d+$"),
+        _usuario: str = Depends(get_usuario_actual),
+        verificacion_port: FacturaVerificacionPort = Depends(get_factura_verificacion),
+    ) -> list[DocumentoPagoResponse]:
+        uc = ObtenerDocumentosFacturaUseCase(verificacion_port=verificacion_port)
+        try:
+            docs = await uc.ejecutar(numero_cliente, numero_contrato)
+            return [
+                DocumentoPagoResponse(
+                    periodo=d.periodo,
+                    nro_factura=d.nro_factura,
+                    importe=d.importe,
+                    fecha_vencimiento=d.fecha_vencimiento,
+                )
+                for d in docs
+            ]
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except Exception:

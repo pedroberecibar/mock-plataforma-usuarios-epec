@@ -23,16 +23,18 @@ class SQLiteVecinosRepository(VecinosRepository):
 
     async def get_vecinos(self, suministro_id: str, radio_metros: float) -> list[str]:
         ref_result = await self._session.execute(
-            select(Suministro.lat, Suministro.lon).where(Suministro.id == suministro_id)
+            select(Suministro.lat, Suministro.lon, Suministro.tarifa_codigo).where(
+                Suministro.id == suministro_id
+            )
         )
         ref_row = ref_result.one_or_none()
         if ref_row is None:
             return []
 
-        lat_ref, lon_ref = ref_row.lat, ref_row.lon
+        lat_ref, lon_ref, tarifa_ref = ref_row.lat, ref_row.lon, ref_row.tarifa_codigo
         delta = radio_metros / 111_000.0
 
-        candidates = await self._session.execute(
+        candidates_q = (
             select(Suministro.id, Suministro.lat, Suministro.lon)
             .where(Suministro.id != suministro_id)
             .where(Suministro.lat >= lat_ref - delta)
@@ -40,6 +42,10 @@ class SQLiteVecinosRepository(VecinosRepository):
             .where(Suministro.lon >= lon_ref - delta)
             .where(Suministro.lon <= lon_ref + delta)
         )
+        if tarifa_ref is not None:
+            candidates_q = candidates_q.where(Suministro.tarifa_codigo == tarifa_ref)
+
+        candidates = await self._session.execute(candidates_q)
 
         return [
             row.id

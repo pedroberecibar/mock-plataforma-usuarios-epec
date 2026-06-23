@@ -27,7 +27,12 @@ class EvaluarVencimientoUseCase:
     ) -> None:
         from datetime import UTC, datetime
 
-        hoy_real = hoy or datetime.now(UTC).date()
+        if hoy is not None:
+            ahora_real = datetime(hoy.year, hoy.month, hoy.day, 23, 59, 59)
+            hoy_real = hoy
+        else:
+            ahora_real = datetime.now(UTC).replace(tzinfo=None)
+            hoy_real = ahora_real.date()
 
         factura = await self._factura_reader.get_factura(suministro_id)
         if factura is None or factura.fecha_vencimiento is None:
@@ -46,4 +51,5 @@ class EvaluarVencimientoUseCase:
             suministro_id=suministro_id,
             tipos=[TipoAlerta.VENCIMIENTO_PROXIMO],
             hoy=hoy_real,
+            ahora=ahora_real,
         )

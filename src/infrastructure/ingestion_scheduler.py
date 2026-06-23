@@ -1,7 +1,8 @@
 """Scheduler de ingesta periódica Oracle → SQLite.
 
 Corre como una tarea asyncio en background (ver main.py).
-Hace un backfill inicial al arrancar y luego loops cada INGEST_INTERVAL_HORAS.
+Hace un backfill inicial al arrancar, luego expande el scope a vecinos geográficos
+(radio 150 m por lat/lon) y luego loops periódicos con el scope ampliado.
 
 OracleMedicionReader usa oracledb síncrono. _NonBlockingReader lo envuelve
 ejecutando leer_lecturas() en un thread pool para no bloquear el event loop.
@@ -9,6 +10,7 @@ ejecutando leer_lecturas() en un thread pool para no bloquear el event loop.
 
 import asyncio
 from datetime import date, timedelta
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from sqlalchemy import select
@@ -16,17 +18,24 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from application.use_cases.evaluar_alertas import EvaluarAlertasUseCase, TipoAlerta
 from application.use_cases.ingestar_consumo_diario import IngestarConsumoDiarioUseCase
+from application.use_cases.ingestar_consumo_horario import IngestarConsumoHorarioUseCase
 from domain.lecturas import LecturaTelemedida
+from domain.ports.medicion_horaria_source_reader import MedicionHorariaSourceReader
 from domain.ports.medicion_source_reader import MedicionSourceReader
 from domain.ports.notification_sender import NotificationSender
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
+from infrastructure.sqlite.consumo_horario_repository import SQLiteConsumoHorarioRepository
 from infrastructure.sqlite.models import Usuario
 from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
 from infrastructure.sqlite.suministro_repository import SQLiteSuministroRepository
 
+if TYPE_CHECKING:
+    from infrastructure.oracle.vecinos_repository import OracleVecinosRepository
+
 _log = structlog.get_logger(__name__)
 
 _TIPOS_ALERTA_PERIODICOS = [TipoAlerta.FACTURA_DISPONIBLE, TipoAlerta.VENCIMIENTO_PROXIMO]
+_RADIO_VECINOS_METROS = 150.0
 
 
 class _NonBlockingReader(MedicionSourceReader):
@@ -81,6 +90,29 @@ async def _ejecutar_ingesta(
     )
 
 
+async def _ejecutar_ingesta_horaria(
+    reader: MedicionHorariaSourceReader,
+    session_factory: async_sessionmaker[AsyncSession],
+    desde: date,
+    hasta: date,
+    equipos: list[str] | None = None,
+) -> None:
+    async with session_factory() as session:
+        consumo_repo = SQLiteConsumoHorarioRepository(session)
+        suministro_repo = SQLiteSuministroRepository(session)
+        resultado = await IngestarConsumoHorarioUseCase(
+            reader, consumo_repo, suministro_repo
+        ).ejecutar(desde, hasta, equipos=equipos)
+        await session.commit()
+    _log.info(
+        "Ingesta horaria OK — %d suministros, %d horas (desde=%s hasta=%s)",
+        resultado.suministros_procesados,
+        resultado.horas_procesadas,
+        desde,
+        hasta,
+    )
+
+
 async def _evaluar_alertas_todos(
     session_factory: async_sessionmaker[AsyncSession],
     notification_sender: NotificationSender,
@@ -106,6 +138,71 @@ async def _evaluar_alertas_todos(
         await session.commit()
 
 
+async def _expandir_a_vecinos(
+    oracle_vecinos: "OracleVecinosRepository",
+    equipos: list[str],
+    session_factory: async_sessionmaker[AsyncSession],
+) -> list[str]:
+    """Dado el conjunto inicial de med_numero_equipo, devuelve uno ampliado con los equipos
+    de los suministros vecinos (radio 150 m por GPS). También persiste las coordenadas de
+    los vecinos en SQLite para que el fallback sin Oracle funcione correctamente."""
+    try:
+        # 1. Resolver med_numero_equipo → SRV_CODIGO
+        srv_map = await oracle_vecinos.resolver_srv_de_equipos(equipos)
+        if not srv_map:
+            _log.warning("No se pudieron resolver SRV_CODIGOs para los equipos — sin expansión")
+            return equipos
+
+        _log.info("Equipos resueltos a SRV_CODIGOs: %s", srv_map)
+
+        # 2. Para cada SRV_CODIGO propio, obtener vecinos con coordenadas
+        all_vecino_coords: dict[str, tuple[float, float]] = {}
+        for srv_codigo in set(srv_map.values()):
+            vecinos = await oracle_vecinos.get_vecinos_con_coordenadas(
+                srv_codigo, _RADIO_VECINOS_METROS
+            )
+            for vid, lat, lon in vecinos:
+                all_vecino_coords[vid] = (lat, lon)
+
+        if not all_vecino_coords:
+            _log.info("Sin vecinos en %dm para los suministros propios", _RADIO_VECINOS_METROS)
+            return equipos
+
+        _log.info(
+            "Vecinos encontrados: %d suministros en radio %dm",
+            len(all_vecino_coords),
+            _RADIO_VECINOS_METROS,
+        )
+
+        # 3. Persistir coordenadas de vecinos en SQLite (habilita el fallback sin Oracle)
+        async with session_factory() as session:
+            suministro_repo = SQLiteSuministroRepository(session)
+            for vid, (lat, lon) in all_vecino_coords.items():
+                await suministro_repo.upsert_coordenadas(vid, lat, lon)
+            await session.commit()
+
+        # 4. Obtener medidores activos y telemedibles de los vecinos
+        vecino_srvs = list(all_vecino_coords.keys())
+        vecino_equipos = await oracle_vecinos.get_equipos_activos_de_srvs(vecino_srvs)
+
+        if not vecino_equipos:
+            _log.warning("Vecinos encontrados pero sin equipos telemedibles activos")
+            return equipos
+
+        ampliados = list(set(equipos) | set(vecino_equipos))
+        _log.info(
+            "Scope de ingesta expandido: %d → %d equipos (%d vecinos)",
+            len(equipos),
+            len(ampliados),
+            len(vecino_equipos),
+        )
+        return ampliados
+
+    except Exception:
+        _log.exception("Error expandiendo vecinos — continuando con equipos originales")
+        return equipos
+
+
 async def run_scheduler(
     reader: MedicionSourceReader,
     session_factory: async_sessionmaker[AsyncSession],
@@ -115,12 +212,15 @@ async def run_scheduler(
     interval_horas: int,
     equipos: list[str] | None = None,
     notification_sender: NotificationSender | None = None,
+    oracle_vecinos: Any | None = None,
+    horaria_reader: MedicionHorariaSourceReader | None = None,
 ) -> None:
-    """Backfill inicial + loop periódico. Diseñado para cancelarse limpiamente con asyncio.
+    """Backfill inicial + expansión a vecinos + loop periódico.
 
     `equipos`: lista de med_numero_equipo a ingestar. None = todos (no recomendado en prod).
+    `oracle_vecinos`: instancia de OracleVecinosRepository; si se provee, expande el scope
+    de ingesta a los medidores de suministros vecinos (radio 150 m por GPS) tras el backfill.
     `notification_sender`: si está configurado, evalúa alertas tras cada ciclo periódico.
-    Procesa de a 1 día con ventana (D, D+1) para que _persistir_serie tenga lectura siguiente.
     """
     non_blocking = _NonBlockingReader(reader)
 
@@ -143,6 +243,22 @@ async def run_scheduler(
     except Exception:
         _log.exception("Error en backfill desde %s hasta %s", desde_inicial, hasta_total)
 
+    if horaria_reader is not None:
+        try:
+            await _ejecutar_ingesta_horaria(
+                horaria_reader, session_factory, desde_inicial, hasta_total, equipos=equipos
+            )
+        except asyncio.CancelledError:
+            _log.info("Scheduler detenido durante backfill horario.")
+            return
+        except Exception:
+            _log.exception("Error en backfill horario")
+
+    # Expandir scope a vecinos tras el backfill inicial
+    if oracle_vecinos is not None and equipos:
+        _log.info("Expandiendo scope de ingesta a vecinos geograficos...")
+        equipos = await _expandir_a_vecinos(oracle_vecinos, equipos, session_factory)
+
     while True:
         try:
             await asyncio.sleep(interval_horas * 3600)
@@ -162,6 +278,17 @@ async def run_scheduler(
             return
         except Exception:
             _log.exception("Error en ingesta — reintentará en %dh", interval_horas)
+
+        if horaria_reader is not None:
+            try:
+                await _ejecutar_ingesta_horaria(
+                    horaria_reader, session_factory, dia_inicio, hasta_total, equipos=equipos
+                )
+            except asyncio.CancelledError:
+                _log.info("Scheduler detenido durante ingesta horaria periódica.")
+                return
+            except Exception:
+                _log.exception("Error en ingesta horaria — continuando")
 
         if notification_sender is not None:
             try:
