@@ -26,10 +26,20 @@
       /* AppShell responsive nav */
       .app-sidebar   { display: flex; }
       .app-bottomnav { display: none; }
+      .app-topbar    { display: none; }
+      .app-content   { margin-left: 256px; }
       @media (max-width: 767px) {
         .app-sidebar   { display: none; }
         .app-bottomnav { display: flex; }
+        .app-topbar    { display: flex; }
+        .app-content   { margin-left: 0; padding-top: 60px; padding-bottom: 60px; }
       }
+      /* Page transition — fade between views */
+      @keyframes pageFadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .page-fade { animation: pageFadeIn 200ms ease-out; }
       /* LoginPage: left decorative panel hidden on mobile; right panel fills full width */
       .login-panel-left { display: flex; }
       .login-panel-right { width: 50%; }
@@ -42,7 +52,7 @@
         .export-csv-btn { display: inline-flex !important; align-items: center; gap: 6px; }
       }
     </style>
-    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-dtQIxt-D.js"></script>
+    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-gzwxOhpd.js"></script>
   </head>
   <body>
     <div id="root"></div>

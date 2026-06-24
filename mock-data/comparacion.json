@@ -329,5 +329,11 @@
     ],
     "total_kwh": 444.74
   },
+  "zona_mes_actual": {
+    "promedio_vecinos_kwh": 198.5,
+    "n_vecinos": 12,
+    "diferencia_pct": 27.4,
+    "serie": []
+  },
   "datos_hasta": "2026-06-17"
 }
