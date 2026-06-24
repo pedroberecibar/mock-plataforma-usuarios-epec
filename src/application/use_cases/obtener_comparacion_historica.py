@@ -96,7 +96,7 @@ class ObtenerComparacionHistoricaUseCase:
         if self._vecinos_repo is None:
             return _empty
 
-        vecinos = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
+        vecinos = await self._vecinos_repo.get_vecinos(suministro_id)
         n_vecinos = len(vecinos)
         if n_vecinos < _MIN_VECINOS or dias_transcurridos == 0 or total_kwh is None:
             return ZonaResumen(

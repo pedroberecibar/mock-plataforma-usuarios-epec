@@ -21,7 +21,7 @@ class _FakeVecinosRepository(VecinosRepository):
         self._fail = fail
         self.call_count = 0
 
-    async def get_vecinos(self, suministro_id: str, radio_metros: float) -> list[str]:
+    async def get_vecinos(self, suministro_id: str) -> list[str]:
         self.call_count += 1
         if self._fail:
             raise RuntimeError("Oracle error")
@@ -43,7 +43,7 @@ async def test_cache_miss_llama_inner_y_devuelve_vecinos(session: AsyncSession) 
     inner = _FakeVecinosRepository(["V1", "V2", "V3"])
     repo = CachedVecinosRepository(inner, session)
 
-    result = await repo.get_vecinos("S1", 150.0)
+    result = await repo.get_vecinos("S1")
 
     assert result == ["V1", "V2", "V3"]
     assert inner.call_count == 1
@@ -53,9 +53,9 @@ async def test_cache_miss_guarda_resultado_en_sqlite(session: AsyncSession) -> N
     inner = _FakeVecinosRepository(["V1", "V2"])
     repo = CachedVecinosRepository(inner, session)
 
-    await repo.get_vecinos("S1", 150.0)
+    await repo.get_vecinos("S1")
     # Segunda llamada debe usar cache — inner no se llama de nuevo
-    result = await repo.get_vecinos("S1", 150.0)
+    result = await repo.get_vecinos("S1")
 
     assert result == ["V1", "V2"]
     assert inner.call_count == 1  # inner solo fue llamado una vez
@@ -65,9 +65,9 @@ async def test_cache_hit_fresco_no_llama_inner(session: AsyncSession) -> None:
     inner = _FakeVecinosRepository(["V1"])
     repo = CachedVecinosRepository(inner, session)
 
-    await repo.get_vecinos("S1", 150.0)
-    await repo.get_vecinos("S1", 150.0)
-    await repo.get_vecinos("S1", 150.0)
+    await repo.get_vecinos("S1")
+    await repo.get_vecinos("S1")
+    await repo.get_vecinos("S1")
 
     assert inner.call_count == 1
 
@@ -76,8 +76,8 @@ async def test_cache_expirado_refresca_desde_inner(session: AsyncSession) -> Non
     inner = _FakeVecinosRepository(["V1"])
     repo = CachedVecinosRepository(inner, session, ttl_hours=0)  # TTL 0 → siempre expirado
 
-    await repo.get_vecinos("S1", 150.0)
-    await repo.get_vecinos("S1", 150.0)
+    await repo.get_vecinos("S1")
+    await repo.get_vecinos("S1")
 
     assert inner.call_count == 2
 
@@ -86,7 +86,7 @@ async def test_inner_falla_devuelve_lista_vacia(session: AsyncSession) -> None:
     inner = _FakeVecinosRepository([], fail=True)
     repo = CachedVecinosRepository(inner, session)
 
-    result = await repo.get_vecinos("S1", 150.0)
+    result = await repo.get_vecinos("S1")
 
     assert result == []
 
@@ -99,8 +99,8 @@ async def test_suministros_distintos_tienen_cache_independiente(session: AsyncSe
     repo1 = CachedVecinosRepository(inner_s1, session)
     repo2 = CachedVecinosRepository(inner_s2, session)
 
-    r1 = await repo1.get_vecinos("S1", 150.0)
-    r2 = await repo2.get_vecinos("S2", 150.0)
+    r1 = await repo1.get_vecinos("S1")
+    r2 = await repo2.get_vecinos("S2")
 
     assert r1 == ["V1", "V2"]
     assert r2 == ["V3"]

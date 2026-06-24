@@ -1,7 +1,7 @@
 """Seed de vecinos reales desde Oracle → SQLite.
 
-Conecta a Oracle, encuentra los vecinos geográficos del suministro configurado
-(radio 150 m), ingesta sus mediciones y actualiza la caché de vecinos en SQLite.
+Conecta a Oracle, encuentra los vecinos por subestación del suministro configurado
+(GEOREF.VW_INTELIGENTES), ingesta sus mediciones y actualiza la caché de vecinos en SQLite.
 
 Uso:
     uv run python scripts/seed_vecinos_reales.py
@@ -32,47 +32,17 @@ if _env_path.exists():
 
 sys.path.insert(0, str(_root / "src"))
 
-import oracledb  # noqa: E402, I001
-from sqlalchemy import text  # noqa: E402
-from sqlalchemy.ext.asyncio import (  # noqa: E402
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
-
+from sqlalchemy import text  # noqa: E402, I001
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
 from application.use_cases.ingestar_consumo_diario import IngestarConsumoDiarioUseCase  # noqa: E402
 from infrastructure.oracle.medicion_reader import OracleMedicionReader  # noqa: E402
 from infrastructure.oracle.vecinos_repository import OracleVecinosRepository  # noqa: E402
-from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository  # noqa: E402, I001
+from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository  # noqa: E402
 from infrastructure.sqlite.suministro_repository import SQLiteSuministroRepository  # noqa: E402
 
 # ── constantes ─────────────────────────────────────────────────────────────
 _ORACLE_VARS = ("OR_HOST", "OR_USER", "OR_PASS", "OR_SERVICE_NAME")
-_RADIO_METROS = 150.0
 _CACHE_TTL_HORAS = 24
-
-
-def _get_coords_de_srv(srv_codigo: str) -> tuple[float, float] | None:
-    """Obtiene lat/lon del servicio principal desde Oracle. Sincrónico."""
-    dsn = oracledb.makedsn(
-        os.environ["OR_HOST"],
-        int(os.environ.get("OR_PORT", "1521")),
-        service_name=os.environ["OR_SERVICE_NAME"],
-    )
-    with (
-        oracledb.connect(
-            user=os.environ["OR_USER"], password=os.environ["OR_PASS"], dsn=dsn
-        ) as conn,
-        conn.cursor() as cur,
-    ):
-        cur.execute(
-            "SELECT SRV_GPS_LATITUD, SRV_GPS_LONGITUD FROM XXSIGEC.SERVICIOS WHERE SRV_CODIGO = :srv",
-            {"srv": srv_codigo},
-        )
-        row = cur.fetchone()
-    if row is None or row[0] is None or row[1] is None:
-        return None
-    return float(row[0]), float(row[1])
 
 
 async def _cache_fresco(session_factory: async_sessionmaker[AsyncSession]) -> bool:
@@ -85,19 +55,12 @@ async def _cache_fresco(session_factory: async_sessionmaker[AsyncSession]) -> bo
         return (r.scalar() or 0) > 0
 
 
-async def _persistir_vecinos(
+async def _persistir_cache_vecinos(
     session_factory: async_sessionmaker[AsyncSession],
     srv_codigo: str,
-    lat_ref: float,
-    lon_ref: float,
-    vecinos: list[tuple[str, float, float]],
+    vecinos: list[str],
 ) -> None:
     async with session_factory() as s:
-        repo = SQLiteSuministroRepository(s)
-        await repo.upsert_coordenadas(srv_codigo, lat_ref, lon_ref)
-        for vid, vlat, vlon in vecinos:
-            await repo.upsert_coordenadas(vid, vlat, vlon)
-
         now = datetime.now(UTC).replace(tzinfo=None).isoformat()
         await s.execute(
             text("""
@@ -106,12 +69,10 @@ async def _persistir_vecinos(
                 ON CONFLICT(suministro_id) DO UPDATE
                 SET vecinos_json = excluded.vecinos_json, updated_at = excluded.updated_at
             """),
-            {"sid": srv_codigo, "json": json.dumps([v[0] for v in vecinos]), "ts": now},
+            {"sid": srv_codigo, "json": json.dumps(vecinos), "ts": now},
         )
         await s.commit()
-    print(
-        f"  SQLite actualizado: coordenadas + vecinos_cache ({len(vecinos)} vecinos para {srv_codigo})"
-    )
+    print(f"  vecinos_cache actualizado: {len(vecinos)} vecinos para {srv_codigo}")
 
 
 async def _ingestar(
@@ -172,33 +133,23 @@ async def _run(desde: date, hasta: date, skip_if_fresh: bool) -> None:
             print(f"  [!] No se encontró SRV_CODIGO para equipo {equipo}", file=sys.stderr)
             continue
 
-        print(f"\n▶ Equipo {equipo} → SRV {srv_codigo}")
+        print(f"\n[Equipo {equipo} -> SRV {srv_codigo}]")
 
-        # Coordenadas del servicio principal
-        loop = asyncio.get_running_loop()
-        coords = await loop.run_in_executor(None, _get_coords_de_srv, srv_codigo)
-        if coords is None:
-            print(f"  [!] Sin coordenadas para SRV {srv_codigo} — salteando.", file=sys.stderr)
-            continue
-        lat_ref, lon_ref = coords
-        print(f"  Coordenadas: lat={lat_ref:.6f} lon={lon_ref:.6f}")
+        # Vecinos por subestación (GEOREF.VW_INTELIGENTES)
+        vecinos = await oracle.get_vecinos(srv_codigo)
+        print(f"  Vecinos en subestación: {len(vecinos)}")
 
-        # Vecinos en radio 150 m
-        vecinos = await oracle.get_vecinos_con_coordenadas(srv_codigo, _RADIO_METROS)
-        print(f"  Vecinos encontrados: {len(vecinos)}")
+        await _persistir_cache_vecinos(session_factory, srv_codigo, vecinos)
 
-        await _persistir_vecinos(session_factory, srv_codigo, lat_ref, lon_ref, vecinos)
-
-        vecino_srvs = [v[0] for v in vecinos]
-        if vecino_srvs:
-            veq = await oracle.get_equipos_activos_de_srvs(vecino_srvs)
+        if vecinos:
+            veq = await oracle.get_equipos_activos_de_srvs(vecinos)
             print(f"  Equipos activos de vecinos: {len(veq)}")
             todos_vecino_equipos.extend(veq)
 
     todos_equipos = list(set(equipos_iniciales) | set(todos_vecino_equipos))
     print(
-        f"\n▶ Ingestando mediciones: {len(equipos_iniciales)} propios + "
-        f"{len(todos_vecino_equipos)} de vecinos = {len(todos_equipos)} total"
+        f"\n[Ingestando mediciones: {len(equipos_iniciales)} propios + "
+        f"{len(todos_vecino_equipos)} de vecinos = {len(todos_equipos)} total]"
     )
 
     try:

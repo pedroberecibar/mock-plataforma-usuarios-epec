@@ -1,17 +1,16 @@
 """Adapter Oracle para VecinosRepository.
 
-Busca vecinos por radio geográfico usando SRV_GPS_LATITUD / SRV_GPS_LONGITUD
-de XXSIGEC.SERVICIOS. El bounding-box cuadrado se calcula en grados (aprox. delta
-grados por cada radio_metros metros); luego se aplica filtro haversine exacto en
-Python para descartar las esquinas del cuadrado.
+Obtiene vecinos por subestación usando GEOREF.VW_INTELIGENTES.SUBESTACION.
+Dada una subestación, retorna todos los suministros que comparten esa subestación
+excluyendo el suministro de referencia.
 
-El enfoque AGF_CODIGO previo fue reemplazado porque su granularidad es a nivel
-de manzana/área y no garantiza proximidad real de 150 m.
+Mantiene los helpers del scheduler (resolver_srv_de_equipos, get_equipos_activos_de_srvs)
+que operan sobre XXSIGEC.EQUIPOS/SERVICIOS y no cambian.
 """
 
 import asyncio
 import collections
-import math
+import contextlib
 import os
 from typing import Any
 
@@ -21,23 +20,16 @@ from domain.ports.vecinos_repository import VecinosRepository
 
 _THIN_CLIENT_INITIALIZED = False
 
-# Bounding box + ref coords en una sola query (sin round-trip extra para ref lat/lon)
-_QUERY_VECINOS = """
-SELECT s2.SRV_CODIGO,
-       s2.SRV_GPS_LATITUD,
-       s2.SRV_GPS_LONGITUD,
-       s1.SRV_GPS_LATITUD  AS ref_lat,
-       s1.SRV_GPS_LONGITUD AS ref_lon
-FROM   XXSIGEC.SERVICIOS s1
-JOIN   XXSIGEC.SERVICIOS s2
-       ON  s2.SRV_GPS_LATITUD  BETWEEN s1.SRV_GPS_LATITUD  - :delta
-                                    AND s1.SRV_GPS_LATITUD  + :delta
-       AND s2.SRV_GPS_LONGITUD BETWEEN s1.SRV_GPS_LONGITUD - :delta
-                                    AND s1.SRV_GPS_LONGITUD + :delta
-WHERE  s1.SRV_CODIGO       = :suministro_id
-  AND  s2.SRV_CODIGO      != :suministro_id
-  AND  s2.SRV_GPS_LATITUD  IS NOT NULL
-  AND  s2.SRV_GPS_LONGITUD IS NOT NULL
+_QUERY_VECINOS_SUBESTACION = """
+SELECT TO_CHAR(SUMINISTRO) AS SUMINISTRO
+FROM   GEOREF.VW_INTELIGENTES
+WHERE  SUBESTACION = (
+           SELECT SUBESTACION
+           FROM   GEOREF.VW_INTELIGENTES
+           WHERE  SUMINISTRO = :suministro_id
+           FETCH FIRST 1 ROW ONLY
+       )
+  AND  SUMINISTRO != :suministro_id
 """
 
 # Dado un conjunto de med_numero_equipo, devuelve su SRV_CODIGO
@@ -48,25 +40,15 @@ WHERE  STE_NUMERO IN ({placeholders})
 GROUP  BY STE_NUMERO
 """
 
-# Dado un conjunto de SRV_CODIGO, devuelve el equipo activo de cada uno
-# filtrando por telemedición habilitada para evitar ingestas vacías
+# Dado un conjunto de SRV_CODIGO (como ints), devuelve el medidor activo de cada uno.
+# Usa VW_INTELIGENTES para cubrir tanto NANSEN ('SN') como CLOU y otros tipos.
+# SUMINISTRO es NUMBER — se bindea como int para aprovechar índice (no TO_CHAR).
 _QUERY_EQUIPOS_ACTIVOS = """
-SELECT DISTINCT e.STE_NUMERO
-FROM   XXSIGEC.EQUIPOS   e
-JOIN   XXSIGEC.SERVICIOS s ON s.SRV_CODIGO = e.SRV_CODIGO
-WHERE  e.SRV_CODIGO       IN ({placeholders})
-  AND  e.EQP_FECHA_RETIRO IS NULL
-  AND  s.SRV_TELEMEDIBLE   = 'SN'
+SELECT MEDIDOR AS STE_NUMERO
+FROM   GEOREF.VW_INTELIGENTES
+WHERE  SUMINISTRO IN ({placeholders})
+  AND  MEDIDOR IS NOT NULL
 """
-
-
-def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    r = 6_371_000.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return r * 2 * math.asin(math.sqrt(a))
 
 
 def _init_oracle_client() -> None:
@@ -107,57 +89,35 @@ class OracleVecinosRepository(VecinosRepository):
         return conn
 
     # ------------------------------------------------------------------
-    # Vecinos por radio geográfico
+    # Vecinos por subestación
     # ------------------------------------------------------------------
 
-    def _fetch_vecinos_sync(
-        self, suministro_id: str, radio_metros: float
-    ) -> list[tuple[str, float, float]]:
-        delta = radio_metros / 111_000.0
+    def _fetch_vecinos_sync(self, suministro_id: str) -> list[str]:
+        try:
+            oracle_id = int(suministro_id.removeprefix("SRV-"))
+        except ValueError:
+            return []
         try:
             with self._connect() as conn:
-                conn.call_timeout = 15_000
+                conn.call_timeout = 20_000
                 with conn.cursor() as cur:
                     cur.arraysize = 10_000
-                    cur.execute(
-                        _QUERY_VECINOS,
-                        {"suministro_id": suministro_id, "delta": delta},
-                    )
-                    _set_rowfactory(cur)
+                    cur.execute(_QUERY_VECINOS_SUBESTACION, {"suministro_id": oracle_id})
                     rows = cur.fetchall()
                 conn.rollback()
         except Exception:
             return []
+        return [str(r[0]) for r in rows]
 
-        if not rows:
-            return []
-
-        ref_lat = float(rows[0].ref_lat)
-        ref_lon = float(rows[0].ref_lon)
-
-        return [
-            (str(r.srv_codigo), float(r.srv_gps_latitud), float(r.srv_gps_longitud))
-            for r in rows
-            if _haversine(ref_lat, ref_lon, float(r.srv_gps_latitud), float(r.srv_gps_longitud))
-            <= radio_metros
-        ]
-
-    async def get_vecinos_con_coordenadas(
-        self, suministro_id: str, radio_metros: float
-    ) -> list[tuple[str, float, float]]:
-        """Devuelve (SRV_CODIGO, lat, lon) para vecinos dentro del radio exacto."""
+    async def get_vecinos(self, suministro_id: str) -> list[str]:
         loop = asyncio.get_running_loop()
         try:
             return await asyncio.wait_for(
-                loop.run_in_executor(None, self._fetch_vecinos_sync, suministro_id, radio_metros),
-                timeout=20.0,
+                loop.run_in_executor(None, self._fetch_vecinos_sync, suministro_id),
+                timeout=25.0,
             )
         except (TimeoutError, Exception):
             return []
-
-    async def get_vecinos(self, suministro_id: str, radio_metros: float) -> list[str]:
-        entries = await self.get_vecinos_con_coordenadas(suministro_id, radio_metros)
-        return [e[0] for e in entries]
 
     # ------------------------------------------------------------------
     # Helpers para el scheduler: resolución equipo ↔ suministro
@@ -191,8 +151,15 @@ class OracleVecinosRepository(VecinosRepository):
             return {}
 
     def _fetch_equipos_activos_sync(self, srv_codigos: list[str]) -> list[str]:
-        placeholders = ", ".join(f":s{i}" for i in range(len(srv_codigos)))
-        params = {f"s{i}": s for i, s in enumerate(srv_codigos)}
+        # Convierte a int para bindear sin TO_CHAR — preserva el índice numérico de SUMINISTRO
+        ids_int = []
+        for s in srv_codigos:
+            with contextlib.suppress(ValueError):
+                ids_int.append(int(s))
+        if not ids_int:
+            return []
+        placeholders = ", ".join(f":s{i}" for i in range(len(ids_int)))
+        params = {f"s{i}": v for i, v in enumerate(ids_int)}
         try:
             with self._connect() as conn:
                 conn.call_timeout = 30_000

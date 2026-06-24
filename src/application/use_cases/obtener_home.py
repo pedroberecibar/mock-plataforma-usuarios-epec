@@ -55,7 +55,7 @@ class ObtenerHomeUseCase:
 
         # Kick off vecinos early: while SQLite queries run, Oracle (or cache) starts in background
         vecinos_task: asyncio.Task[list[str]] = asyncio.ensure_future(
-            self._vecinos_repo.get_vecinos(suministro_id, 150.0)
+            self._vecinos_repo.get_vecinos(suministro_id)
         )
 
         current_serie = await self._consumo_repo.get_serie(suministro_id, mes_inicio, mes_fin)

@@ -80,6 +80,7 @@ class Usuario(Base):
 
     usuario: Mapped[str] = mapped_column(primary_key=True)
     suministro_id: Mapped[str]
+    nombre: Mapped[str | None] = mapped_column(nullable=True, default=None)
     email: Mapped[str | None] = mapped_column(nullable=True, default=None)
     password_hash: Mapped[str | None] = mapped_column(nullable=True, default=None)
 

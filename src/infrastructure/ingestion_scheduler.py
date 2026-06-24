@@ -1,8 +1,8 @@
 """Scheduler de ingesta periódica Oracle → SQLite.
 
 Corre como una tarea asyncio en background (ver main.py).
-Hace un backfill inicial al arrancar, luego expande el scope a vecinos geográficos
-(radio 150 m por lat/lon) y luego loops periódicos con el scope ampliado.
+Hace un backfill inicial al arrancar, luego expande el scope a vecinos por subestación
+(GEOREF.VW_INTELIGENTES) y luego loops periódicos con el scope ampliado.
 
 OracleMedicionReader usa oracledb síncrono. _NonBlockingReader lo envuelve
 ejecutando leer_lecturas() en un thread pool para no bloquear el event loop.
@@ -35,7 +35,6 @@ if TYPE_CHECKING:
 _log = structlog.get_logger(__name__)
 
 _TIPOS_ALERTA_PERIODICOS = [TipoAlerta.FACTURA_DISPONIBLE, TipoAlerta.VENCIMIENTO_PROXIMO]
-_RADIO_VECINOS_METROS = 150.0
 
 
 class _NonBlockingReader(MedicionSourceReader):
@@ -144,8 +143,7 @@ async def _expandir_a_vecinos(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> list[str]:
     """Dado el conjunto inicial de med_numero_equipo, devuelve uno ampliado con los equipos
-    de los suministros vecinos (radio 150 m por GPS). También persiste las coordenadas de
-    los vecinos en SQLite para que el fallback sin Oracle funcione correctamente."""
+    de los suministros vecinos por subestación (GEOREF.VW_INTELIGENTES)."""
     try:
         # 1. Resolver med_numero_equipo → SRV_CODIGO
         srv_map = await oracle_vecinos.resolver_srv_de_equipos(equipos)
@@ -155,35 +153,20 @@ async def _expandir_a_vecinos(
 
         _log.info("Equipos resueltos a SRV_CODIGOs: %s", srv_map)
 
-        # 2. Para cada SRV_CODIGO propio, obtener vecinos con coordenadas
-        all_vecino_coords: dict[str, tuple[float, float]] = {}
+        # 2. Para cada SRV_CODIGO propio, obtener vecinos por subestación
+        all_vecinos: set[str] = set()
         for srv_codigo in set(srv_map.values()):
-            vecinos = await oracle_vecinos.get_vecinos_con_coordenadas(
-                srv_codigo, _RADIO_VECINOS_METROS
-            )
-            for vid, lat, lon in vecinos:
-                all_vecino_coords[vid] = (lat, lon)
+            vecinos = await oracle_vecinos.get_vecinos(srv_codigo)
+            all_vecinos.update(vecinos)
 
-        if not all_vecino_coords:
-            _log.info("Sin vecinos en %dm para los suministros propios", _RADIO_VECINOS_METROS)
+        if not all_vecinos:
+            _log.info("Sin vecinos en subestación para los suministros propios")
             return equipos
 
-        _log.info(
-            "Vecinos encontrados: %d suministros en radio %dm",
-            len(all_vecino_coords),
-            _RADIO_VECINOS_METROS,
-        )
+        _log.info("Vecinos encontrados: %d suministros en subestación", len(all_vecinos))
 
-        # 3. Persistir coordenadas de vecinos en SQLite (habilita el fallback sin Oracle)
-        async with session_factory() as session:
-            suministro_repo = SQLiteSuministroRepository(session)
-            for vid, (lat, lon) in all_vecino_coords.items():
-                await suministro_repo.upsert_coordenadas(vid, lat, lon)
-            await session.commit()
-
-        # 4. Obtener medidores activos y telemedibles de los vecinos
-        vecino_srvs = list(all_vecino_coords.keys())
-        vecino_equipos = await oracle_vecinos.get_equipos_activos_de_srvs(vecino_srvs)
+        # 3. Obtener medidores activos y telemedibles de los vecinos
+        vecino_equipos = await oracle_vecinos.get_equipos_activos_de_srvs(list(all_vecinos))
 
         if not vecino_equipos:
             _log.warning("Vecinos encontrados pero sin equipos telemedibles activos")
@@ -219,7 +202,7 @@ async def run_scheduler(
 
     `equipos`: lista de med_numero_equipo a ingestar. None = todos (no recomendado en prod).
     `oracle_vecinos`: instancia de OracleVecinosRepository; si se provee, expande el scope
-    de ingesta a los medidores de suministros vecinos (radio 150 m por GPS) tras el backfill.
+    de ingesta a los medidores de suministros vecinos por subestación tras el backfill.
     `notification_sender`: si está configurado, evalúa alertas tras cada ciclo periódico.
     """
     non_blocking = _NonBlockingReader(reader)

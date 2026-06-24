@@ -35,7 +35,7 @@ class GetDetalleDiaUseCase:
         serie_ant = await self._consumo_repo.get_serie(suministro_id, fecha_ant, fecha_ant)
         kwh_mismo_dia_anio_ant = serie_ant[0][1] if serie_ant else None
 
-        vecinos_ids = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
+        vecinos_ids = await self._vecinos_repo.get_vecinos(suministro_id)
         totales_vecinos: list[float] = []
         for vid in vecinos_ids:
             serie_v = await self._consumo_repo.get_serie(vid, fecha, fecha)

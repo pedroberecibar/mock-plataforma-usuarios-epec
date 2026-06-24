@@ -33,7 +33,7 @@ class CalcularObjetivoSugeridoUseCase:
         desde = mes_ref
         hasta = date(mes_ref.year, mes_ref.month, last_day)
 
-        vecinos_ids = await self._vecinos_repo.get_vecinos(suministro_id, 150.0)
+        vecinos_ids = await self._vecinos_repo.get_vecinos(suministro_id)
 
         totales: list[float] = []
         for vid in vecinos_ids:
