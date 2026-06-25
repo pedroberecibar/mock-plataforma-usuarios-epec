@@ -46,10 +46,17 @@ Si algún paso falla por falta de permisos, el script te avisa e indica cómo ha
 
 ```bash
 # Editar .env y completar:
-VAULT_PATH=/ruta/a/tu/obsidian-vault
+# Windows (este proyecto): VAULT_PATH=D:\Usuarios\pberecibar\Programas\obsidian-vault
+# Unix:                     VAULT_PATH=/ruta/a/tu/obsidian-vault
+VAULT_PATH=...
 ```
 
-El vault puede ser uno existente de Obsidian o el que creó el script en `~/Developer-Vault`.
+El vault puede ser uno existente de Obsidian o uno nuevo. Estructura esperada:
+`Projects/<proyecto>/` (notas de sesión), `Research/`, `Templates/`.
+
+La captura automática de decisiones técnicas al vault está cableada como hook
+`PostToolUse` en `.claude/settings.json` (ejecuta `scripts/capture_decision.py`
+con el Python del venv). Se activa al reiniciar la sesión de Claude Code.
 
 ### 4. Verificar Serena MCP
 
