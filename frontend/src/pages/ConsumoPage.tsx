@@ -442,7 +442,7 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
           {comparacion && (
             <section style={{ marginBottom: space[8] }}>
               <PanelVecinosComparacion
-                zona={comparacion.zona_mes_actual}
+                zona={comparacion.zona_mes_actual ?? null}
                 mesActual={comparacion.mes_actual}
                 mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
                 objetivoDiarioKwh={objetivoEstado?.consumo_diario_objetivo_kwh ?? null}

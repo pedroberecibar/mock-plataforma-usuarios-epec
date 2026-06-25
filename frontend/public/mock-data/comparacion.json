@@ -357,5 +357,6 @@
     ],
     "total_kwh": 225.0
   },
+  "zona_mes_actual": null,
   "datos_hasta": "2026-06-24"
 }

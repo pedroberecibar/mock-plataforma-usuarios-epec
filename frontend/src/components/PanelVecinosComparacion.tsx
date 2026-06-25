@@ -111,7 +111,8 @@ function DimensionCard({ label, miValor, promedioVecinos, diferenciaPct, unidad 
 }
 
 export function PanelVecinosComparacion({ zona, mesActual, mismoMesAnioAnterior, objetivoDiarioKwh = null }: Props) {
-  const tieneZona = zona !== null && zona.n_vecinos >= 5 && zona.promedio_vecinos_kwh !== null;
+  // `zona != null` cubre null y undefined (la fixture demo puede no traer zona_mes_actual).
+  const tieneZona = zona != null && zona.n_vecinos >= 5 && zona.promedio_vecinos_kwh !== null;
 
   const diasMesActual = mesActual.serie.length;
   const promedioDiarioMio =
