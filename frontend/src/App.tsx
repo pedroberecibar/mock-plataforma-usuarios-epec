@@ -3,6 +3,7 @@ import { AppShell, type Vista } from "./components/AppShell";
 import type { AuthState } from "./hooks/auth";
 import { clearAuthState, getAuthState, saveAuthState } from "./hooks/auth";
 import { fetchObjetivo, type ObjetivoResponse } from "./api/objetivos";
+import { triggerPoblar } from "./api/ingest";
 import { LoginPage } from "./pages/LoginPage";
 import { AlertasPage } from "./pages/AlertasPage";
 import { ConsumoPage } from "./pages/ConsumoPage";
@@ -33,6 +34,7 @@ function App() {
     saveAuthState(state);
     setAuth(state);
     setOnboarding(null);
+    triggerPoblar(state.token);
   }
 
   function handleLogout() {
@@ -67,7 +69,7 @@ function App() {
   return (
     <AppShell vistaActiva={vista} onNavegar={setVista} onLogout={handleLogout} usuarioNombre="Mi cuenta">
       <div key={vista} className="page-fade">
-        {vista === "home" && <HomePage token={auth.token} suministroId={auth.suministroId} onNavegar={setVista} />}
+        {vista === "home" && <HomePage token={auth.token} suministroId={auth.suministroId} nombre={auth.nombre} nroSuministro={auth.nroSuministro} onNavegar={setVista} />}
         {vista === "consumo" && <ConsumoPage token={auth.token} suministroId={auth.suministroId} />}
         {vista === "objetivos" && <ObjetivosPage token={auth.token} suministroId={auth.suministroId} onLogout={handleLogout} />}
         {vista === "factura" && <FacturaPage token={auth.token} />}

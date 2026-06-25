@@ -13,3 +13,7 @@ class UsuarioRepository(ABC):
     @abstractmethod
     async def get_email(self, usuario: str) -> str | None:
         """Devuelve el email asociado al usuario, o None si no existe."""
+
+    @abstractmethod
+    async def get_nombre(self, usuario: str) -> str | None:
+        """Devuelve el nombre completo del usuario, o None si no existe."""

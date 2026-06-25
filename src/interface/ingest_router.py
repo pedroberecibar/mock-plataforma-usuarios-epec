@@ -1,8 +1,9 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 
+from application.ports.poblar_use_case import PoblarUseCase
 from application.use_cases.ingestar_consumo_diario import IngestarConsumoDiarioUseCase
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.medicion_source_reader import MedicionSourceReader
@@ -10,6 +11,8 @@ from domain.ports.suministro_repository import SuministroRepository
 from interface.dependencies import (
     get_consumo_repo,
     get_medicion_reader,
+    get_poblar_use_case,
+    get_suministro_actual,
     get_suministro_repo,
     get_usuario_actual,
 )
@@ -49,3 +52,18 @@ async def ingestar_consumo(
         suministros_procesados=suministros_total,
         dias_procesados=dias_total,
     )
+
+
+class PoblarResponse(BaseModel):
+    estado: str
+
+
+@router.post("/poblar", response_model=PoblarResponse)
+async def poblar_suministro(
+    background_tasks: BackgroundTasks,
+    suministro_id: str = Depends(get_suministro_actual),
+    use_case: PoblarUseCase = Depends(get_poblar_use_case),
+) -> PoblarResponse:
+    """Dispara en background la carga de datos del suministro autenticado desde Oracle."""
+    background_tasks.add_task(use_case.ejecutar, suministro_id)
+    return PoblarResponse(estado="iniciando")

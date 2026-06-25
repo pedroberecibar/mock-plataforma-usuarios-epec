@@ -66,6 +66,9 @@ ignore = [
     "B008",  # do not perform function calls in default arguments
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/spike_*.py" = ["E402", "F841", "F541", "UP009", "N806"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["src", "application", "domain", "infrastructure", "interface"]
 

@@ -3,13 +3,22 @@ const KEY = "epec_auth";
 export interface AuthState {
   token: string;
   suministroId: string;
+  nombre: string | null;
+  nroSuministro: string;
 }
 
 export function getAuthState(): AuthState | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as AuthState;
+    const parsed = JSON.parse(raw) as Partial<AuthState>;
+    if (!parsed.token || !parsed.suministroId) return null;
+    return {
+      token: parsed.token,
+      suministroId: parsed.suministroId,
+      nombre: parsed.nombre ?? null,
+      nroSuministro: parsed.nroSuministro ?? parsed.suministroId,
+    };
   } catch {
     return null;
   }

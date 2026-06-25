@@ -46,6 +46,7 @@ from interface.dependencies import (
     get_notificacion_config_repo,
     get_notification_sender,
     get_objetivo_repo,
+    get_poblar_use_case,
     get_proyeccion_repo,
     get_suministro_repo,
     get_usuario_repo,
@@ -127,6 +128,9 @@ def create_app() -> FastAPI:
     oracle_reader = None
     oracle_horaria_reader = None
     _oracle_vecinos = None
+    _poblar_use_case = None
+    _meta_reader = None
+    _selector = None
     if oracle_available:
         # Registra el dir de Instant Client para DLL search (os.add_dll_directory
         # actúa en el proceso actual — os.environ["PATH"] no es suficiente en Windows)
@@ -134,13 +138,26 @@ def create_app() -> FastAPI:
         if instant_client and hasattr(os, "add_dll_directory"):
             os.add_dll_directory(instant_client)
 
+        from infrastructure.oracle.ingestion_strategy_selector import IngestionStrategySelector
         from infrastructure.oracle.medicion_horaria_reader import OracleMedicionHorariaReader
         from infrastructure.oracle.medicion_reader import OracleMedicionReader
+        from infrastructure.oracle.strategies.chupete_strategy import ChupeteIngestionStrategy
+        from infrastructure.oracle.strategies.clou_strategy import ClouIngestionStrategy
+        from infrastructure.oracle.strategies.nansen_strategy import NansenIngestionStrategy
+        from infrastructure.oracle.suministro_meta_reader import OracleSuministroMetaReader
         from infrastructure.oracle.vecinos_repository import OracleVecinosRepository
+        from infrastructure.orchestration.poblar_suministro import PoblarSuministroUseCase
 
         oracle_reader = OracleMedicionReader()
         oracle_horaria_reader = OracleMedicionHorariaReader()
         _oracle_vecinos = OracleVecinosRepository()
+
+        _selector = IngestionStrategySelector(
+            clou=ClouIngestionStrategy(),
+            nansen=NansenIngestionStrategy(),
+            chupete=ChupeteIngestionStrategy(),
+        )
+        _meta_reader = OracleSuministroMetaReader()
 
     def _build_notification_sender() -> SmtpNotificationSender | FakeNotificationSender:
         smtp_host = os.environ.get("SMTP_HOST")
@@ -279,6 +296,17 @@ def create_app() -> FastAPI:
                 yield CachedVecinosRepository(_oracle_vecinos, session)
 
         app.dependency_overrides[get_vecinos_repo] = _get_cached_vecinos_repo
+
+        assert _oracle_vecinos is not None
+        assert _meta_reader is not None
+        assert _selector is not None
+        _poblar_use_case = PoblarSuministroUseCase(
+            meta_reader=_meta_reader,
+            selector=_selector,
+            vecinos_repo=_oracle_vecinos,
+            session_factory=session_factory,
+        )
+        app.dependency_overrides[get_poblar_use_case] = lambda: _poblar_use_case
     else:
 
         def _oracle_no_configurado() -> None:

@@ -34,3 +34,26 @@ class SQLiteSuministroRepository(SuministroRepository):
             )
         )
         await self._session.execute(stmt)
+
+    async def get_tarifa_codigo(self, suministro_id: str) -> str | None:
+        result = await self._session.execute(
+            select(Suministro.tarifa_codigo).where(Suministro.id == suministro_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def upsert_tarifa(self, suministro_id: str, tarifa_codigo: str) -> None:
+        stmt = (
+            insert(Suministro)
+            .values(
+                id=suministro_id,
+                lat=0.0,
+                lon=0.0,
+                suministro_referencia=suministro_id,
+                tarifa_codigo=tarifa_codigo,
+            )
+            .on_conflict_do_update(
+                index_elements=["id"],
+                set_={"tarifa_codigo": tarifa_codigo},
+            )
+        )
+        await self._session.execute(stmt)

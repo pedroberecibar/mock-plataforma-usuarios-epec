@@ -23,3 +23,8 @@ class SQLiteUsuarioRepository(UsuarioRepository):
         result = await self._session.execute(select(Usuario).where(Usuario.usuario == usuario))
         row = result.scalar_one_or_none()
         return row.email if row else None
+
+    async def get_nombre(self, usuario: str) -> str | None:
+        result = await self._session.execute(select(Usuario).where(Usuario.usuario == usuario))
+        row = result.scalar_one_or_none()
+        return row.nombre if row else None

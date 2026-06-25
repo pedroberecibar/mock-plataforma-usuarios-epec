@@ -41,7 +41,12 @@ export function LoginPage({ onLogin }: Props) {
     setLoading(true);
     try {
       const res = await postLogin(usuario, password);
-      onLogin({ token: res.token, suministroId: res.suministro_id });
+      onLogin({
+        token: res.token,
+        suministroId: res.suministro_id,
+        nombre: res.nombre,
+        nroSuministro: res.nro_suministro,
+      });
     } catch {
       setError("Usuario o contraseña incorrectos.");
     } finally {
@@ -86,9 +91,9 @@ export function LoginPage({ onLogin }: Props) {
           {/* Top: logo + tagline */}
           <div style={{ display: "flex", flexDirection: "column", gap: space[6] }}>
             <img
-              src="/epec-logo-white.png"
+              src="/epec-logo-transparent.png"
               alt="EPEC"
-              style={{ width: 64, height: 64, borderRadius: radius.sm, background: color.white, padding: 8, objectFit: "contain" }}
+              style={{ height: 52, width: "auto", objectFit: "contain" }}
             />
             <div style={{ marginTop: space[10] }}>
               <h2 style={{
@@ -135,21 +140,16 @@ export function LoginPage({ onLogin }: Props) {
           <div style={{ maxWidth: 360, width: "100%" }}>
 
             <header style={{ marginBottom: space[10] }}>
-              <h1 style={{
-                fontFamily:   font.sans,
-                fontSize:     fontSize["2xl"],
-                fontWeight:   fontWeight.semibold,
-                color:        fg.link,  // #124e2f
-                margin:       0,
-                letterSpacing: "-0.01em",
-              }}>
-                EPEC Clientes
-              </h1>
+              <img
+                src="/epec-logo-primary.png"
+                alt="EPEC"
+                style={{ height: 40, width: "auto", objectFit: "contain", marginBottom: space[4], display: "block" }}
+              />
               <p style={{
                 fontFamily:  font.sans,
                 fontSize:    fontSize.base,
                 color:       fg.secondary,
-                margin:      `${space[1]}px 0 0`,
+                margin:      0,
               }}>
                 Inicie sesión para continuar
               </p>

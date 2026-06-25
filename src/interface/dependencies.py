@@ -91,6 +91,12 @@ def get_factura_verificacion() -> FacturaVerificacionPort:
     )
 
 
+def get_poblar_use_case() -> object:
+    raise NotImplementedError(
+        "PoblarSuministroUseCase debe ser wireado en el composition root (src/main.py)"
+    )
+
+
 async def get_usuario_actual(
     authorization: str | None = Header(None),
     auth_provider: AuthProvider = Depends(get_auth_provider),

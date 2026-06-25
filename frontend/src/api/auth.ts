@@ -1,6 +1,8 @@
 export interface LoginResponse {
   token: string;
   suministro_id: string;
+  nombre: string | null;
+  nro_suministro: string;
 }
 
 export async function postLogin(usuario: string, password: string): Promise<LoginResponse> {

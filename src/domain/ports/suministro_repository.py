@@ -12,3 +12,11 @@ class SuministroRepository(abc.ABC):
     @abc.abstractmethod
     async def upsert_coordenadas(self, suministro_id: str, lat: float, lon: float) -> None:
         """Persiste coordenadas GPS. Crea el registro si no existe; actualiza si ya existe."""
+
+    @abc.abstractmethod
+    async def get_tarifa_codigo(self, suministro_id: str) -> str | None:
+        """Devuelve el código de tarifa almacenado, o None si no está disponible."""
+
+    @abc.abstractmethod
+    async def upsert_tarifa(self, suministro_id: str, tarifa_codigo: str) -> None:
+        """Actualiza el código de tarifa. Crea el registro si no existe."""

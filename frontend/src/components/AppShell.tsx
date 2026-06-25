@@ -134,9 +134,9 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
         }}
       >
         <img
-          src="/epec-logo-white.png"
+          src="/epec-logo-transparent.png"
           alt="EPEC logo"
-          style={{ width: 32, height: 32, borderRadius: radius.xs, background: color.white, padding: 3, objectFit: "contain" }}
+          style={{ height: 32, width: "auto", objectFit: "contain" }}
         />
         <span style={{
           color:         color.white,
@@ -176,24 +176,20 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
         {/* Brand header */}
         <div style={{
           display:      "flex",
-          alignItems:   "center",
-          gap:          space[3],
+          flexDirection: "column",
+          alignItems:   "flex-start",
+          gap:          space[2],
           padding:      `0 ${space[6]}px`,
           marginBottom: space[10],
         }}>
           <img
-            src="/epec-logo-white.png"
+            src="/epec-logo-transparent.png"
             alt="EPEC"
-            style={{ width: 40, height: 40, borderRadius: radius.sm, background: color.white, padding: 4, objectFit: "contain" }}
+            style={{ height: 34, width: "auto", objectFit: "contain" }}
           />
-          <div>
-            <p style={{ color: color.white, fontSize: fontSize.lg, fontWeight: fontWeight.bold, margin: 0, lineHeight: 1.2 }}>
-              EPEC Clientes
-            </p>
-            <p style={{ color: color.white, fontSize: fontSize.xs, fontFamily: font.mono, letterSpacing: "0.05em", margin: 0, opacity: 0.7 }}>
-              Portal de Usuario
-            </p>
-          </div>
+          <p style={{ color: color.white, fontSize: fontSize.xs, fontFamily: font.mono, letterSpacing: "0.05em", margin: 0, opacity: 0.65 }}>
+            Portal de Clientes
+          </p>
         </div>
 
         {/* Nav links */}
