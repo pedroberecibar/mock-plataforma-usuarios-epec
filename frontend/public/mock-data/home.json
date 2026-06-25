@@ -5,9 +5,9 @@
     "vs_anio_anterior_pct": 51.4
   },
   "comparacion_zona": {
-    "promedio_vecinos_kwh": null,
-    "n_vecinos": 0,
-    "diferencia_pct": null
+    "promedio_vecinos_kwh": 253.05,
+    "n_vecinos": 189,
+    "diferencia_pct": 7.09
   },
   "proyeccion": {
     "mes": "2026-06-01",
@@ -17,5 +17,5 @@
     "rango_superior_kwh": 374.71
   },
   "datos_hasta": "2026-06-24",
-  "timestamp": "2026-06-25T17:11:13.872433+00:00"
+  "timestamp": "2026-06-25T17:56:10.067479+00:00"
 }

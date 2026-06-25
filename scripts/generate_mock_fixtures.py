@@ -23,7 +23,6 @@ DB_PATH = Path("data/plataforma_clientes.db")
 OUT_DIR = Path("frontend/public/mock-data")
 SUMINISTRO_ID = "SRV-2817670"  # suministro real (casa) — datos reales de la DB
 MES = date(2026, 6, 1)
-RADIO_METROS = 150.0
 MIN_VECINOS = 5
 DIAS_SEMANA = 364  # 52 semanas → mismo día-de-semana año anterior
 
@@ -51,37 +50,22 @@ def get_ultima_fecha(conn: sqlite3.Connection, sid: str) -> date | None:
     return date.fromisoformat(row[0]) if row and row[0] else None
 
 
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    r = 6_371_000.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return r * 2 * math.asin(math.sqrt(a))
-
-
 def get_vecinos(conn: sqlite3.Connection, sid: str) -> list[str]:
-    ref = conn.execute(
-        "SELECT lat, lon, tarifa_codigo FROM suministros WHERE id=?", (sid,)
+    """Vecinos por subestación, leídos de la caché poblada desde Oracle.
+
+    La estrategia de proximidad geográfica (radio de 150m) quedó obsoleta:
+    los vecinos son los suministros de la misma subestación (GEOREF.VW_INTELIGENTES),
+    persistidos en la tabla vecinos_cache por scripts/seed_vecinos_reales.py.
+    """
+    row = conn.execute(
+        "SELECT vecinos_json FROM vecinos_cache WHERE suministro_id IN (?, ?)",
+        (sid, sid.removeprefix("SRV-")),
     ).fetchone()
-    if not ref:
+    if not row or not row[0]:
         return []
-    lat_ref, lon_ref, tarifa_ref = ref
-    delta = RADIO_METROS / 111_000.0
-
-    query = (
-        "SELECT id, lat, lon FROM suministros"
-        " WHERE id != ?"
-        "   AND lat BETWEEN ? AND ?"
-        "   AND lon BETWEEN ? AND ?"
-    )
-    params: list[object] = [sid, lat_ref - delta, lat_ref + delta, lon_ref - delta, lon_ref + delta]
-    if tarifa_ref is not None:
-        query += " AND tarifa_codigo = ?"
-        params.append(tarifa_ref)
-
-    rows = conn.execute(query, params).fetchall()
-    return [r[0] for r in rows if haversine(lat_ref, lon_ref, r[1], r[2]) <= RADIO_METROS]
+    # La caché guarda ids de Oracle (sin prefijo); consumo_diario usa el id
+    # canónico 'SRV-'. Normalizamos para que coincida con la ingesta real.
+    return [v if v.startswith("SRV-") else f"SRV-{v}" for v in json.loads(row[0])]
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +190,70 @@ def build_diario(conn: sqlite3.Connection, sid: str) -> dict:
     }
 
 
+def build_zona_mes_actual(
+    conn: sqlite3.Connection,
+    sid: str,
+    mes: date,
+    total_kwh: float | None,
+    dias_transcurridos: int,
+) -> dict:
+    """Promedio de consumo de los vecinos (misma subestación) para el mes.
+
+    Espeja ObtenerComparacionHistoricaUseCase._calcular_zona: promedio de los
+    totales mensuales por vecino (con umbral de privacidad MIN_VECINOS) + serie
+    diaria del promedio de la zona para el gráfico de comparación.
+    """
+    vecinos = get_vecinos(conn, sid)
+    n_vecinos = len(vecinos)
+    if n_vecinos < MIN_VECINOS or dias_transcurridos == 0 or total_kwh is None:
+        return {
+            "promedio_vecinos_kwh": None,
+            "n_vecinos": n_vecinos,
+            "diferencia_pct": None,
+            "serie": [],
+        }
+
+    _, last_day = calendar.monthrange(mes.year, mes.month)
+    mes_fin = mes.replace(day=last_day)
+    placeholders = ", ".join("?" for _ in vecinos)
+
+    # Totales mensuales por vecino (solo los que tienen datos → umbral de privacidad)
+    total_rows = conn.execute(
+        f"SELECT suministro_id, SUM(kwh) FROM consumo_diario"
+        f" WHERE suministro_id IN ({placeholders}) AND fecha>=? AND fecha<=?"
+        f" GROUP BY suministro_id",
+        (*vecinos, mes.isoformat(), mes_fin.isoformat()),
+    ).fetchall()
+    vecino_totals = [float(r[1]) for r in total_rows if r[1] is not None]
+
+    if len(vecino_totals) < MIN_VECINOS:
+        return {
+            "promedio_vecinos_kwh": None,
+            "n_vecinos": n_vecinos,
+            "diferencia_pct": None,
+            "serie": [],
+        }
+
+    promedio = sum(vecino_totals) / len(vecino_totals)
+    diferencia_pct = round((total_kwh - promedio) / promedio * 100, 2) if promedio > 0 else None
+
+    # Serie diaria del promedio de la zona (para GraficoComparacionVecinos)
+    serie_rows = conn.execute(
+        f"SELECT fecha, AVG(kwh) FROM consumo_diario"
+        f" WHERE suministro_id IN ({placeholders}) AND fecha>=? AND fecha<=?"
+        f" GROUP BY fecha ORDER BY fecha",
+        (*vecinos, mes.isoformat(), mes_fin.isoformat()),
+    ).fetchall()
+    serie = [{"fecha": r[0], "kwh": round(float(r[1]), 2)} for r in serie_rows]
+
+    return {
+        "promedio_vecinos_kwh": round(promedio, 2),
+        "n_vecinos": n_vecinos,
+        "diferencia_pct": diferencia_pct,
+        "serie": serie,
+    }
+
+
 def build_comparacion(conn: sqlite3.Connection, sid: str, mes: date) -> dict:
     def get_periodo(primer: date) -> dict:
         _, last_day = calendar.monthrange(primer.year, primer.month)
@@ -219,10 +267,13 @@ def build_comparacion(conn: sqlite3.Connection, sid: str, mes: date) -> dict:
 
     anterior = date(mes.year, mes.month - 1, 1) if mes.month > 1 else date(mes.year - 1, 12, 1)
     datos_hasta = get_ultima_fecha(conn, sid)
+    mes_actual = get_periodo(mes)
+    zona = build_zona_mes_actual(conn, sid, mes, mes_actual["total_kwh"], len(mes_actual["serie"]))
     return {
-        "mes_actual": get_periodo(mes),
+        "mes_actual": mes_actual,
         "mes_anterior": get_periodo(anterior),
         "mismo_mes_anio_anterior": get_periodo(mes.replace(year=mes.year - 1)),
+        "zona_mes_actual": zona,
         "datos_hasta": datos_hasta.isoformat() if datos_hasta else None,
     }
 
