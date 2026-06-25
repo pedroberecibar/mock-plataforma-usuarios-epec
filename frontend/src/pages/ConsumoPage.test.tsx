@@ -81,9 +81,14 @@ describe("ConsumoPage", () => {
     vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_CON_DATOS);
     render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
-    expect(screen.getByText("Consumo mes actual")).not.toBeNull();
     expect(screen.getByText("Mes anterior")).not.toBeNull();
     expect(screen.getByText("Mismo mes año anterior")).not.toBeNull();
+  });
+
+  it("no duplica 'Promedio diario' en el resumen del mes", async () => {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    expect(screen.getAllByText("Promedio diario").length).toBe(1);
   });
 
   it("muestra skeletons de carga en lugar de texto plano", () => {
@@ -135,5 +140,99 @@ describe("ConsumoPage", () => {
     await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
     fireEvent.click(screen.getByText(/Editar objetivo/i));
     expect(onEditarObjetivo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ConsumoPage — filtro por mes", () => {
+  async function renderListo() {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+  }
+
+  function mesAnterior(): string {
+    const m = screen.getByRole("combobox") as HTMLSelectElement;
+    const opciones = Array.from(m.options).map((o) => o.value);
+    return opciones[1]; // el segundo es el mes anterior al actual
+  }
+
+  it("renderiza un selector de mes", async () => {
+    await renderListo();
+    expect(screen.getByRole("combobox")).not.toBeNull();
+  });
+
+  it("al cambiar el mes, re-consulta comparación, anomalía y estado de objetivo con ese mes", async () => {
+    await renderListo();
+    const target = mesAnterior();
+    vi.mocked(consumoApi.fetchComparacion).mockClear();
+    vi.mocked(consumoApi.fetchAnomalia).mockClear();
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockClear();
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: target } });
+
+    await waitFor(() => {
+      expect(vi.mocked(consumoApi.fetchComparacion)).toHaveBeenCalledWith(TOKEN, SUMINISTRO, target);
+      expect(vi.mocked(consumoApi.fetchAnomalia)).toHaveBeenCalledWith(TOKEN, target);
+      expect(vi.mocked(objetivosApi.fetchObjetivoEstado)).toHaveBeenCalledWith(TOKEN, target);
+    });
+  });
+
+  it("al cambiar a un mes pasado, pide la serie diaria del primer al último día de ese mes", async () => {
+    await renderListo();
+    const target = mesAnterior();
+    vi.mocked(consumoApi.fetchSerieDiaria).mockClear();
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: target } });
+
+    await waitFor(() => {
+      expect(vi.mocked(consumoApi.fetchSerieDiaria)).toHaveBeenCalledWith(
+        TOKEN,
+        SUMINISTRO,
+        `${target}-01`,
+        expect.stringMatching(new RegExp(`^${target}-\\d{2}$`)),
+      );
+    });
+  });
+
+  it("no vuelve a pedir el objetivo vigente al cambiar de mes", async () => {
+    await renderListo();
+    vi.mocked(objetivosApi.fetchObjetivo).mockClear();
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: mesAnterior() } });
+
+    await waitFor(() => {
+      expect(vi.mocked(consumoApi.fetchComparacion)).toHaveBeenCalled();
+    });
+    expect(vi.mocked(objetivosApi.fetchObjetivo)).not.toHaveBeenCalled();
+  });
+});
+
+describe("ConsumoPage — card de total del mes filtrado", () => {
+  it("muestra la card 'Mes actual' con el total del mes en curso", async () => {
+    vi.mocked(consumoApi.fetchComparacion).mockResolvedValue({
+      ...COMPARACION_VACIA,
+      mes_actual: { mes: "2026-06-01", serie: [], total_kwh: 252.8 },
+    });
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    expect(screen.getByText("Mes actual")).not.toBeNull();
+    expect(screen.getByText(/252/)).not.toBeNull();
+  });
+
+  it("ya no muestra la card 'Últimos 7 días'", async () => {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    expect(screen.queryByText(/Últimos 7 días/i)).toBeNull();
+  });
+
+  it("al filtrar un mes pasado, el título deja de ser 'Mes actual'", async () => {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    expect(screen.getByText("Mes actual")).not.toBeNull();
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const mesPasado = Array.from(select.options)[1].value;
+    fireEvent.change(select, { target: { value: mesPasado } });
+
+    await waitFor(() => expect(screen.queryByText("Mes actual")).toBeNull());
   });
 });

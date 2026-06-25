@@ -30,19 +30,42 @@ function makeEstado(overrides: Partial<ObjetivoEstadoResponse> = {}): ObjetivoEs
 
 describe("ObjetivoResumenCard", () => {
   it("muestra el valor del objetivo vigente como número hero", () => {
-    render(<ObjetivoResumenCard objetivo={OBJETIVO} estado={makeEstado()} onEditar={() => {}} />);
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={100} estado={makeEstado()} onEditar={() => {}} />);
     expect(screen.getByText("200")).not.toBeNull();
   });
 
-  it("muestra la barra de progreso cuando hay objetivo y consumo", () => {
-    render(<ObjetivoResumenCard objetivo={OBJETIVO} estado={makeEstado()} onEditar={() => {}} />);
-    expect(screen.getByRole("progressbar")).not.toBeNull();
+  it("muestra el consumo actual del mes", () => {
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={196} estado={makeEstado()} onEditar={() => {}} />);
+    expect(screen.getByText(/Consumo actual/i)).not.toBeNull();
+    expect(screen.getByText(/^196 kWh$/)).not.toBeNull();
+  });
+
+  it("muestra el faltante cuando el consumo está por debajo del objetivo", () => {
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={196} estado={makeEstado()} onEditar={() => {}} />);
+    expect(screen.getByText(/Faltante/i)).not.toBeNull();
+    // 200 - 196 = 4
+    expect(screen.getByText(/^4 kWh$/)).not.toBeNull();
+  });
+
+  it("muestra la barra de progreso a todo el ancho cuando hay objetivo y consumo", () => {
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={100} estado={makeEstado()} onEditar={() => {}} />);
+    const bar = screen.getByRole("progressbar", { name: "Consumo vs objetivo" });
+    expect(bar).not.toBeNull();
+    expect(bar.style.width).toBe("100%");
+  });
+
+  it("mide el consumo en días (como en Objetivos)", () => {
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={100} estado={makeEstado()} onEditar={() => {}} />);
+    expect(screen.getByText(/Días de consumo/i)).not.toBeNull();
+    expect(screen.getByRole("progressbar", { name: "Días objetivo consumidos" })).not.toBeNull();
+    expect(screen.getByText(/14.0 de 15 días objetivo consumidos/i)).not.toBeNull();
   });
 
   it("no muestra barra de progreso cuando no hay objetivo configurado", () => {
     render(
       <ObjetivoResumenCard
         objetivo={null}
+        consumoActualKwh={null}
         estado={makeEstado({ objetivo_kwh: null, texto_dinamico: "sin_objetivo" })}
         onEditar={() => {}}
       />
@@ -52,7 +75,7 @@ describe("ObjetivoResumenCard", () => {
 
   it("ofrece un link 'Editar objetivo' que dispara onEditar al hacer click", () => {
     const onEditar = vi.fn();
-    render(<ObjetivoResumenCard objetivo={OBJETIVO} estado={makeEstado()} onEditar={onEditar} />);
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={100} estado={makeEstado()} onEditar={onEditar} />);
     fireEvent.click(screen.getByText(/Editar objetivo/i));
     expect(onEditar).toHaveBeenCalledTimes(1);
   });
@@ -62,6 +85,7 @@ describe("ObjetivoResumenCard", () => {
     render(
       <ObjetivoResumenCard
         objetivo={null}
+        consumoActualKwh={null}
         estado={makeEstado({ objetivo_kwh: null, texto_dinamico: "sin_objetivo" })}
         onEditar={onEditar}
       />
@@ -71,59 +95,34 @@ describe("ObjetivoResumenCard", () => {
   });
 
   it("muestra advertencia de aviso cuando el consumo supera el 80% del objetivo", () => {
-    // consumoActual = 25 × 6.67 ≈ 166.7 → pct ≈ 0.83 → enAviso
+    // 170 / 200 = 0.85 → enAviso
     render(
       <ObjetivoResumenCard
         objetivo={OBJETIVO}
-        estado={makeEstado({ dias_objetivo_consumidos: 25, texto_dinamico: "sobre_ritmo" })}
+        consumoActualKwh={170}
+        estado={makeEstado({ texto_dinamico: "sobre_ritmo" })}
         onEditar={() => {}}
       />
     );
     expect(screen.getByRole("alert")).not.toBeNull();
   });
 
-  it("muestra excedente y estado superado cuando el objetivo está agotado", () => {
+  it("muestra excedente cuando el objetivo está superado", () => {
     render(
       <ObjetivoResumenCard
         objetivo={OBJETIVO}
-        estado={makeEstado({
-          texto_dinamico: "agotado",
-          excedente_kwh: 50,
-          dias_objetivo_consumidos: 30,
-          consumo_acumulado_kwh: 250,
-        })}
+        consumoActualKwh={250}
+        estado={makeEstado({ texto_dinamico: "agotado", excedente_kwh: 50 })}
         onEditar={() => {}}
       />
     );
     expect(screen.getByText(/Excedente/i)).not.toBeNull();
-    expect(screen.getByText(/50/)).not.toBeNull();
-  });
-
-  it("muestra la diferencia vs zona cuando hay datos de vecinos", () => {
-    render(
-      <ObjetivoResumenCard
-        objetivo={OBJETIVO}
-        estado={makeEstado({ promedio_vecinos_kwh: 160, diferencia_pct: 25.0, n_vecinos: 6 })}
-        onEditar={() => {}}
-      />
-    );
-    expect(screen.getByText(/\+25/)).not.toBeNull();
-  });
-
-  it("muestra 'Sin datos' de zona cuando no hay vecinos", () => {
-    render(
-      <ObjetivoResumenCard
-        objetivo={OBJETIVO}
-        estado={makeEstado({ promedio_vecinos_kwh: null, diferencia_pct: null, n_vecinos: 0 })}
-        onEditar={() => {}}
-      />
-    );
-    expect(screen.getByText(/Sin datos/i)).not.toBeNull();
+    expect(screen.getByText(/^50 kWh$/)).not.toBeNull();
   });
 
   it("no usa gradientes en la barra de progreso (tonos planos)", () => {
-    render(<ObjetivoResumenCard objetivo={OBJETIVO} estado={makeEstado()} onEditar={() => {}} />);
-    const bar = screen.getByRole("progressbar");
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={100} estado={makeEstado()} onEditar={() => {}} />);
+    const bar = screen.getByRole("progressbar", { name: "Consumo vs objetivo" });
     const fill = bar.firstElementChild as HTMLElement;
     expect(fill.style.background).not.toMatch(/gradient/i);
   });

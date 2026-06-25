@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
 import { fetchObjetivo, fetchObjetivoEstado, type ObjetivoResponse } from "../api/objetivos";
 import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
+import { MesSelector } from "../components/MesSelector";
 import { ObjetivoResumenCard } from "../components/ObjetivoResumenCard";
 import { PanelDetalleDia } from "../components/PanelDetalleDia";
 import { PanelVecinosComparacion } from "../components/PanelVecinosComparacion";
 import { PageHeader } from "../components/PageHeader";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { AlertBanner } from "../components/AlertBanner";
+import { listaMeses, primerDiaDeMes, ultimoDiaConDatos } from "../utils/meses";
 import {
   bg,
   brand,
@@ -27,32 +29,17 @@ interface SerieStats {
   maxPunto: PuntoSerie | null;
   minPunto: PuntoSerie | null;
   promedio: number | null;
-  tendencia7d: "subiendo" | "bajando" | "estable" | null;
 }
 
 function calcularStats(serie: PuntoSerie[]): SerieStats {
   const conDato = serie.filter((p) => p.kwh > 0);
-  if (conDato.length === 0) return { maxPunto: null, minPunto: null, promedio: null, tendencia7d: null };
+  if (conDato.length === 0) return { maxPunto: null, minPunto: null, promedio: null };
 
   const maxPunto = conDato.reduce((a, b) => (b.kwh > a.kwh ? b : a));
   const minPunto = conDato.reduce((a, b) => (b.kwh < a.kwh ? b : a));
   const promedio = conDato.reduce((s, p) => s + p.kwh, 0) / conDato.length;
 
-  let tendencia7d: SerieStats["tendencia7d"] = null;
-  if (conDato.length >= 8) {
-    const ultimos7 = conDato.slice(-7);
-    const anteriores7 = conDato.slice(-14, -7);
-    if (anteriores7.length >= 4) {
-      const avgUlt = ultimos7.reduce((s, p) => s + p.kwh, 0) / ultimos7.length;
-      const avgAnt = anteriores7.reduce((s, p) => s + p.kwh, 0) / anteriores7.length;
-      const diff = (avgUlt - avgAnt) / avgAnt;
-      if (diff > 0.05) tendencia7d = "subiendo";
-      else if (diff < -0.05) tendencia7d = "bajando";
-      else tendencia7d = "estable";
-    }
-  }
-
-  return { maxPunto, minPunto, promedio, tendencia7d };
+  return { maxPunto, minPunto, promedio };
 }
 
 function formatFechaDia(fecha: string): string {
@@ -60,13 +47,6 @@ function formatFechaDia(fecha: string): string {
   const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   return `${dias[d.getDay()]} ${d.getDate()}`;
 }
-
-const TENDENCIA_LABEL = { subiendo: "↑ Subiendo", bajando: "↓ Bajando", estable: "→ Estable" };
-const TENDENCIA_COLOR = {
-  subiendo: color.errorDark,
-  bajando:  color.successDark,
-  estable:  fg.secondary,
-};
 
 function formatMes(fecha: string): string {
   const [year, month] = fecha.split("-");
@@ -189,16 +169,12 @@ function mesActualStr(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function primerDiaMes(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
 function hoy(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
+  const [mesSeleccionado, setMesSeleccionado] = useState(mesActualStr());
   const [diario, setDiario] = useState<DiarioResponse | null>(null);
   const [comparacion, setComparacion] = useState<ComparacionResponse | null>(null);
   const [objetivo, setObjetivo] = useState<ObjetivoResponse | null>(null);
@@ -212,29 +188,52 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
   const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [detalleHorario, setDetalleHorario] = useState<SerieHorariaResponse | null>(null);
 
+  const meses = useMemo(() => listaMeses(12), []);
+
+  // Objetivo vigente: es la meta configurada actual, no depende del mes elegido.
   useEffect(() => {
+    let cancelado = false;
+    fetchObjetivo(token)
+      .then((obj) => { if (!cancelado) setObjetivo(obj); })
+      .catch(() => { if (!cancelado) setObjetivo(null); });
+    return () => { cancelado = true; };
+  }, [token, suministroId]);
+
+  // Indicadores dependientes del mes seleccionado.
+  useEffect(() => {
+    let cancelado = false;
     setLoading(true);
     setError(null);
 
+    const desde = primerDiaDeMes(mesSeleccionado);
+    const hasta = ultimoDiaConDatos(mesSeleccionado, hoy());
+
     Promise.all([
-      fetchSerieDiaria(token, suministroId, primerDiaMes(), hoy()),
-      fetchComparacion(token, suministroId, mesActualStr()),
-      fetchAnomalia(token, mesActualStr()).catch(() => null),
-      fetchObjetivoEstado(token, mesActualStr()).catch(() => null),
-      fetchObjetivo(token).catch(() => null),
+      fetchSerieDiaria(token, suministroId, desde, hasta),
+      fetchComparacion(token, suministroId, mesSeleccionado),
+      fetchAnomalia(token, mesSeleccionado).catch(() => null),
+      fetchObjetivoEstado(token, mesSeleccionado).catch(() => null),
     ])
-      .then(([d, c, a, oe, obj]) => {
+      .then(([d, c, a, oe]) => {
+        if (cancelado) return;
         setDiario(d);
         setComparacion(c);
         setAnomalia(a);
         setObjetivoEstado(oe);
-        setObjetivo(obj);
       })
       .catch((err: unknown) => {
+        if (cancelado) return;
         setError(err instanceof Error ? err.message : "Error al cargar datos");
       })
-      .finally(() => setLoading(false));
-  }, [token, suministroId]);
+      .finally(() => { if (!cancelado) setLoading(false); });
+
+    return () => { cancelado = true; };
+  }, [token, suministroId, mesSeleccionado]);
+
+  function handleCambiarMes(mes: string) {
+    setMesSeleccionado(mes);
+    handleCerrarDetalle();
+  }
 
   function handleClickBarra(fecha: string) {
     setFechaSeleccionada(fecha);
@@ -252,8 +251,8 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
 
   function handleExportarCsv() {
     setDescargandoCsv(true);
-    const desde = primerDiaMes();
-    const hasta = hoy();
+    const desde = primerDiaDeMes(mesSeleccionado);
+    const hasta = ultimoDiaConDatos(mesSeleccionado, hoy());
     const url = `/consumo/export/csv?desde=${desde}&hasta=${hasta}`;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.blob())
@@ -296,7 +295,7 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
     </button>
   );
 
-  if (loading) {
+  if (loading && !diario) {
     return (
       <div style={{ background: bg.page, minHeight: "100%" }}>
         <PageHeader title="Mi Consumo" actions={exportButton} />
@@ -322,6 +321,12 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
 
   const datosHasta = diario?.datos_hasta ?? comparacion?.datos_hasta ?? null;
   const stats = calcularStats(diario?.serie ?? []);
+  const [anioMes, mesNum] = mesSeleccionado.split("-").map(Number);
+  const mesLabelCorto = new Date(anioMes, mesNum - 1, 1).toLocaleDateString("es-AR", { month: "long" });
+  const esMesActual = mesSeleccionado === mesActualStr();
+  const mesLabelTitulo = esMesActual
+    ? "Mes actual"
+    : mesLabelCorto.charAt(0).toUpperCase() + mesLabelCorto.slice(1);
 
   return (
     <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
@@ -334,7 +339,9 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
 
           <ObjetivoResumenCard
             objetivo={objetivo}
+            consumoActualKwh={comparacion?.mes_actual.total_kwh ?? null}
             estado={objetivoEstado}
+            mesLabel={mesLabelCorto}
             onEditar={() => onEditarObjetivo?.()}
           />
 
@@ -348,18 +355,18 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
             </div>
           )}
 
-          {/* Resumen del mes: dos filas de 4 cards */}
+          {/* Resumen del mes: dos filas de 3 cards */}
           <section style={{ marginBottom: space[8] }}>
             {/* Fila superior: totales históricos */}
             <div style={{
               display:             "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap:                 space[3],
               marginBottom:        space[3],
             }}>
               <KpiCard
-                label="Consumo mes actual"
-                sublabel={comparacion ? formatMes(comparacion.mes_actual.mes) : ""}
+                label={mesLabelTitulo}
+                sublabel={formatMes(mesSeleccionado)}
                 kwh={comparacion?.mes_actual.total_kwh ?? null}
               />
               <KpiCard
@@ -372,17 +379,12 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
                 sublabel={comparacion ? formatMes(comparacion.mismo_mes_anio_anterior.mes) : ""}
                 kwh={comparacion?.mismo_mes_anio_anterior.total_kwh ?? null}
               />
-              <KpiCard
-                label="Promedio diario"
-                sublabel="este mes"
-                kwh={stats.promedio ?? null}
-              />
             </div>
 
             {/* Fila inferior: stats del mes actual */}
             <div style={{
               display:             "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap:                 space[3],
               marginBottom:        space[6],
             }}>
@@ -409,16 +411,14 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
                 value={stats.promedio !== null
                   ? `${stats.promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`
                   : "—"}
-                sub="este mes"
-              />
-              <StatFeatCard
-                label="Últimos 7 días"
-                value={stats.tendencia7d ? TENDENCIA_LABEL[stats.tendencia7d] : "—"}
-                sub="vs semana anterior"
-                accentColor={stats.tendencia7d ? TENDENCIA_COLOR[stats.tendencia7d] : fg.muted}
+                sub={formatMes(mesSeleccionado)}
               />
             </div>
           </section>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: space[4] }}>
+            <MesSelector value={mesSeleccionado} meses={meses} onChange={handleCambiarMes} />
+          </div>
 
           <section style={{ marginBottom: space[8] }}>
             <GraficoConsumoDiario

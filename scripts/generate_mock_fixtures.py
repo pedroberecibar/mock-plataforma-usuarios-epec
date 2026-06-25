@@ -21,7 +21,7 @@ from pathlib import Path
 
 DB_PATH = Path("data/plataforma_clientes.db")
 OUT_DIR = Path("frontend/public/mock-data")
-SUMINISTRO_ID = "SRV-91013496"
+SUMINISTRO_ID = "SRV-2817670"  # suministro real (casa) — datos reales de la DB
 MES = date(2026, 6, 1)
 RADIO_METROS = 150.0
 MIN_VECINOS = 5
