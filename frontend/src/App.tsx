@@ -70,7 +70,7 @@ function App() {
     <AppShell vistaActiva={vista} onNavegar={setVista} onLogout={handleLogout} usuarioNombre="Mi cuenta">
       <div key={vista} className="page-fade">
         {vista === "home" && <HomePage token={auth.token} suministroId={auth.suministroId} nombre={auth.nombre} nroSuministro={auth.nroSuministro} onNavegar={setVista} />}
-        {vista === "consumo" && <ConsumoPage token={auth.token} suministroId={auth.suministroId} />}
+        {vista === "consumo" && <ConsumoPage token={auth.token} suministroId={auth.suministroId} onEditarObjetivo={() => setVista("objetivos")} />}
         {vista === "objetivos" && <ObjetivosPage token={auth.token} suministroId={auth.suministroId} onLogout={handleLogout} />}
         {vista === "factura" && <FacturaPage token={auth.token} />}
         {vista === "alertas" && <AlertasPage token={auth.token} />}

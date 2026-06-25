@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import { ConsumoPage } from "./ConsumoPage";
 import * as consumoApi from "../api/consumo";
 import * as objetivosApi from "../api/objetivos";
@@ -29,6 +29,7 @@ beforeEach(() => {
   vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_VACIA);
   vi.mocked(consumoApi.fetchAnomalia).mockResolvedValue(null);
   vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(null);
+  vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue(null);
   vi.mocked(consumoApi.fetchSerieHoraria).mockResolvedValue(SERIE_HORARIA_RESP);
   vi.mocked(consumoApi.fetchDetalleDia).mockResolvedValue({
     fecha: "2026-06-15",
@@ -104,5 +105,35 @@ describe("ConsumoPage", () => {
     render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.getByRole("alert")).not.toBeNull());
     expect(screen.getByText(/Sin conexión/)).not.toBeNull();
+  });
+
+  it("carga el objetivo vigente al montar (fetchObjetivo)", async () => {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() =>
+      expect(vi.mocked(objetivosApi.fetchObjetivo)).toHaveBeenCalledWith(TOKEN)
+    );
+  });
+
+  it("muestra la card de Objetivo arriba del Resumen del mes", async () => {
+    vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue({
+      valor_kwh: 200, origen: "manual", vigente_desde: "2026-06-01",
+    });
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    const card = screen.getByLabelText("Objetivo de consumo");
+    const resumen = screen.getByText("Día más alto");
+    // La card aparece antes en el DOM que el "Resumen del mes".
+    expect(card.compareDocumentPosition(resumen) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("dispara onEditarObjetivo al hacer click en 'Editar objetivo'", async () => {
+    const onEditarObjetivo = vi.fn();
+    vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue({
+      valor_kwh: 200, origen: "manual", vigente_desde: "2026-06-01",
+    });
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} onEditarObjetivo={onEditarObjetivo} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    fireEvent.click(screen.getByText(/Editar objetivo/i));
+    expect(onEditarObjetivo).toHaveBeenCalledTimes(1);
   });
 });

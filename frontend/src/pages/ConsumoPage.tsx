@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
-import { fetchObjetivoEstado } from "../api/objetivos";
+import { fetchObjetivo, fetchObjetivoEstado, type ObjetivoResponse } from "../api/objetivos";
 import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
+import { ObjetivoResumenCard } from "../components/ObjetivoResumenCard";
 import { PanelDetalleDia } from "../components/PanelDetalleDia";
 import { PanelVecinosComparacion } from "../components/PanelVecinosComparacion";
 import { PageHeader } from "../components/PageHeader";
@@ -180,6 +181,7 @@ function StatFeatCard({
 interface Props {
   token: string;
   suministroId: string;
+  onEditarObjetivo?: () => void;
 }
 
 function mesActualStr(): string {
@@ -196,9 +198,10 @@ function hoy(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function ConsumoPage({ token, suministroId }: Props) {
+export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
   const [diario, setDiario] = useState<DiarioResponse | null>(null);
   const [comparacion, setComparacion] = useState<ComparacionResponse | null>(null);
+  const [objetivo, setObjetivo] = useState<ObjetivoResponse | null>(null);
   const [objetivoEstado, setObjetivoEstado] = useState<ObjetivoEstadoResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,12 +221,14 @@ export function ConsumoPage({ token, suministroId }: Props) {
       fetchComparacion(token, suministroId, mesActualStr()),
       fetchAnomalia(token, mesActualStr()).catch(() => null),
       fetchObjetivoEstado(token, mesActualStr()).catch(() => null),
+      fetchObjetivo(token).catch(() => null),
     ])
-      .then(([d, c, a, oe]) => {
+      .then(([d, c, a, oe, obj]) => {
         setDiario(d);
         setComparacion(c);
         setAnomalia(a);
         setObjetivoEstado(oe);
+        setObjetivo(obj);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Error al cargar datos");
@@ -326,6 +331,12 @@ export function ConsumoPage({ token, suministroId }: Props) {
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${space[10]}px` }}>
 
           <CartelLatencia datosHasta={datosHasta} />
+
+          <ObjetivoResumenCard
+            objetivo={objetivo}
+            estado={objetivoEstado}
+            onEditar={() => onEditarObjetivo?.()}
+          />
 
           {anomalia && (
             <div style={{ marginBottom: space[4] }}>
