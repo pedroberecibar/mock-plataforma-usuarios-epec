@@ -23,6 +23,7 @@ class ConsumoMes:
 class ComparacionZona:
     promedio_vecinos_kwh: float | None
     n_vecinos: int
+    n_vecinos_con_datos: int
     diferencia_pct: float | None
 
 
@@ -77,8 +78,15 @@ class ObtenerHomeUseCase:
 
         # Collect vecinos result (likely already done if cache hit, otherwise wait up to 3s)
         vecinos = await vecinos_task
+        ultimo_dia_usuario = current_serie[-1][0] if current_serie else None
         comparacion_zona = await self._calcular_zona(
-            suministro_id, mes_inicio, mes_fin, total_kwh, dias_transcurridos, vecinos
+            suministro_id,
+            mes_inicio,
+            mes_fin,
+            total_kwh,
+            dias_transcurridos,
+            vecinos,
+            ultimo_dia_usuario,
         )
 
         proyeccion = await self._proyeccion_repo.get_proyeccion(suministro_id, mes_inicio)
@@ -157,32 +165,38 @@ class ObtenerHomeUseCase:
         total_kwh: float | None,
         dias_transcurridos: int,
         vecinos: list[str],
+        ultimo_dia_usuario: date | None,
     ) -> ComparacionZona:
         n_vecinos = len(vecinos)
 
-        if n_vecinos < _MIN_VECINOS or dias_transcurridos == 0:
-            return ComparacionZona(
-                promedio_vecinos_kwh=None, n_vecinos=n_vecinos, diferencia_pct=None
-            )
+        _sin_datos = ComparacionZona(
+            promedio_vecinos_kwh=None,
+            n_vecinos=n_vecinos,
+            n_vecinos_con_datos=0,
+            diferencia_pct=None,
+        )
 
-        vecino_totals: list[float] = []
-        for vecino_id in vecinos:
-            serie = await self._consumo_repo.get_serie(vecino_id, mes_inicio, mes_fin)
-            if serie:
-                vecino_totals.append(sum(kwh for _, kwh in serie))
+        if n_vecinos < _MIN_VECINOS or dias_transcurridos == 0 or total_kwh is None:
+            return _sin_datos
 
-        if len(vecino_totals) < _MIN_VECINOS:
-            return ComparacionZona(
-                promedio_vecinos_kwh=None, n_vecinos=n_vecinos, diferencia_pct=None
-            )
+        # Limitar el período de vecinos al último día con dato del usuario para comparación justa
+        hasta_efectivo = min(mes_fin, ultimo_dia_usuario) if ultimo_dia_usuario else mes_fin
 
-        promedio = sum(vecino_totals) / len(vecino_totals)
+        totales = await self._consumo_repo.get_totales_por_suministro(
+            vecinos, mes_inicio, hasta_efectivo
+        )
+
+        if len(totales) < _MIN_VECINOS:
+            return _sin_datos
+
+        promedio = sum(kwh for _, kwh in totales) / len(totales)
         diferencia_pct: float | None = None
-        if promedio > 0 and total_kwh is not None:
+        if promedio > 0:
             diferencia_pct = round((total_kwh - promedio) / promedio * 100, 2)
 
         return ComparacionZona(
             promedio_vecinos_kwh=round(promedio, 2),
             n_vecinos=n_vecinos,
+            n_vecinos_con_datos=len(totales),
             diferencia_pct=diferencia_pct,
         )

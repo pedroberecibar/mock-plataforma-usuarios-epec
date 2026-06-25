@@ -35,6 +35,7 @@ class ConsumoMesResponse(BaseModel):
 class ComparacionZonaResponse(BaseModel):
     promedio_vecinos_kwh: float | None
     n_vecinos: int
+    n_vecinos_con_datos: int
     diferencia_pct: float | None
 
 
@@ -76,6 +77,7 @@ async def get_home(
         comparacion_zona=ComparacionZonaResponse(
             promedio_vecinos_kwh=resultado.comparacion_zona.promedio_vecinos_kwh,
             n_vecinos=resultado.comparacion_zona.n_vecinos,
+            n_vecinos_con_datos=resultado.comparacion_zona.n_vecinos_con_datos,
             diferencia_pct=resultado.comparacion_zona.diferencia_pct,
         ),
         proyeccion=ProyeccionResponse(

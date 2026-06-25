@@ -30,6 +30,9 @@ class CachedVecinosRepository(VecinosRepository):
         self._session = session
         self._ttl_seconds = ttl_hours * 3600
 
+    async def get_equipos_activos(self, suministro_ids: list[str]) -> list[str]:
+        return await self._inner.get_equipos_activos(suministro_ids)
+
     async def get_vecinos(self, suministro_id: str) -> list[str]:
         cached = await self._get_from_cache(suministro_id)
         if cached is not None:

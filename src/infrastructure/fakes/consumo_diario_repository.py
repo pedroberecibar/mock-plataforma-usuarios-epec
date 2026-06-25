@@ -35,3 +35,13 @@ class FakeConsumoDiarioRepository(ConsumoDiarioRepository):
         return sorted(
             (fecha, round(sum(vals) / len(vals), 2)) for fecha, vals in totales.items() if vals
         )
+
+    async def get_totales_por_suministro(
+        self, suministro_ids: list[str], desde: date, hasta: date
+    ) -> list[tuple[str, float]]:
+        ids_set = set(suministro_ids)
+        acumulados: dict[str, float] = {}
+        for (sid, fecha), kwh in self._consumos.items():
+            if sid in ids_set and desde <= fecha <= hasta:
+                acumulados[sid] = acumulados.get(sid, 0.0) + kwh
+        return [(sid, round(total, 2)) for sid, total in acumulados.items()]

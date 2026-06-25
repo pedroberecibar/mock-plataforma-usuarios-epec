@@ -305,6 +305,7 @@ def create_app() -> FastAPI:
             selector=_selector,
             vecinos_repo=_oracle_vecinos,
             session_factory=session_factory,
+            bulk_reader=_non_blocking_reader,
         )
         app.dependency_overrides[get_poblar_use_case] = lambda: _poblar_use_case
     else:

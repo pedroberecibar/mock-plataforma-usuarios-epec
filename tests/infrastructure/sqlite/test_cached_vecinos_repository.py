@@ -27,6 +27,9 @@ class _FakeVecinosRepository(VecinosRepository):
             raise RuntimeError("Oracle error")
         return self._vecinos
 
+    async def get_equipos_activos(self, suministro_ids: list[str]) -> list[str]:
+        return []
+
 
 @pytest_asyncio.fixture
 async def session() -> AsyncSession:

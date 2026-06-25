@@ -30,6 +30,7 @@ WHERE  SUBESTACION = (
            FETCH FIRST 1 ROW ONLY
        )
   AND  SUMINISTRO != :suministro_id
+FETCH FIRST 300 ROWS ONLY
 """
 
 # Dado un conjunto de med_numero_equipo, devuelve su SRV_CODIGO
@@ -107,7 +108,7 @@ class OracleVecinosRepository(VecinosRepository):
                 conn.rollback()
         except Exception:
             return []
-        return [str(r[0]) for r in rows]
+        return [f"SRV-{r[0]}" for r in rows]
 
     async def get_vecinos(self, suministro_id: str) -> list[str]:
         loop = asyncio.get_running_loop()
@@ -152,10 +153,11 @@ class OracleVecinosRepository(VecinosRepository):
 
     def _fetch_equipos_activos_sync(self, srv_codigos: list[str]) -> list[str]:
         # Convierte a int para bindear sin TO_CHAR — preserva el índice numérico de SUMINISTRO
+        # Acepta tanto '2817670' como 'SRV-2817670'
         ids_int = []
         for s in srv_codigos:
             with contextlib.suppress(ValueError):
-                ids_int.append(int(s))
+                ids_int.append(int(s.removeprefix("SRV-")))
         if not ids_int:
             return []
         placeholders = ", ".join(f":s{i}" for i in range(len(ids_int)))
@@ -184,3 +186,6 @@ class OracleVecinosRepository(VecinosRepository):
             )
         except (TimeoutError, Exception):
             return []
+
+    async def get_equipos_activos(self, suministro_ids: list[str]) -> list[str]:
+        return await self.get_equipos_activos_de_srvs(suministro_ids)

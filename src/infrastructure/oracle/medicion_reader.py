@@ -82,7 +82,7 @@ def _rows_a_lecturas(cursor: Any) -> list[LecturaTelemedida]:
         resultado.append(
             LecturaTelemedida(
                 equipo=str(row.med_numero_equipo),
-                srv_codigo=str(row.srv_codigo),
+                srv_codigo=f"SRV-{row.srv_codigo}",
                 cdr_codigo=row.cdr_codigo,
                 fecha=row.fecha,
                 valor_kwh=kwh,

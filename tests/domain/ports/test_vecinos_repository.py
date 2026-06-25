@@ -9,4 +9,6 @@ def test_is_abstract_and_cannot_be_instantiated_directly() -> None:
 
 
 def test_declares_get_vecinos_as_abstract() -> None:
-    assert VecinosRepository.__abstractmethods__ == frozenset({"get_vecinos"})
+    assert VecinosRepository.__abstractmethods__ == frozenset(
+        {"get_vecinos", "get_equipos_activos"}
+    )

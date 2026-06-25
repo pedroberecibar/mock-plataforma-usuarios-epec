@@ -25,6 +25,8 @@ from infrastructure.sqlite.vecinos_cache_repository import SQLiteVecinosCacheRep
 logger = logging.getLogger(__name__)
 
 _DIAS_HISTORICO = 400  # cubre año actual + año anterior completo para comparacion interanual
+_DIAS_VECINOS = 35  # cubre mes actual + margen para comparación de zona
+_MAX_VECINOS_INGESTA = 100  # cap para no sobrecargar Oracle en cada login
 
 
 class _LecturasAdapter(MedicionSourceReader):
@@ -46,11 +48,13 @@ class PoblarSuministroUseCase:
         selector: IngestionStrategySelector,
         vecinos_repo: VecinosRepository,
         session_factory: async_sessionmaker[AsyncSession],
+        bulk_reader: MedicionSourceReader | None = None,
     ) -> None:
         self._meta_reader = meta_reader
         self._selector = selector
         self._vecinos_repo = vecinos_repo
         self._session_factory = session_factory
+        self._bulk_reader = bulk_reader
 
     async def ejecutar(self, suministro_id: str) -> None:
         logger.info("[PoblarSuministro] Iniciando para %s", suministro_id)
@@ -89,7 +93,11 @@ class PoblarSuministroUseCase:
             await session.commit()
         logger.info("[PoblarSuministro] %d vecinos en caché para %s", len(vecinos), suministro_id)
 
-        # 4. Sin medidor → no hay lecturas
+        # 3b. Ingestar datos recientes de vecinos para habilitar comparación de zona
+        if vecinos and self._bulk_reader is not None:
+            await self._ingestar_vecinos(vecinos)
+
+        # 4. Sin medidor → no hay lecturas propias
         if not meta.medidor:
             logger.warning("[PoblarSuministro] Sin medidor para %s — sin lecturas", suministro_id)
             return
@@ -140,3 +148,39 @@ class PoblarSuministroUseCase:
             resultado.dias_procesados,
             suministro_id,
         )
+
+    async def _ingestar_vecinos(self, vecinos: list[str]) -> None:
+        """Ingestá datos recientes de vecinos (últimos _DIAS_VECINOS) vía bulk reader."""
+        bulk_reader = self._bulk_reader
+        if bulk_reader is None:
+            return
+        muestra = vecinos[:_MAX_VECINOS_INGESTA]
+        try:
+            vecino_equipos = await self._vecinos_repo.get_equipos_activos(muestra)
+        except Exception:
+            logger.warning("[PoblarSuministro] No se pudieron obtener equipos de vecinos")
+            return
+
+        if not vecino_equipos:
+            logger.info("[PoblarSuministro] Sin equipos telemedibles en vecinos — saltando")
+            return
+
+        desde_vecinos = date.today() - timedelta(days=_DIAS_VECINOS)
+        hasta_vecinos = date.today()
+        try:
+            async with self._session_factory() as session:
+                consumo_repo = SQLiteConsumoDiarioRepository(session)
+                suministro_repo = SQLiteSuministroRepository(session)
+                resultado = await IngestarConsumoDiarioUseCase(
+                    bulk_reader,
+                    consumo_repo,
+                    suministro_repo,
+                ).ejecutar(desde_vecinos, hasta_vecinos, equipos=vecino_equipos)
+                await session.commit()
+            logger.info(
+                "[PoblarSuministro] Vecinos: %d suministros, %d días ingestados",
+                resultado.suministros_procesados,
+                resultado.dias_procesados,
+            )
+        except Exception:
+            logger.exception("[PoblarSuministro] Error ingestando vecinos — continuando")

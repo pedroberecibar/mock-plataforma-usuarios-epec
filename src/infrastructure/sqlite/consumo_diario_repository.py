@@ -57,3 +57,20 @@ class SQLiteConsumoDiarioRepository(ConsumoDiarioRepository):
             .order_by(ConsumoDiario.fecha)
         )
         return [(row.fecha, round(row.kwh_promedio, 2)) for row in result]
+
+    async def get_totales_por_suministro(
+        self, suministro_ids: list[str], desde: date, hasta: date
+    ) -> list[tuple[str, float]]:
+        if not suministro_ids:
+            return []
+        result = await self._session.execute(
+            select(
+                ConsumoDiario.suministro_id,
+                func.sum(ConsumoDiario.kwh).label("total_kwh"),
+            )
+            .where(ConsumoDiario.suministro_id.in_(suministro_ids))
+            .where(ConsumoDiario.fecha >= desde)
+            .where(ConsumoDiario.fecha <= hasta)
+            .group_by(ConsumoDiario.suministro_id)
+        )
+        return [(row.suministro_id, round(row.total_kwh, 2)) for row in result]

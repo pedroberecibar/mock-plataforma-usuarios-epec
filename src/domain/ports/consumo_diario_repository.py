@@ -22,3 +22,9 @@ class ConsumoDiarioRepository(ABC):
         self, vecino_ids: list[str], desde: date, hasta: date
     ) -> list[tuple[date, float]]:
         """Promedio de consumo diario entre vecino_ids, agrupado por fecha."""
+
+    @abstractmethod
+    async def get_totales_por_suministro(
+        self, suministro_ids: list[str], desde: date, hasta: date
+    ) -> list[tuple[str, float]]:
+        """Total kWh del período por suministro. Solo incluye IDs con al menos un dato."""

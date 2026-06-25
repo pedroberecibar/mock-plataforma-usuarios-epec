@@ -57,8 +57,9 @@ def mock_connection():
 
 async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
+    # Oracle devuelve SRV_CODIGO como NUMBER (ej. 2817670); el reader lo normaliza a SRV-xxx
     cursor.fetchall.return_value = [
-        _make_row("SRV-001", "91013496", date(2026, 6, 1), 13773.0),
+        _make_row(2817670, "91013496", date(2026, 6, 1), 13773.0),
     ]
     cursor.description = _DESCRIPTION
 
@@ -72,7 +73,7 @@ async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connecti
 
     assert len(result) == 1
     assert result[0].equipo == "91013496"
-    assert result[0].srv_codigo == "SRV-001"
+    assert result[0].srv_codigo == "SRV-2817670"
     assert result[0].fecha == date(2026, 6, 1)
     assert result[0].valor_kwh == 13773.0
 
@@ -80,7 +81,7 @@ async def test_leer_lecturas_devuelve_lecturas_del_rango(env_vars, mock_connecti
 async def test_leer_lecturas_normaliza_coma_decimal(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
     cursor.fetchall.return_value = [
-        _make_row("SRV-001", "91013496", date(2026, 6, 1), "13773,50"),
+        _make_row(2817670, "91013496", date(2026, 6, 1), "13773,50"),
     ]
     cursor.description = _DESCRIPTION
 
@@ -98,8 +99,8 @@ async def test_leer_lecturas_normaliza_coma_decimal(env_vars, mock_connection) -
 async def test_leer_lecturas_descarta_nulos(env_vars, mock_connection) -> None:
     conn, cursor = mock_connection
     cursor.fetchall.return_value = [
-        _make_row("SRV-001", "91013496", date(2026, 6, 1), None),  # nulo → descartado
-        _make_row("SRV-001", "91013496", date(2026, 6, 2), 100.0),  # válido
+        _make_row(2817670, "91013496", date(2026, 6, 1), None),  # nulo → descartado
+        _make_row(2817670, "91013496", date(2026, 6, 2), 100.0),  # válido
     ]
     cursor.description = _DESCRIPTION
 
@@ -121,8 +122,8 @@ async def test_leer_lecturas_incluye_segundo_dia_como_lectura_siguiente(
     """Al pedir (D, D+1) el RANGO devuelve ambos días; D+1 actúa como lectura siguiente."""
     conn, cursor = mock_connection
     cursor.fetchall.return_value = [
-        _make_row("SRV-001", "91013496", date(2026, 6, 1), 13721.0),
-        _make_row("SRV-001", "91013496", date(2026, 6, 2), 13773.0),
+        _make_row(2817670, "91013496", date(2026, 6, 1), 13721.0),
+        _make_row(2817670, "91013496", date(2026, 6, 2), 13773.0),
     ]
     cursor.description = _DESCRIPTION
 

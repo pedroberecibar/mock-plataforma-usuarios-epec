@@ -47,9 +47,9 @@ async def test_get_vecinos_devuelve_lista_de_suministros(env_vars, mock_conn_and
         repo = OracleVecinosRepository()
         result = await repo.get_vecinos("2817670")
 
-    assert "111" in result
-    assert "222" in result
-    assert "333" in result
+    assert "SRV-111" in result
+    assert "SRV-222" in result
+    assert "SRV-333" in result
 
 
 async def test_get_vecinos_usa_query_parametrizada(env_vars, mock_conn_and_cursor) -> None:

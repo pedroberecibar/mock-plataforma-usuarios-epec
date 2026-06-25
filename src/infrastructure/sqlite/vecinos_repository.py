@@ -14,3 +14,6 @@ class SQLiteVecinosRepository(VecinosRepository):
 
     async def get_vecinos(self, suministro_id: str) -> list[str]:
         return []
+
+    async def get_equipos_activos(self, suministro_ids: list[str]) -> list[str]:
+        return []
