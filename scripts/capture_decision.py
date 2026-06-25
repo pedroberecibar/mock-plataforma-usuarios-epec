@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
-"""capture_decision.py — PostToolUse hook: captures technical decisions to the Obsidian vault.
+"""capture_decision.py — PostToolUse hook: captures *marked* decisions to the Obsidian vault.
 
-Invoked automatically by the PostToolUse hook in ``.claude/settings.json``
-after Claude Code runs a Bash command. Reads the hook JSON payload from
-stdin (or a string as argv[1] for manual use), and if the text looks like a
-technical decision, appends it to today's session note in the vault.
+Invoked automatically by the PostToolUse hook in ``.claude/settings.json`` after
+Claude Code runs a Bash command. Reads the hook JSON payload from stdin (or a
+string as argv[1] for manual use).
+
+Refined behavior (intentional, low-noise):
+- Only the **command** is inspected, never the tool output. Reading files or
+  running tools whose output happens to mention "arquitectura/refactor" no longer
+  triggers a capture.
+- A capture happens only when the command contains an explicit marker
+  ``@decision`` (or ``@adr``). The clean text after the marker is logged --
+  not a raw dump of the command and its output.
+- Manual use (``python scripts/capture_decision.py "..."``) logs the argument
+  directly; the marker is optional there because the call is already intentional.
 
 Usage (hook):    python scripts/capture_decision.py        # reads stdin JSON
-Usage (manual):  python scripts/capture_decision.py "Elegimos pytest porque..."
+Usage (manual):  python scripts/capture_decision.py "@decision Elegimos pytest porque..."
 
-Never fails the hook — always exits 0.
+Never fails the hook -- always exits 0.
 """
 
 from __future__ import annotations
@@ -21,51 +30,43 @@ import sys
 from datetime import date
 from pathlib import Path
 
-DECISION_KEYWORDS = [
-    r"\belegi(mos|r|ó)\b",
-    r"\bdecidi(mos|r|ó)\b",
-    r"\b(por|porque) (eso|esto|tanto)\b",
-    r"\bventaja\b",
-    r"\bdesventaja\b",
-    r"\btrade.?off\b",
-    r"\bpatrón\b",
-    r"\barquitectura\b",
-    r"\brefactor\b",
-    r"\bmigr(ar|amos|ación)\b",
-    r"\bdescart(ar|amos)\b",
-    r"\badr\b",
-]
-DECISION_RE = re.compile("|".join(DECISION_KEYWORDS), re.IGNORECASE)
-MAX_OUTPUT_CHARS = 2000
+# Explicit, deliberate marker. Optional ``:`` or ``=`` separator after it.
+_MARKER_RE = re.compile(r"@(?:decision|adr)\s*[:=]?\s*(.*)", re.IGNORECASE)
 
 
-def read_hook_text() -> str:
-    if len(sys.argv) >= 2 and sys.argv[1].strip():
-        return sys.argv[1]
+def extract_decision(text: str | None) -> str | None:
+    """Return the clean decision text if an ``@decision``/``@adr`` marker is present.
+
+    The captured text runs from just after the marker up to the first closing
+    quote or newline, so a marker embedded in an ``echo "..."`` does not drag in
+    the rest of the shell command.
+    """
+    if not text:
+        return None
+    match = _MARKER_RE.search(text)
+    if not match:
+        return None
+    rest = match.group(1)
+    for stop in ('"', "'", "\n"):
+        idx = rest.find(stop)
+        if idx != -1:
+            rest = rest[:idx]
+    rest = rest.strip()
+    return rest or None
+
+
+def read_hook_command(raw: str) -> str:
+    """Extract only the Bash command from the hook JSON payload (output ignored)."""
+    if not raw or not raw.strip():
+        return ""
     try:
-        raw = sys.stdin.read()
-        if not raw.strip():
-            return ""
         payload = json.loads(raw)
     except Exception:
         return ""
-    parts: list[str] = []
-    ti = payload.get("tool_input", {})
-    if isinstance(ti, dict) and ti.get("command"):
-        parts.append(str(ti["command"]))
-    tr = payload.get("tool_response")
-    if isinstance(tr, dict):
-        for key in ("stdout", "stderr", "output", "content"):
-            value = tr.get(key)
-            if value:
-                parts.append(str(value))
-    elif isinstance(tr, str):
-        parts.append(tr)
-    return "\n".join(parts)
-
-
-def looks_like_decision(text: str) -> bool:
-    return bool(DECISION_RE.search(text))
+    tool_input = payload.get("tool_input", {})
+    if isinstance(tool_input, dict):
+        return str(tool_input.get("command", "") or "")
+    return ""
 
 
 def get_vault_path() -> Path | None:
@@ -97,7 +98,8 @@ def get_project_name() -> str:
         return Path.cwd().name
 
 
-def append_to_vault(vault_path: Path, project: str, content: str) -> None:
+def append_decision(vault_path: Path, project: str, decision_text: str) -> None:
+    """Append a single clean decision line to today's session note."""
     today = date.today().isoformat()
     project_dir = vault_path / "Projects" / project
     project_dir.mkdir(parents=True, exist_ok=True)
@@ -107,25 +109,27 @@ def append_to_vault(vault_path: Path, project: str, content: str) -> None:
             f"# Sesión {today} — {project}\n\n## Decisiones técnicas\n\n",
             encoding="utf-8",
         )
-    truncated = content[:MAX_OUTPUT_CHARS]
-    if len(content) > MAX_OUTPUT_CHARS:
-        truncated += f"\n... (truncado, {len(content) - MAX_OUTPUT_CHARS} chars más)"
     with session_file.open("a", encoding="utf-8") as f:
-        f.write("\n---\n")
-        f.write(f"**Capturado automáticamente ({today}):**\n\n")
-        f.write(f"```\n{truncated}\n```\n")
+        f.write(f"- {decision_text}\n")
     print(f"[capture_decision] Decisión guardada en {session_file}")
 
 
 def main() -> None:
-    output = read_hook_text()
-    if not output.strip() or not looks_like_decision(output):
+    decision: str | None
+    if len(sys.argv) >= 2 and sys.argv[1].strip():
+        decision = extract_decision(sys.argv[1]) or sys.argv[1].strip()
+    else:
+        decision = extract_decision(read_hook_command(sys.stdin.read()))
+
+    if not decision:
         sys.exit(0)
+
     vault_path = get_vault_path()
     if vault_path is None or not vault_path.exists():
         sys.exit(0)
+
     try:
-        append_to_vault(vault_path, get_project_name(), output)
+        append_decision(vault_path, get_project_name(), decision)
     except Exception as e:
         print(f"[capture_decision] Warning: no se pudo guardar en vault: {e}")
     sys.exit(0)

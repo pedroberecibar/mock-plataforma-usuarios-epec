@@ -54,9 +54,14 @@ VAULT_PATH=...
 El vault puede ser uno existente de Obsidian o uno nuevo. Estructura esperada:
 `Projects/<proyecto>/` (notas de sesión), `Research/`, `Templates/`.
 
-La captura automática de decisiones técnicas al vault está cableada como hook
+La captura de decisiones técnicas al vault está cableada como hook
 `PostToolUse` en `.claude/settings.json` (ejecuta `scripts/capture_decision.py`
 con el Python del venv). Se activa al reiniciar la sesión de Claude Code.
+
+Para registrar una decisión, incluí el marcador explícito `@decision` (o `@adr`)
+en cualquier comando Bash — ej. `echo "@decision Elegimos X sobre Y porque Z"` —
+o corré `python scripts/capture_decision.py "@decision ..."`. Solo se loguea el
+texto tras el marcador; sin marcador no se captura nada (evita ruido).
 
 ### 4. Verificar Serena MCP
 
