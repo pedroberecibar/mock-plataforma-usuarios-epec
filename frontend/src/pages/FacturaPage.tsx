@@ -171,86 +171,81 @@ function DeudaHero({
   clienteId: string | null;
   contratoId: string | null;
 }) {
-  return (
-    <section
-      aria-label="Deuda total"
-      style={{
-        display:        "flex",
-        flexWrap:       "wrap",
-        gap:            space[6],
-        alignItems:     "center",
-        justifyContent: "space-between",
-        background:     bg.surfaceFeat,
-        borderRadius:   `${radius.lg}px`,
-        boxShadow:      shadow.sm,
-        padding:        `${space[6]}px`,
-        marginBottom:   space[4],
-        fontFamily:     font.sans,
-      }}
-    >
-      <div style={{ minWidth: 240 }}>
+  // Sin deuda: una sola card a todo el ancho.
+  if (!hayDeuda) {
+    return (
+      <Card style={{ marginBottom: space[4] }}>
         <Label>Deuda total</Label>
-        {hayDeuda ? (
-          <>
-            <p style={{
-              margin:        `${space[2]}px 0 0`,
-              fontFamily:    font.technical,
-              fontSize:      fontSize["3xl"],
-              fontWeight:    fontWeight.light,
-              color:         fg.primary,
-              lineHeight:    1.1,
-              letterSpacing: "-0.02em",
-            }}>
-              {formatImporte(total)}
-            </p>
-            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary }}>
-              {cantidad === 1 ? "1 factura pendiente" : `${cantidad} facturas pendientes`}
-            </p>
-          </>
-        ) : (
-          <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
-            No tenés facturas pendientes de pago.
-          </p>
-        )}
-      </div>
+        <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
+          No tenés facturas pendientes de pago.
+        </p>
+      </Card>
+    );
+  }
 
-      {hayDeuda && (
-        <div style={{ display: "flex", flexDirection: "column", gap: space[3], minWidth: 260 }}>
-          {(clienteId || contratoId) && (
-            <div>
-              <p style={{ margin: `0 0 ${space[2]}px`, fontSize: fontSize.xs, color: fg.muted }}>
-                Ingresá estos datos en el portal de EPEC:
-              </p>
-              {clienteId && <CopyField label="N° de cliente" value={clienteId} />}
-              {contratoId && <CopyField label="N° de contrato" value={contratoId} />}
-            </div>
-          )}
-          <a
-            data-testid="enlace-epec"
-            href={EPEC_PAGOS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display:        "inline-flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              gap:            space[2],
-              background:     brand.primary,
-              color:          fg.onDark,
-              borderRadius:   radius.md,
-              padding:        `${space[3]}px ${space[6]}px`,
-              fontSize:       fontSize.base,
-              fontWeight:     fontWeight.semibold,
-              fontFamily:     font.sans,
-              textDecoration: "none",
-              whiteSpace:     "nowrap",
-            }}
-          >
-            Pagar mi factura
-          </a>
-        </div>
-      )}
-    </section>
+  return (
+    <div style={{
+      display:             "grid",
+      gridTemplateColumns: "minmax(0, 7fr) minmax(280px, 3fr)",
+      gap:                 space[4],
+      alignItems:          "stretch",
+      marginBottom:        space[4],
+    }}>
+      {/* Card deuda total (70%) */}
+      <Card style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <Label>Deuda total</Label>
+        <p style={{
+          margin:        `${space[2]}px 0 0`,
+          fontFamily:    font.technical,
+          fontSize:      fontSize["3xl"],
+          fontWeight:    fontWeight.light,
+          color:         fg.primary,
+          lineHeight:    1.1,
+          letterSpacing: "-0.02em",
+        }}>
+          {formatImporte(total)}
+        </p>
+        <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary }}>
+          {cantidad === 1 ? "1 factura pendiente" : `${cantidad} facturas pendientes`}
+        </p>
+      </Card>
+
+      {/* Card CTA pagar (30%) */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: space[4] }}>
+        <a
+          data-testid="enlace-epec"
+          href={EPEC_PAGOS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display:        "inline-flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            gap:            space[2],
+            background:     brand.primary,
+            color:          fg.onDark,
+            borderRadius:   radius.md,
+            padding:        `${space[3]}px ${space[6]}px`,
+            fontSize:       fontSize.base,
+            fontWeight:     fontWeight.semibold,
+            fontFamily:     font.sans,
+            textDecoration: "none",
+            whiteSpace:     "nowrap",
+          }}
+        >
+          Pagar mi factura
+        </a>
+        {(clienteId || contratoId) && (
+          <div>
+            <p style={{ margin: `0 0 ${space[2]}px`, fontSize: fontSize.xs, color: fg.muted }}>
+              Ingresá estos datos en el portal de EPEC:
+            </p>
+            {clienteId && <CopyField label="N° de cliente" value={clienteId} />}
+            {contratoId && <CopyField label="N° de contrato" value={contratoId} />}
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
 
