@@ -1,7 +1,11 @@
 """Seeder de demo — datos reales de Oracle + consumo simulado.
 
 Clientes y suministros obtenidos de GEOREF.VM_INTELIGENTES (spike_cliente_seeder.py).
-Todos son medidores CLOU del listado-mi-activos.md ubicados en Villa el Libertador, Córdoba.
+Mayormente medidores CLOU del listado-mi-activos.md en Villa el Libertador, Córdoba.
+Incluye también a 2817670 (Palacios N.), medidor NANSEN — usuario real del spike de
+perfiles/georef. Su consumo real + vecinos por subestación se sobreponen luego vía
+seed_vecinos_reales.py (INGEST_EQUIPOS incluye su medidor 91013486); acá solo se asegura
+que el usuario/suministro existan tras un reset, con un baseline simulado.
 
 Uso:
     uv run python scripts/seed_demo.py
@@ -273,6 +277,25 @@ CLIENTES_ORACLE = [
         "telemedible": "CLOU",
         "usuario": "600344",
         "email": "600344@plataforma.epec.com.ar",
+    },
+    {
+        # Usuario real del spike perfiles/georef. Medidor NANSEN (lee de SIGEC, no AMI).
+        # Otra subestación (no pertenece al cluster Arica). Vecinos reales por subestación
+        # y consumo real se cargan vía seed_vecinos_reales.py; acá va el baseline simulado.
+        "medidor": "91013486",
+        "suministro": "2817670",
+        "nombre": "Palacios Natalia Carolina",
+        "tipo_doc": "DNI",
+        "nro_doc": "",
+        "cuit": "",
+        "domicilio": "Córdoba",
+        "lat": -31.455214056148,
+        "lon": -64.148910645961,
+        "tarifa": "140",
+        "grupo_tar": "1",
+        "telemedible": "NANSEN",
+        "usuario": "2817670",
+        "email": "2817670@plataforma.epec.com.ar",
     },
 ]
 

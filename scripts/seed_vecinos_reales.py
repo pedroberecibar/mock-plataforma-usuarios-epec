@@ -60,6 +60,9 @@ async def _persistir_cache_vecinos(
     srv_codigo: str,
     vecinos: list[str],
 ) -> None:
+    # La cache se indexa por el suministro_id CANÓNICO (SRV-xxx): es la clave que usa
+    # CachedVecinosRepository en el request. resolver_srv_de_equipos devuelve el código bare.
+    sid_canonico = srv_codigo if srv_codigo.startswith("SRV-") else f"SRV-{srv_codigo}"
     async with session_factory() as s:
         now = datetime.now(UTC).replace(tzinfo=None).isoformat()
         await s.execute(
@@ -69,10 +72,10 @@ async def _persistir_cache_vecinos(
                 ON CONFLICT(suministro_id) DO UPDATE
                 SET vecinos_json = excluded.vecinos_json, updated_at = excluded.updated_at
             """),
-            {"sid": srv_codigo, "json": json.dumps(vecinos), "ts": now},
+            {"sid": sid_canonico, "json": json.dumps(vecinos), "ts": now},
         )
         await s.commit()
-    print(f"  vecinos_cache actualizado: {len(vecinos)} vecinos para {srv_codigo}")
+    print(f"  vecinos_cache actualizado: {len(vecinos)} vecinos para {sid_canonico}")
 
 
 async def _ingestar(
