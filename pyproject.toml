@@ -23,6 +23,7 @@ dependencies = [
     "aiosmtplib>=5.1.1",
     "aiosmtpd>=1.4.6",
     "argon2-cffi>=23.1",
+    "cryptography>=43.0",
     "structlog>=26.1.0",
 ]
 

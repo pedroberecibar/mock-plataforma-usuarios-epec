@@ -12,6 +12,7 @@ export default defineConfig({
       "/alertas":   "http://localhost:8000",
       "/factura":   "http://localhost:8000",
       "/ingest":    "http://localhost:8000",
+      "/cuenta":    "http://localhost:8000",
     },
   },
   test: {
