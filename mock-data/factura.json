@@ -1,13 +1,13 @@
 {
-  "total_deuda": 18542.30,
+  "total_deuda": 133372.90,
   "pago_online": true,
-  "cliente_id": "1234567",
-  "contrato_id": "9876543",
+  "cliente_id": "1109294",
+  "contrato_id": "0281767003",
   "documentos": [
     {
-      "periodo": "06/2026",
-      "importe": 18542.30,
-      "fecha_vencimiento": "2026-07-15",
+      "periodo": "07/2026",
+      "importe": 133372.90,
+      "fecha_vencimiento": "2026-06-30",
       "estado": "Pendiente",
       "url_pdf": null
     }
