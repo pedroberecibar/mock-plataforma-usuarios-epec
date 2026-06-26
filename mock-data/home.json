@@ -1,10 +1,22 @@
 {
-  "consumo_actual_kwh": 277.0,
-  "variacion_mes_anterior_pct": 21.0,
-  "variacion_ano_anterior_pct": 48.9,
-  "comparacion_zona_pct": 5.2,
-  "vecinos_zona": 189,
-  "promedio_zona_kwh": 263.4,
-  "proyeccion_min_kwh": null,
-  "proyeccion_max_kwh": null
+  "consumo_mes": {
+    "total_kwh": 277.0,
+    "vs_mes_anterior_pct": 21.0,
+    "vs_anio_anterior_pct": 48.9
+  },
+  "comparacion_zona": {
+    "promedio_vecinos_kwh": 263.4,
+    "n_vecinos": 189,
+    "diferencia_pct": 5.2,
+    "serie": []
+  },
+  "proyeccion": {
+    "mes": "2026-06-01",
+    "metodo_aplicado": "auto",
+    "bandera_confianza": "baja",
+    "rango_inferior_kwh": null,
+    "rango_superior_kwh": null
+  },
+  "datos_hasta": "2026-06-25",
+  "timestamp": "2026-06-25T12:00:00Z"
 }
