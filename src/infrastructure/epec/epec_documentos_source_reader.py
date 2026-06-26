@@ -18,7 +18,12 @@ from domain.ports.factura_identificadores import (
     FacturaIdentificadoresCache,
     FacturaIdentificadoresReader,
 )
-from domain.ports.factura_source_reader import FacturaResult, FacturaSourceReader
+from domain.ports.factura_source_reader import (
+    FacturaCuenta,
+    FacturaDocumento,
+    FacturaResult,
+    FacturaSourceReader,
+)
 
 _BASE_URL = "https://www.epec.com.ar"
 _DOCUMENTOS_PATH = "/api/documentos/a-pagar"
@@ -47,14 +52,33 @@ def _parse_importe(value: object) -> float | None:
         return None
 
 
+def _periodo(item: dict[str, Any]) -> str | None:
+    return str(item["periodo"]).strip() if item.get("periodo") else None
+
+
+def _url_pdf(item: dict[str, Any], base_url: str) -> str | None:
+    url_doc = item.get("urlDocumento")
+    return f"{base_url}{url_doc}" if url_doc else None
+
+
 def parse_documento_a_pagar(item: dict[str, Any], base_url: str) -> FacturaResult:
     """Mapea un elemento de `documentosAPagar` a `FacturaResult` (campos faltantes → None)."""
-    url_doc = item.get("urlDocumento")
     return FacturaResult(
         fecha_vencimiento=_parse_fecha(item.get("vencimiento")),
         importe=_parse_importe(item.get("importe")),
-        periodo=(str(item["periodo"]).strip() if item.get("periodo") else None),
-        url_pdf=(f"{base_url}{url_doc}" if url_doc else None),
+        periodo=_periodo(item),
+        url_pdf=_url_pdf(item, base_url),
+    )
+
+
+def parse_documento(item: dict[str, Any], base_url: str) -> FacturaDocumento:
+    """Mapea un elemento de `documentosAPagar` a `FacturaDocumento`."""
+    return FacturaDocumento(
+        periodo=_periodo(item),
+        importe=_parse_importe(item.get("importe")),
+        fecha_vencimiento=_parse_fecha(item.get("vencimiento")),
+        estado=(str(item["estado"]).strip() if item.get("estado") else None),
+        url_pdf=_url_pdf(item, base_url),
     )
 
 
@@ -89,7 +113,8 @@ class EpecDocumentosSourceReader(FacturaSourceReader):
             await self._cache.guardar(suministro_id, ids)
         return ids
 
-    async def _fetch_documentos(self, ids: FacturaIdentificadores) -> list[dict[str, Any]]:
+    async def _fetch(self, ids: FacturaIdentificadores) -> tuple[list[dict[str, Any]], bool]:
+        """Devuelve (documentosAPagar, pago_online_habilitado)."""
         headers = {
             "content-type": "application/json",
             "apiKey": self._api_key,
@@ -102,26 +127,39 @@ class EpecDocumentosSourceReader(FacturaSourceReader):
                 f"{self._base_url}{_DOCUMENTOS_PATH}", headers=headers, json=body
             )
         if not resp.is_success or not resp.content:
-            return []
+            return [], False
         data = resp.json()
         if not isinstance(data, dict):
-            return []
-        documentos = data.get("documentosAPagar") or []
-        self._pago_online = str(data.get("pagoOnlineHabilitado", "")).upper() == "S"
-        return list(documentos)
+            return [], False
+        documentos = list(data.get("documentosAPagar") or [])
+        pago_online = str(data.get("pagoOnlineHabilitado", "")).upper() == "S"
+        return documentos, pago_online
 
     async def get_factura(self, suministro_id: str) -> FacturaResult | None:
         ids = await self._resolver_ids(suministro_id)
         if ids is None:
             return None
-        self._pago_online = False
         try:
-            documentos = await self._fetch_documentos(ids)
+            documentos, pago_online = await self._fetch(ids)
         except httpx.HTTPError:
             return None
         elegido = seleccionar_documento(documentos)
         if elegido is None:
             return None
         result = parse_documento_a_pagar(elegido, self._base_url)
-        result.pago_online = self._pago_online
+        result.pago_online = pago_online
         return result
+
+    async def get_cuenta_factura(self, suministro_id: str) -> FacturaCuenta | None:
+        ids = await self._resolver_ids(suministro_id)
+        if ids is None:
+            return None
+        try:
+            documentos, pago_online = await self._fetch(ids)
+        except httpx.HTTPError:
+            return None
+        if not documentos:
+            return None
+        docs = [parse_documento(d, self._base_url) for d in documentos]
+        total = round(sum(d.importe or 0.0 for d in docs), 2)
+        return FacturaCuenta(documentos=docs, total_deuda=total, pago_online=pago_online)

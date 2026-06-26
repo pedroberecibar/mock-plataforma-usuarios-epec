@@ -51,12 +51,18 @@ export interface ComparacionResponse {
   datos_hasta: string | null;
 }
 
-export interface FacturaDatosResponse {
+export interface FacturaDocumento {
+  periodo: string | null; // "MM/YYYY"
+  importe: number | null;
   fecha_vencimiento: string | null; // "YYYY-MM-DD"
-  importe?: number | null;
-  periodo?: string | null; // "MM/YYYY"
-  url_pdf?: string | null;
-  pago_online?: boolean;
+  estado: string | null;
+  url_pdf: string | null;
+}
+
+export interface FacturaDatosResponse {
+  total_deuda: number;
+  pago_online: boolean;
+  documentos: FacturaDocumento[];
 }
 
 export interface DocumentoPago {

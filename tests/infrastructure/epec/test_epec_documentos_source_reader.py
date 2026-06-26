@@ -160,3 +160,50 @@ async def test_tolera_documento_con_campos_faltantes(falta: str) -> None:
 
     r = await reader.get_factura("SRV-2817670")
     assert r is not None  # no explota; el campo faltante queda en None
+
+
+# ---------------------------------------------------------------------------
+# get_cuenta_factura: lista completa + deuda total
+# ---------------------------------------------------------------------------
+
+_DOC_2 = {
+    "id": "F999",
+    "periodo": "06/2026",
+    "importe": "              1,000.10",
+    "vencimiento": "08/02/2023",
+    "estado": "vencida",
+    "urlDocumento": "/api/reportes/xyz",
+}
+
+
+async def test_cuenta_devuelve_todos_los_documentos_y_total() -> None:
+    ids = FacturaIdentificadores(cliente_id="1109294", contrato_id="0281767003")
+    cache = FakeFacturaIdentificadoresCache({"SRV-2817670": ids})
+    oracle = FakeFacturaIdentificadoresReader({})
+    payload = {"pagoOnlineHabilitado": "S", "documentosAPagar": [_DOC, _DOC_2]}
+    reader = _reader_con(cache=cache, oracle=oracle, payload=payload)
+
+    cuenta = await reader.get_cuenta_factura("SRV-2817670")
+
+    assert cuenta is not None
+    assert len(cuenta.documentos) == 2
+    assert cuenta.total_deuda == round(133372.90 + 1000.10, 2)
+    assert cuenta.pago_online is True
+    assert cuenta.documentos[0].url_pdf == "https://www.epec.com.ar/api/reportes/abc123"
+
+
+async def test_cuenta_devuelve_none_si_no_hay_documentos() -> None:
+    ids = FacturaIdentificadores(cliente_id="1109294", contrato_id="0281767003")
+    cache = FakeFacturaIdentificadoresCache({"SRV-2817670": ids})
+    oracle = FakeFacturaIdentificadoresReader({})
+    reader = _reader_con(cache=cache, oracle=oracle, payload={"documentosAPagar": []})
+
+    assert await reader.get_cuenta_factura("SRV-2817670") is None
+
+
+async def test_cuenta_devuelve_none_si_suministro_sin_identificadores() -> None:
+    cache = FakeFacturaIdentificadoresCache()
+    oracle = FakeFacturaIdentificadoresReader({})
+    reader = _reader_con(cache=cache, oracle=oracle, payload={"documentosAPagar": [_DOC]})
+
+    assert await reader.get_cuenta_factura("SRV-9999999") is None

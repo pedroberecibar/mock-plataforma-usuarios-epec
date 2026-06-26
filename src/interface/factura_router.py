@@ -21,12 +21,17 @@ def build_router(epec_base_url: str | None) -> APIRouter:
     class LinkResponse(BaseModel):
         url: str
 
-    class FacturaDatosResponse(BaseModel):
-        fecha_vencimiento: date | None
-        importe: float | None = None
+    class FacturaDocumentoResponse(BaseModel):
         periodo: str | None = None
+        importe: float | None = None
+        fecha_vencimiento: date | None = None
+        estado: str | None = None
         url_pdf: str | None = None
+
+    class FacturaDatosResponse(BaseModel):
+        total_deuda: float = 0.0
         pago_online: bool = False
+        documentos: list[FacturaDocumentoResponse] = []
 
     class DocumentoPagoResponse(BaseModel):
         periodo: str
@@ -39,15 +44,22 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         suministro_id: str = Depends(get_suministro_actual),
         factura_reader: FacturaSourceReader = Depends(get_factura_reader),
     ) -> FacturaDatosResponse:
-        factura = await factura_reader.get_factura(suministro_id)
-        if factura is None:
-            return FacturaDatosResponse(fecha_vencimiento=None)
+        cuenta = await factura_reader.get_cuenta_factura(suministro_id)
+        if cuenta is None:
+            return FacturaDatosResponse()
         return FacturaDatosResponse(
-            fecha_vencimiento=factura.fecha_vencimiento,
-            importe=factura.importe,
-            periodo=factura.periodo,
-            url_pdf=factura.url_pdf,
-            pago_online=factura.pago_online,
+            total_deuda=cuenta.total_deuda,
+            pago_online=cuenta.pago_online,
+            documentos=[
+                FacturaDocumentoResponse(
+                    periodo=d.periodo,
+                    importe=d.importe,
+                    fecha_vencimiento=d.fecha_vencimiento,
+                    estado=d.estado,
+                    url_pdf=d.url_pdf,
+                )
+                for d in cuenta.documentos
+            ],
         )
 
     @router.get("/link", response_model=LinkResponse)

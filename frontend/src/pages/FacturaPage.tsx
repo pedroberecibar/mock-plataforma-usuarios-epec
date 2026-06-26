@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { evaluarVencimiento, fetchFacturaDatos } from "../api/factura";
-import type { FacturaDatosResponse } from "../api/types";
+import type { FacturaDatosResponse, FacturaDocumento } from "../api/types";
 import {
   bg, border, brand, color, fg,
   font, fontSize, fontWeight, radius, shadow, space,
@@ -69,6 +69,14 @@ function textoDiasRestantes(dias: number): string {
   return `Faltan ${dias} días`;
 }
 
+function formatImporte(importe: number): string {
+  return importe.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 2,
+  });
+}
+
 export function FacturaPage({ token }: Props) {
   const [expandido, setExpandido] = useState<number | null>(null);
   const [facturaDatos, setFacturaDatos] = useState<FacturaDatosResponse | null>(null);
@@ -81,9 +89,21 @@ export function FacturaPage({ token }: Props) {
     evaluarVencimiento(token).catch(() => { /* fire-and-forget */ });
   }, [token]);
 
-  const fechaVcto = facturaDatos?.fecha_vencimiento ?? null;
-  const diasVcto = fechaVcto ? diasHastaVencimiento(fechaVcto) : null;
-  const urgente = diasVcto !== null && diasVcto <= 5;
+  const documentos = facturaDatos?.documentos ?? [];
+  const totalDeuda = facturaDatos?.total_deuda ?? 0;
+  const hayDeuda = documentos.length > 0;
+
+  // Vencimiento más próximo (el más urgente) para el banner de aviso.
+  const diasList = documentos
+    .map((d) => (d.fecha_vencimiento ? diasHastaVencimiento(d.fecha_vencimiento) : null))
+    .filter((d): d is number => d !== null);
+  const minDias = diasList.length ? Math.min(...diasList) : null;
+  const proximaFecha = documentos
+    .filter((d) => d.fecha_vencimiento)
+    .sort((a, b) =>
+      diasHastaVencimiento(a.fecha_vencimiento!) - diasHastaVencimiento(b.fecha_vencimiento!))[0]
+    ?.fecha_vencimiento ?? null;
+  const urgente = minDias !== null && minDias <= 5;
 
   return (
     <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
@@ -92,33 +112,44 @@ export function FacturaPage({ token }: Props) {
       <main aria-label="factura del cliente">
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${space[10]}px` }}>
 
-          {/* Banner de urgencia — solo cuando faltan <= 5 días */}
-          {urgente && fechaVcto && (
+          {/* Banner de urgencia — el vencimiento más próximo está a <= 5 días */}
+          {urgente && proximaFecha && minDias !== null && (
             <div style={{ marginBottom: space[4] }}>
               <AlertBanner variant="warning" data-testid="banner-vencimiento">
-                ⚠️ Tu factura vence el{" "}
-                <strong>{formatFechaVcto(fechaVcto)}</strong>
-                {diasVcto === 0
-                  ? " — ¡hoy!"
-                  : diasVcto === 1
-                    ? " — ¡mañana!"
-                    : ` (en ${diasVcto} días)`}
-                . Recordá abonarla para evitar inconvenientes.
+                ⚠️{" "}
+                {minDias < 0 ? (
+                  <>Tenés una factura <strong>vencida</strong> ({formatFechaVcto(proximaFecha)}).</>
+                ) : (
+                  <>
+                    Tu próxima factura vence el <strong>{formatFechaVcto(proximaFecha)}</strong>
+                    {minDias === 0 ? " — ¡hoy!" : minDias === 1 ? " — ¡mañana!" : ` (en ${minDias} días)`}.
+                  </>
+                )}{" "}
+                Recordá abonarla para evitar inconvenientes.
               </AlertBanner>
             </div>
           )}
 
-          {/* Row 1 — Tu factura: importe, vencimiento y pago (hero a todo el ancho) */}
-          <VencimientoHero
-            fechaVcto={fechaVcto}
-            diasVcto={diasVcto}
-            urgente={urgente}
-            importe={facturaDatos?.importe ?? null}
-            periodo={facturaDatos?.periodo ?? null}
-            urlPdf={facturaDatos?.url_pdf ?? null}
+          {/* Row 1 — Deuda total + acción de pago */}
+          <DeudaHero
+            total={totalDeuda}
+            hayDeuda={hayDeuda}
+            cantidad={documentos.length}
           />
 
-          {/* Row 2 — Conceptos de tu factura */}
+          {/* Row 2 — Listado de facturas */}
+          {hayDeuda && (
+            <section aria-label="Facturas a pagar" style={{ marginBottom: space[4] }}>
+              <Label>{documentos.length === 1 ? "Tu factura" : "Tus facturas"}</Label>
+              <div style={{ display: "flex", flexDirection: "column", gap: space[3], marginTop: space[3] }}>
+                {documentos.map((d, i) => (
+                  <FacturaItemCard key={d.periodo ?? i} doc={d} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Row 3 — Conceptos de tu factura */}
           <ConceptosCard expandido={expandido} onToggle={setExpandido} />
         </div>
       </main>
@@ -127,30 +158,12 @@ export function FacturaPage({ token }: Props) {
 }
 
 // ---------------------------------------------------------------------------
-// Row 1 — Próximo vencimiento
+// Row 1 — Deuda total + botón de pago
 // ---------------------------------------------------------------------------
-function formatImporte(importe: number): string {
-  return importe.toLocaleString("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-  });
-}
-
-function VencimientoHero({
-  fechaVcto, diasVcto, urgente, importe, periodo, urlPdf,
-}: {
-  fechaVcto: string | null;
-  diasVcto: number | null;
-  urgente: boolean;
-  importe: number | null;
-  periodo: string | null;
-  urlPdf: string | null;
-}) {
-  const hayFactura = fechaVcto !== null && diasVcto !== null;
+function DeudaHero({ total, hayDeuda, cantidad }: { total: number; hayDeuda: boolean; cantidad: number }) {
   return (
     <section
-      aria-label="Tu factura"
+      aria-label="Deuda total"
       style={{
         display:        "flex",
         flexWrap:       "wrap",
@@ -165,42 +178,24 @@ function VencimientoHero({
         fontFamily:     font.sans,
       }}
     >
-      {/* Datos de la factura */}
       <div style={{ minWidth: 240 }}>
-        <Label>{periodo ? `Tu factura · ${periodo}` : "Tu factura"}</Label>
-
-        {hayFactura ? (
+        <Label>Deuda total</Label>
+        {hayDeuda ? (
           <>
-            {importe !== null ? (
-              <p style={{
-                margin:        `${space[2]}px 0 0`,
-                fontFamily:    font.technical,
-                fontSize:      fontSize["3xl"],
-                fontWeight:    fontWeight.light,
-                color:         fg.primary,
-                lineHeight:    1.1,
-                letterSpacing: "-0.02em",
-              }}>
-                {formatImporte(importe)}
-              </p>
-            ) : null}
-
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: space[3], marginTop: space[3] }}>
-              <span data-testid="fecha-vencimiento" style={{ fontSize: fontSize.sm, color: fg.secondary }}>
-                Vence el <strong style={{ color: fg.primary }}>{formatFechaVcto(fechaVcto)}</strong>
-              </span>
-              <span style={{
-                display:      "inline-block",
-                padding:      `${space[1]}px ${space[3]}px`,
-                borderRadius: radius.full,
-                fontSize:     fontSize.sm,
-                fontWeight:   fontWeight.semibold,
-                background:   urgente ? color.warningLight : bg.selected,
-                color:        urgente ? color.warningDark : fg.secondary,
-              }}>
-                {textoDiasRestantes(diasVcto)}
-              </span>
-            </div>
+            <p style={{
+              margin:        `${space[2]}px 0 0`,
+              fontFamily:    font.technical,
+              fontSize:      fontSize["3xl"],
+              fontWeight:    fontWeight.light,
+              color:         fg.primary,
+              lineHeight:    1.1,
+              letterSpacing: "-0.02em",
+            }}>
+              {formatImporte(total)}
+            </p>
+            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary }}>
+              {cantidad === 1 ? "1 factura pendiente" : `${cantidad} facturas pendientes`}
+            </p>
           </>
         ) : (
           <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
@@ -209,24 +204,7 @@ function VencimientoHero({
         )}
       </div>
 
-      {/* Acciones */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: space[3], alignItems: "center" }}>
-        {urlPdf && (
-          <a
-            href={urlPdf}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontSize:       fontSize.sm,
-              fontWeight:     fontWeight.semibold,
-              color:          fg.link,
-              textDecoration: "none",
-              padding:        `${space[3]}px ${space[4]}px`,
-            }}
-          >
-            Ver factura (PDF)
-          </a>
-        )}
+      {hayDeuda && (
         <a
           data-testid="enlace-epec"
           href={EPEC_PAGOS_URL}
@@ -249,8 +227,93 @@ function VencimientoHero({
         >
           Pagar mi factura
         </a>
-      </div>
+      )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Card compacta por factura
+// ---------------------------------------------------------------------------
+function estadoChip(estado: string | null, dias: number | null): { bg: string; color: string } {
+  if (estado?.toLowerCase() === "vencida" || (dias !== null && dias < 0)) {
+    return { bg: color.errorLight, color: color.errorDark };
+  }
+  if (dias !== null && dias <= 5) {
+    return { bg: color.warningLight, color: color.warningDark };
+  }
+  return { bg: color.green100, color: color.successDark };
+}
+
+function FacturaItemCard({ doc }: { doc: FacturaDocumento }) {
+  const dias = doc.fecha_vencimiento ? diasHastaVencimiento(doc.fecha_vencimiento) : null;
+  const chip = estadoChip(doc.estado, dias);
+  return (
+    <div style={{
+      display:        "flex",
+      flexWrap:       "wrap",
+      gap:            space[4],
+      alignItems:     "center",
+      justifyContent: "space-between",
+      background:     bg.surface,
+      borderRadius:   `${radius.md}px`,
+      boxShadow:      shadow.xs,
+      padding:        `${space[4]}px ${space[5]}px`,
+    }}>
+      {/* Período + vencimiento */}
+      <div style={{ minWidth: 180 }}>
+        <p style={{ margin: 0, fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: fg.primary }}>
+          {doc.periodo ? `Período ${doc.periodo}` : "Factura"}
+        </p>
+        {doc.fecha_vencimiento && (
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: space[2], marginTop: space[1] }}>
+            <span style={{ fontSize: fontSize.xs, color: fg.muted }}>
+              Vence el {formatFechaVcto(doc.fecha_vencimiento)}
+            </span>
+            <span style={{
+              padding:      `2px ${space[2]}px`,
+              borderRadius: radius.full,
+              fontSize:     fontSize.xs,
+              fontWeight:   fontWeight.semibold,
+              background:   chip.bg,
+              color:        chip.color,
+            }}>
+              {dias !== null ? textoDiasRestantes(dias) : doc.estado}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Importe + PDF */}
+      <div style={{ display: "flex", alignItems: "center", gap: space[5] }}>
+        {doc.importe !== null && (
+          <span style={{
+            fontFamily: font.technical,
+            fontSize:   fontSize.lg,
+            fontWeight: fontWeight.bold,
+            color:      fg.primary,
+          }}>
+            {formatImporte(doc.importe)}
+          </span>
+        )}
+        {doc.url_pdf && (
+          <a
+            href={doc.url_pdf}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontSize:       fontSize.sm,
+              fontWeight:     fontWeight.semibold,
+              color:          fg.link,
+              textDecoration: "none",
+              whiteSpace:     "nowrap",
+            }}
+          >
+            Ver PDF
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
 
