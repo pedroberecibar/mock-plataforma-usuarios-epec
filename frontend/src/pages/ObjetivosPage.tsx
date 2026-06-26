@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
-import { bg, border, color, fg, font, fontSize, fontWeight, radius, space } from "../design-tokens";
+import type { CSSProperties, ReactNode } from "react";
+import { bg, border, color, fg, font, fontSize, fontWeight, radius, shadow, space } from "../design-tokens";
 import {
   evaluarObjetivo,
   fetchObjetivoEstado,
@@ -26,12 +26,34 @@ function mesActualYYYYMM(): string {
   return `${now.getFullYear()}-${m}`;
 }
 
+function mesActualLabel(): string {
+  return new Date().toLocaleDateString("es-AR", { month: "long" });
+}
+
 function diasDelMesActual(): number {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 }
 
 const WARN_THRESHOLD = 0.8;
+
+// ---------------------------------------------------------------------------
+// Semantica consolidada — un solo eje de color (verde / ambar / rojo) basado
+// en tokens del Design System. Sin gradientes ni rgba sueltos.
+// ---------------------------------------------------------------------------
+type Semantica = "bien" | "aviso" | "superado";
+
+const SEMANTICA: Record<Semantica, { fill: string; text: string; chipBg: string }> = {
+  bien:     { fill: color.green500,   text: color.successDark, chipBg: color.green100 },
+  aviso:    { fill: color.warning,    text: color.warningDark, chipBg: color.warningLight },
+  superado: { fill: color.error,      text: color.errorDark,   chipBg: color.errorLight },
+};
+
+function clasificar(pct: number | null, superado: boolean, sobreRitmo: boolean): Semantica {
+  if (superado) return "superado";
+  if ((pct !== null && pct >= WARN_THRESHOLD) || sobreRitmo) return "aviso";
+  return "bien";
+}
 
 export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPageProps) {
   const [objetivo, setObjetivoState] = useState<ObjetivoResponse | null>(null);
@@ -101,275 +123,293 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
 
   const superado = estadoObj?.texto_dinamico === "agotado";
   const enAviso = pct !== null && pct >= WARN_THRESHOLD && !superado;
+  const sobreRitmo = estadoObj?.texto_dinamico === "sobre_ritmo";
+  const sem = SEMANTICA[clasificar(pct, superado, sobreRitmo)];
 
-  const progressGradient = superado
-    ? "linear-gradient(90deg, #b02020 0%, #e05050 100%)"
-    : enAviso
-      ? "linear-gradient(90deg, #d4850a 0%, #f0a930 100%)"
-      : "linear-gradient(90deg, #124e2f 0%, #227d50 100%)";
+  const tieneDatosMes = !!(estadoObj && estadoObj.texto_dinamico !== "sin_objetivo");
 
   return (
     <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
       <PageHeader title="Objetivo de consumo" />
 
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: `${space[10]}px` }}>
-        <p style={{ fontSize: fontSize.sm, color: fg.secondary, fontFamily: font.sans, margin: `0 0 ${space[8]}px` }}>
-          Establecé tu meta mensual en kWh para recibir alertas cuando te acercás al límite.
-        </p>
+      <main aria-label="objetivo de consumo del cliente">
+        <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${space[10]}px` }}>
 
-        {estado === "cargando" && <LoadingSkeleton variant="card" />}
+          {estado === "cargando" && (
+            <>
+              <LoadingSkeleton variant="card" />
+              <div style={{ height: space[6] }} />
+              <LoadingSkeleton variant="card" />
+            </>
+          )}
 
-        {estado === "error" && (
-          <div style={{
-            display:      "flex",
-            alignItems:   "center",
-            gap:          space[3],
-            padding:      `${space[3]}px ${space[4]}px`,
-            background:   color.errorLight,
-            border:       `1px solid ${color.error}`,
-            borderRadius: radius.sm,
-          }}>
-            <p style={{ color: color.errorDark, fontSize: fontSize.sm, margin: 0, flex: 1 }}>
-              Error al cargar el objetivo.
-            </p>
-            <button
-              onClick={() => { setEstadoObj(null); setObjetivoState(null); setRetryCount((n) => n + 1); }}
-              style={{
-                padding:      `${space[1]}px ${space[3]}px`,
-                background:   color.errorDark,
-                color:        fg.onDark,
-                border:       "none",
-                borderRadius: radius.sm,
-                fontSize:     fontSize.xs,
-                fontWeight:   fontWeight.medium,
-                cursor:       "pointer",
-                whiteSpace:   "nowrap",
-              }}
-            >
-              Reintentar
-            </button>
-          </div>
-        )}
-
-        {(estado === "con_objetivo" || estado === "sin_objetivo") && (
-          <Card>
-            {objetivo && (
-              <div style={{ marginBottom: space[6] }}>
-                <Label>Objetivo vigente</Label>
-                <p style={{ fontFamily: font.technical, fontSize: "2.5rem", fontWeight: fontWeight.light, color: color.green700, margin: `${space[1]}px 0 0` }}>
-                  {objetivo.valor_kwh} <span style={{ fontFamily: font.sans, fontSize: fontSize.base, color: fg.muted }}>kWh / mes</span>
-                </p>
-                <p style={{ fontSize: fontSize.xs, color: color.neutral500, marginTop: space[1] }}>
-                  Configurado el {new Date(objetivo.vigente_desde).toLocaleDateString("es-AR")}
-                </p>
-              </div>
-            )}
-
-            {pct !== null && estadoObj?.objetivo_kwh && consumoActual !== null && objetivo && (
-              <div style={{ marginBottom: space[6] }}>
-                <Label>Consumo acumulado este mes</Label>
-
-                {(superado || enAviso) && (
-                  <p
-                    role="alert"
-                    style={{
-                      marginTop:    space[2],
-                      marginBottom: space[2],
-                      padding:      `${space[2]}px ${space[3]}px`,
-                      borderRadius: radius.sm,
-                      fontSize:     fontSize.sm,
-                      fontWeight:   fontWeight.medium,
-                      background:   superado ? "rgba(192,57,43,0.08)" : "rgba(230,145,10,0.10)",
-                      color:        superado ? color.errorDark          : color.warningDark,
-                    }}
-                  >
-                    {superado
-                      ? "Objetivo superado — revisá tu consumo."
-                      : `Atención: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
-                  </p>
-                )}
-
-                <div
-                  role="progressbar"
-                  aria-valuenow={Math.round(pct * 100)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Progreso consumo vs objetivo"
-                  style={{
-                    marginTop:    space[2],
-                    height:       10,
-                    background:   bg.selected,
-                    borderRadius: radius.full,
-                    overflow:     "hidden",
-                  }}
-                >
-                  <div style={{
-                    height:       "100%",
-                    width:        `${Math.round(pct * 100)}%`,
-                    background:   progressGradient,
-                    borderRadius: radius.full,
-                    transition:   "width 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  }} />
-                </div>
-
-                <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
-                  {Math.round(consumoActual)} de {estadoObj.objetivo_kwh} kWh ({Math.round(pct * 100)}%)
-                </p>
-              </div>
-            )}
-
-            {estadoObj && estadoObj.texto_dinamico !== "sin_objetivo" && (
-              <IndicadorDias estado={estadoObj} />
-            )}
-
-            {estadoObj && estadoObj.consumo_diario_real_kwh != null && estadoObj.consumo_diario_objetivo_kwh != null && (
-              <div style={{ marginBottom: space[6] }}>
-                <Label>Consumo diario real vs objetivo</Label>
-                <div style={{ display: "flex", alignItems: "center", gap: space[3], marginTop: space[2] }}>
-                  <Chip
-                    label={`${estadoObj.consumo_diario_real_kwh.toFixed(1)} kWh`}
-                    sublabel="Último día"
-                    accent={estadoObj.consumo_diario_real_kwh <= estadoObj.consumo_diario_objetivo_kwh ? color.green700 : color.errorDark}
-                  />
-                  <span style={{ color: color.neutral400, fontSize: fontSize.sm }}>vs</span>
-                  <Chip
-                    label={`${estadoObj.consumo_diario_objetivo_kwh.toFixed(1)} kWh`}
-                    sublabel="Objetivo diario"
-                    accent={color.neutral600}
-                  />
-                </div>
-              </div>
-            )}
-
-            {estadoObj && estadoObj.consumo_acumulado_kwh != null && objetivo && (
-              <IndicadoresAdicionales estadoObj={estadoObj} objetivo={objetivo} />
-            )}
-
-            {estadoObj && estadoObj.promedio_vecinos_kwh != null && estadoObj.diferencia_pct != null && (
-              <div style={{ marginBottom: space[6] }}>
-                <Label>Tu objetivo vs tu zona</Label>
-                <div style={{ marginTop: space[2] }}>
-                  <span
-                    style={{
-                      display:      "inline-block",
-                      padding:      `${space[1]}px ${space[3]}px`,
-                      borderRadius: radius.full,
-                      fontSize:     fontSize.sm,
-                      fontWeight:   fontWeight.semibold,
-                      background:   estadoObj.diferencia_pct > 0 ? "rgba(192,57,43,0.08)" : "rgba(18,78,47,0.10)",
-                      color:        estadoObj.diferencia_pct > 0 ? color.errorDark : color.green700,
-                    }}
-                  >
-                    {estadoObj.diferencia_pct > 0 ? "+" : ""}
-                    {estadoObj.diferencia_pct.toFixed(1)}% vs zona ({estadoObj.n_vecinos} vecinos)
-                  </span>
-                  <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
-                    Promedio zonal: {Math.round(estadoObj.promedio_vecinos_kwh)} kWh/mes
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {estadoObj && estadoObj.promedio_vecinos_kwh == null && estadoObj.texto_dinamico !== "sin_objetivo" && (
-              <p style={{ fontSize: fontSize.xs, color: fg.muted, marginBottom: space[4] }}>
-                Sin datos suficientes de tu zona
+          {estado === "error" && (
+            <div style={{
+              display:      "flex",
+              alignItems:   "center",
+              gap:          space[3],
+              padding:      `${space[3]}px ${space[4]}px`,
+              background:   color.errorLight,
+              borderRadius: radius.md,
+            }}>
+              <p style={{ color: color.errorDark, fontSize: fontSize.sm, margin: 0, flex: 1 }}>
+                Error al cargar el objetivo.
               </p>
-            )}
-
-            <Label>{objetivo ? "Modificar objetivo" : "Configurar objetivo"}</Label>
-            <div style={{ display: "flex", gap: space[3], marginTop: space[2], alignItems: "flex-start" }}>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={inputKwh}
-                  onChange={(e) => setInputKwh(e.target.value)}
-                  placeholder="ej. 150"
-                  aria-label="Objetivo en kWh"
-                  style={{
-                    width:        "100%",
-                    padding:      `${space[3]}px ${space[4]}px`,
-                    border:       `1px solid ${errorMsg ? color.errorDark : border.default}`,
-                    borderRadius: radius.md,
-                    fontSize:     fontSize.base,
-                    fontFamily:   font.technical,
-                    outline:      "none",
-                    boxSizing:    "border-box",
-                    background:   bg.surface,
-                    color:        fg.primary,
-                  }}
-                />
-                {errorMsg && (
-                  <p style={{ color: color.errorDark, fontSize: fontSize.xs, margin: `${space[1]}px 0 0` }}>
-                    {errorMsg}
-                  </p>
-                )}
-              </div>
-              <span style={{ color: fg.muted, fontFamily: font.sans, fontSize: fontSize.sm, paddingTop: space[3] }}>kWh</span>
               <button
-                onClick={handleGuardar}
+                onClick={() => { setEstadoObj(null); setObjetivoState(null); setRetryCount((n) => n + 1); }}
                 style={{
-                  padding:      `${space[3]}px ${space[5]}px`,
-                  background:   color.green700,
+                  padding:      `${space[2]}px ${space[4]}px`,
+                  background:   color.errorDark,
                   color:        fg.onDark,
                   border:       "none",
-                  borderRadius: radius.md,
-                  fontSize:     fontSize.sm,
-                  fontWeight:   fontWeight.semibold,
+                  borderRadius: radius.sm,
+                  fontSize:     fontSize.xs,
+                  fontWeight:   fontWeight.medium,
                   cursor:       "pointer",
                   whiteSpace:   "nowrap",
                 }}
               >
-                Guardar
+                Reintentar
               </button>
             </div>
-          </Card>
-        )}
+          )}
 
-        {estado === "guardando" && (
-          <p style={{ color: color.neutral500, fontSize: fontSize.sm }}>Guardando…</p>
-        )}
+          {(estado === "con_objetivo" || estado === "sin_objetivo" || estado === "guardando") && (
+            <>
+              {/* Row 1 — Hero: objetivo vigente a todo el ancho */}
+              <HeroObjetivo objetivo={objetivo} />
+
+              {/* Row 2 — Grilla de dos cards: zona | ritmo */}
+              {tieneDatosMes && (
+                <div style={{
+                  display:             "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                  gap:                 space[4],
+                  marginBottom:        space[4],
+                }}>
+                  <ZonaCard estadoObj={estadoObj!} />
+                  <RitmoCard estadoObj={estadoObj!} sem={sem} />
+                </div>
+              )}
+
+              {/* Row 3 — Progreso del mes en kWh a todo el ancho */}
+              {pct !== null && estadoObj?.objetivo_kwh && consumoActual !== null && objetivo && (
+                <ProgresoMesCard
+                  pct={pct}
+                  consumoActual={consumoActual}
+                  objetivoKwh={estadoObj.objetivo_kwh}
+                  sem={sem}
+                  superado={superado}
+                  enAviso={enAviso}
+                />
+              )}
+
+              {/* Row 4 — Resumen del mes (KPIs) */}
+              {estadoObj && estadoObj.consumo_acumulado_kwh != null && objetivo && (
+                <ResumenMesCard estadoObj={estadoObj} objetivo={objetivo} />
+              )}
+
+              {/* Row 5 — Card de edición / configuración */}
+              <EditorObjetivo
+                objetivo={objetivo}
+                inputKwh={inputKwh}
+                errorMsg={errorMsg}
+                guardando={estado === "guardando"}
+                onChange={setInputKwh}
+                onGuardar={handleGuardar}
+              />
+            </>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Row 1 — Hero objetivo vigente
+// ---------------------------------------------------------------------------
+function HeroObjetivo({ objetivo }: { objetivo: ObjetivoResponse | null }) {
+  return (
+    <section
+      aria-label="Objetivo vigente"
+      style={{
+        background:   bg.surfaceFeat,
+        borderRadius: `${radius.lg}px`,
+        boxShadow:    shadow.sm,
+        padding:      `${space[6]}px`,
+        marginBottom: space[4],
+        fontFamily:   font.sans,
+      }}
+    >
+      <Label>{`Tu objetivo de ${mesActualLabel()}`}</Label>
+      {objetivo ? (
+        <>
+          <p style={{
+            margin:        `${space[2]}px 0 0`,
+            fontFamily:    font.technical,
+            fontSize:      fontSize["3xl"],
+            fontWeight:    fontWeight.light,
+            color:         fg.link,
+            lineHeight:    1.1,
+            letterSpacing: "-0.02em",
+          }}>
+            {objetivo.valor_kwh}
+            <span style={{ fontFamily: font.sans, fontSize: fontSize.lg, fontWeight: fontWeight.regular, color: fg.secondary, marginLeft: space[2] }}>
+              kWh / mes
+            </span>
+          </p>
+          <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
+            Configurado el {new Date(objetivo.vigente_desde).toLocaleDateString("es-AR")}
+          </p>
+        </>
+      ) : (
+        <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
+          Sin objetivo definido — configurá una meta mensual abajo.
+        </p>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Row 2a — Tu objetivo vs. tu zona
+// ---------------------------------------------------------------------------
+function ZonaCard({ estadoObj }: { estadoObj: ObjetivoEstadoResponse }) {
+  const tieneZona = estadoObj.promedio_vecinos_kwh != null && estadoObj.diferencia_pct != null;
+  const objetivoKwh = estadoObj.objetivo_kwh ?? 0;
+  const zonaKwh = estadoObj.promedio_vecinos_kwh ?? 0;
+  const escala = Math.max(objetivoKwh, zonaKwh, 1);
+  const porEncima = (estadoObj.diferencia_pct ?? 0) > 0;
+
+  return (
+    <Card>
+      <Label>Tu objetivo vs. tu zona</Label>
+      {tieneZona ? (
+        <div style={{ marginTop: space[4] }}>
+          <Barra
+            etiqueta="Tu objetivo"
+            valor={`${objetivoKwh} kWh`}
+            valorColor={fg.link}
+            fill={color.green500}
+            pct={objetivoKwh / escala}
+          />
+          <div style={{ height: space[3] }} />
+          <Barra
+            etiqueta="Promedio zona"
+            valor={`${Math.round(zonaKwh)} kWh`}
+            valorColor={fg.primary}
+            fill={color.neutral300}
+            pct={zonaKwh / escala}
+          />
+          <div style={{
+            marginTop:  space[4],
+            paddingTop: space[3],
+            borderTop:  `1px solid ${border.default}`,
+          }}>
+            <span style={{
+              display:      "inline-block",
+              padding:      `${space[1]}px ${space[3]}px`,
+              borderRadius: radius.full,
+              fontSize:     fontSize.sm,
+              fontWeight:   fontWeight.semibold,
+              background:   porEncima ? color.errorLight : color.green100,
+              color:        porEncima ? color.errorDark : color.successDark,
+            }}>
+              {porEncima ? "+" : ""}{estadoObj.diferencia_pct!.toFixed(1)}% vs zona
+            </span>
+            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary, lineHeight: 1.5 }}>
+              Tu objetivo es {Math.abs(estadoObj.diferencia_pct!).toFixed(1)}% {porEncima ? "mayor" : "menor"} que el
+              promedio de tus vecinos ({estadoObj.n_vecinos} vecinos).
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p style={{ marginTop: space[4], fontSize: fontSize.sm, color: fg.muted }}>
+          Sin datos suficientes de tu zona
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function Barra({
+  etiqueta, valor, valorColor, fill, pct,
+}: { etiqueta: string; valor: string; valorColor: string; fill: string; pct: number }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: space[2] }}>
+        <span style={{
+          fontSize:      fontSize.xs,
+          fontWeight:    fontWeight.semibold,
+          color:         fg.secondary,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+        }}>
+          {etiqueta}
+        </span>
+        <span style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: valorColor, fontFamily: font.technical }}>
+          {valor}
+        </span>
+      </div>
+      <div style={{ width: "100%", height: 10, background: bg.selected, borderRadius: radius.full, overflow: "hidden" }}>
+        <div style={{
+          height:       "100%",
+          width:        `${Math.round(Math.min(pct, 1) * 100)}%`,
+          background:   fill,
+          borderRadius: radius.full,
+          transition:   "width 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }} />
       </div>
     </div>
   );
 }
 
-function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
-  const { texto_dinamico, dias_objetivo_consumidos, dias_transcurridos, excedente_kwh } = estado;
+// ---------------------------------------------------------------------------
+// Row 2b — Ritmo de consumo (días) + mensaje dinámico
+// ---------------------------------------------------------------------------
+function RitmoCard({ estadoObj, sem }: { estadoObj: ObjetivoEstadoResponse; sem: { fill: string; text: string; chipBg: string } }) {
+  const { texto_dinamico, dias_objetivo_consumidos, dias_transcurridos, excedente_kwh } = estadoObj;
 
   const mensajes: Record<string, string> = {
-    bajo_ritmo: "Vas bien, estás por debajo de tu ritmo objetivo.",
-    en_ritmo: "Vas en línea con tu objetivo.",
+    bajo_ritmo:  "Vas bien, estás por debajo de tu ritmo objetivo.",
+    en_ritmo:    "Vas en línea con tu objetivo.",
     sobre_ritmo: "Atención, estás consumiendo más rápido que tu objetivo.",
-    agotado: "Ya alcanzaste tu objetivo de consumo de este mes.",
+    agotado:     "Ya alcanzaste tu objetivo de consumo de este mes.",
   };
 
-  const colores: Record<string, { bg: string; text: string }> = {
-    bajo_ritmo:  { bg: "rgba(18,78,47,0.10)",   text: color.green700 },
-    en_ritmo:    { bg: "rgba(18,78,47,0.10)",   text: color.green700 },
-    sobre_ritmo: { bg: "rgba(230,145,10,0.10)", text: color.warningDark },
-    agotado:     { bg: "rgba(192,57,43,0.08)",  text: color.errorDark },
-  };
-
-  const c = colores[texto_dinamico] ?? { bg: color.neutral100, text: color.neutral700 };
-  const barPct = dias_objetivo_consumidos != null
+  const barPct = dias_objetivo_consumidos != null && dias_transcurridos > 0
     ? Math.min(dias_objetivo_consumidos / dias_transcurridos, 1)
     : 0;
 
+  const palanca = texto_dinamico === "sobre_ritmo" || texto_dinamico === "agotado";
+
   return (
-    <div style={{ marginBottom: space[6] }}>
-      <Label>Días de consumo</Label>
+    <Card>
+      <Label>Ritmo de consumo</Label>
+
+      {dias_objetivo_consumidos != null && (
+        <div style={{ marginTop: space[4] }}>
+          <Barra
+            etiqueta="Días transcurridos"
+            valor={`${dias_objetivo_consumidos.toFixed(1)} / ${dias_transcurridos}`}
+            valorColor={sem.text}
+            fill={sem.fill}
+            pct={barPct}
+          />
+        </div>
+      )}
+
       <p
         data-testid="indicador-2-texto"
         style={{
-          marginTop:    space[2],
-          padding:      `${space[2]}px ${space[3]}px`,
-          borderRadius: radius.sm,
+          marginTop:    space[4],
+          padding:      `${space[3]}px ${space[4]}px`,
+          borderRadius: radius.md,
           fontSize:     fontSize.sm,
           fontWeight:   fontWeight.medium,
-          background:   c.bg,
-          color:        c.text,
+          background:   sem.chipBg,
+          color:        sem.text,
         }}
       >
         {mensajes[texto_dinamico]}
@@ -378,137 +418,161 @@ function IndicadorDias({ estado }: { estado: ObjetivoEstadoResponse }) {
         )}
       </p>
 
-      {dias_objetivo_consumidos != null && (
-        <>
-          <div
-            style={{
-              marginTop:    space[2],
-              height:       8,
-              background:   bg.selected,
-              borderRadius: radius.full,
-              overflow:     "hidden",
-            }}
-          >
-            <div style={{
-              height:       "100%",
-              width:        `${Math.round(barPct * 100)}%`,
-              background:   c.text,
-              borderRadius: radius.full,
-              transition:   "width 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-            }} />
-          </div>
-          <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[1] }}>
-            {dias_objetivo_consumidos.toFixed(1)} de {dias_transcurridos} días objetivo consumidos
-          </p>
-        </>
-      )}
-
-      {(texto_dinamico === "sobre_ritmo" || texto_dinamico === "agotado") && (
-        <p style={{ fontSize: fontSize.xs, color: color.neutral600, marginTop: space[2] }}>
-          💡 Palanca: revisá tus electrodomésticos de mayor consumo o postponé el uso de lavarropas/lavavajillas a horarios de menor demanda.
+      {palanca && (
+        <p style={{ fontSize: fontSize.xs, color: fg.secondary, marginTop: space[3], lineHeight: 1.5 }}>
+          Palanca: revisá tus electrodomésticos de mayor consumo o postponé el uso de
+          lavarropas/lavavajillas a horarios de menor demanda.
         </p>
       )}
-    </div>
+    </Card>
   );
 }
 
-function Chip({
-  label,
-  sublabel,
-  accent,
+// ---------------------------------------------------------------------------
+// Row 3 — Progreso del mes (kWh)
+// ---------------------------------------------------------------------------
+function ProgresoMesCard({
+  pct, consumoActual, objetivoKwh, sem, superado, enAviso,
 }: {
-  label: string;
-  sublabel: string;
-  accent: string;
+  pct: number;
+  consumoActual: number;
+  objetivoKwh: number;
+  sem: { fill: string; text: string; chipBg: string };
+  superado: boolean;
+  enAviso: boolean;
 }) {
   return (
-    <div style={{
-      display:       "flex",
-      flexDirection: "column",
-      alignItems:    "center",
-      padding:       `${space[2]}px ${space[4]}px`,
-      border:        `1px solid ${accent}`,
-      borderRadius:  radius.md,
-      minWidth:      80,
-    }}>
-      <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: accent }}>{label}</span>
-      <span style={{ fontSize: fontSize.xs, color: fg.muted }}>{sublabel}</span>
-    </div>
+    <Card style={{ marginBottom: space[4] }}>
+      <Label>Consumo acumulado este mes</Label>
+
+      {(superado || enAviso) && (
+        <p
+          role="alert"
+          style={{
+            margin:       `${space[3]}px 0`,
+            padding:      `${space[2]}px ${space[3]}px`,
+            borderRadius: radius.sm,
+            fontSize:     fontSize.sm,
+            fontWeight:   fontWeight.medium,
+            background:   sem.chipBg,
+            color:        sem.text,
+          }}
+        >
+          {superado
+            ? "Objetivo superado — revisá tu consumo."
+            : `Atención: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
+        </p>
+      )}
+
+      <div
+        role="progressbar"
+        aria-valuenow={Math.round(pct * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Progreso consumo vs objetivo"
+        style={{
+          marginTop:    space[3],
+          height:       12,
+          background:   bg.selected,
+          borderRadius: radius.full,
+          overflow:     "hidden",
+        }}
+      >
+        <div style={{
+          height:       "100%",
+          width:        `${Math.round(pct * 100)}%`,
+          background:   sem.fill,
+          borderRadius: radius.full,
+          transition:   "width 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }} />
+      </div>
+
+      <p style={{ fontSize: fontSize.xs, color: fg.muted, marginTop: space[2] }}>
+        {Math.round(consumoActual)} de {objetivoKwh} kWh ({Math.round(pct * 100)}%)
+      </p>
+    </Card>
   );
 }
 
-function IndicadoresAdicionales({
-  estadoObj,
-  objetivo,
-}: {
-  estadoObj: ObjetivoEstadoResponse;
-  objetivo: ObjetivoResponse;
-}) {
+// ---------------------------------------------------------------------------
+// Row 4 — Resumen del mes (KPIs)
+// ---------------------------------------------------------------------------
+function ResumenMesCard({
+  estadoObj, objetivo,
+}: { estadoObj: ObjetivoEstadoResponse; objetivo: ObjetivoResponse }) {
   const diasDelMes = diasDelMesActual();
   const diasRestantes = Math.max(0, diasDelMes - estadoObj.dias_transcurridos);
   const acumulado = estadoObj.consumo_acumulado_kwh ?? 0;
-  const kwh_restantes = Math.max(0, objetivo.valor_kwh - acumulado);
-  const kwh_por_dia = diasRestantes > 0 ? kwh_restantes / diasRestantes : null;
+  const kwhRestantes = Math.max(0, objetivo.valor_kwh - acumulado);
+  const kwhPorDia = diasRestantes > 0 ? kwhRestantes / diasRestantes : null;
 
   return (
-    <div style={{ marginBottom: space[6] }}>
+    <Card style={{ marginBottom: space[4] }}>
       <Label>Resumen del mes</Label>
-      <div
-        style={{
-          display:             "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-          gap:                 space[3],
-          marginTop:           space[3],
-        }}
-      >
+      <div style={{
+        display:             "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap:                 space[3],
+        marginTop:           space[4],
+      }}>
         {estadoObj.consumo_promedio_diario_kwh != null && (
-          <MiniKpi
+          <Kpi
             label="Promedio diario"
             value={`${estadoObj.consumo_promedio_diario_kwh.toFixed(1)} kWh`}
             sub="este mes"
           />
         )}
-        <MiniKpi
+        {estadoObj.consumo_diario_real_kwh != null && estadoObj.consumo_diario_objetivo_kwh != null && (
+          <Kpi
+            label="Último día vs objetivo"
+            value={`${estadoObj.consumo_diario_real_kwh.toFixed(1)} kWh`}
+            sub={`objetivo diario ${estadoObj.consumo_diario_objetivo_kwh.toFixed(1)} kWh`}
+            accent={estadoObj.consumo_diario_real_kwh <= estadoObj.consumo_diario_objetivo_kwh ? color.successDark : color.errorDark}
+          />
+        )}
+        <Kpi
           label="kWh restantes"
-          value={`${kwh_restantes.toFixed(0)} kWh`}
+          value={`${kwhRestantes.toFixed(0)} kWh`}
           sub="para cumplir el objetivo"
-          accent={kwh_restantes <= 0 ? color.errorDark : color.green700}
+          accent={kwhRestantes <= 0 ? color.errorDark : color.successDark}
         />
-        {kwh_por_dia !== null && kwh_restantes > 0 && (
-          <MiniKpi
+        {kwhPorDia !== null && kwhRestantes > 0 && (
+          <Kpi
             label="Podés usar por día"
-            value={`${kwh_por_dia.toFixed(1)} kWh`}
+            value={`${kwhPorDia.toFixed(1)} kWh`}
             sub={`${diasRestantes} días restantes`}
           />
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
-function MiniKpi({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  accent?: string;
-}) {
+function Kpi({ label, value, sub, accent }: { label: string; value: string; sub: string; accent?: string }) {
   return (
-    <div
-      style={{
-        background:   bg.page,
-        borderRadius: radius.md,
-        padding:      `${space[3]}px ${space[4]}px`,
-      }}
-    >
-      <p style={{ margin: 0, fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: fg.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+    <div style={{
+      background:   bg.surface,
+      borderRadius: `${radius.md}px`,
+      padding:      `${space[4]}px ${space[5]}px`,
+    }}>
+      <p style={{
+        margin:        0,
+        fontSize:      fontSize.xs,
+        fontWeight:    fontWeight.semibold,
+        color:         fg.secondary,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+      }}>
         {label}
       </p>
-      <p style={{ margin: `${space[1]}px 0 ${space[1]}px`, fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: accent ?? fg.primary, fontFamily: font.technical }}>
+      <p style={{
+        margin:     `${space[1]}px 0`,
+        fontSize:   fontSize.lg,
+        fontWeight: fontWeight.bold,
+        color:      accent ?? fg.primary,
+        fontFamily: font.technical,
+        lineHeight: 1.2,
+      }}>
         {value}
       </p>
       <p style={{ margin: 0, fontSize: fontSize.xs, color: fg.muted }}>{sub}</p>
@@ -516,15 +580,89 @@ function MiniKpi({
   );
 }
 
-function Card({ children }: { children: ReactNode }) {
+// ---------------------------------------------------------------------------
+// Row 5 — Editor del objetivo
+// ---------------------------------------------------------------------------
+function EditorObjetivo({
+  objetivo, inputKwh, errorMsg, guardando, onChange, onGuardar,
+}: {
+  objetivo: ObjetivoResponse | null;
+  inputKwh: string;
+  errorMsg: string | null;
+  guardando: boolean;
+  onChange: (v: string) => void;
+  onGuardar: () => void;
+}) {
+  return (
+    <Card>
+      <Label>{objetivo ? "Modificar objetivo" : "Configurar objetivo"}</Label>
+      <p style={{ fontSize: fontSize.sm, color: fg.secondary, margin: `${space[2]}px 0 ${space[4]}px` }}>
+        Establecé tu meta mensual en kWh para recibir alertas cuando te acercás al límite.
+      </p>
+      <div style={{ display: "flex", gap: space[3], alignItems: "flex-start", maxWidth: 420 }}>
+        <div style={{ flex: 1 }}>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={inputKwh}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="ej. 150"
+            aria-label="Objetivo en kWh"
+            style={{
+              width:        "100%",
+              padding:      `${space[3]}px ${space[4]}px`,
+              border:       `1px solid ${errorMsg ? color.errorDark : border.default}`,
+              borderRadius: radius.md,
+              fontSize:     fontSize.base,
+              fontFamily:   font.technical,
+              outline:      "none",
+              boxSizing:    "border-box",
+              background:   bg.surface,
+              color:        fg.primary,
+            }}
+          />
+          {errorMsg && (
+            <p style={{ color: color.errorDark, fontSize: fontSize.xs, margin: `${space[1]}px 0 0` }}>
+              {errorMsg}
+            </p>
+          )}
+        </div>
+        <span style={{ color: fg.muted, fontFamily: font.sans, fontSize: fontSize.sm, paddingTop: space[3] }}>kWh</span>
+        <button
+          onClick={onGuardar}
+          disabled={guardando}
+          style={{
+            padding:      `${space[3]}px ${space[6]}px`,
+            background:   color.green700,
+            color:        fg.onDark,
+            border:       "none",
+            borderRadius: radius.md,
+            fontSize:     fontSize.sm,
+            fontWeight:   fontWeight.semibold,
+            cursor:       guardando ? "wait" : "pointer",
+            whiteSpace:   "nowrap",
+          }}
+        >
+          {guardando ? "Guardando…" : "Guardar"}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Primitivos compartidos
+// ---------------------------------------------------------------------------
+function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
     <div style={{
-      background:   bg.surface,
+      background:   bg.surfaceFeat,
       borderRadius: `${radius.lg}px`,
-      border:       "none",
-      boxShadow:    "0 1px 4px rgba(100,80,60,0.08), 0 1px 2px rgba(100,80,60,0.05)",
-      padding:      `${space[8]}px`,
+      boxShadow:    shadow.sm,
+      padding:      `${space[6]}px`,
       fontFamily:   font.sans,
+      ...style,
     }}>
       {children}
     </div>
@@ -533,7 +671,15 @@ function Card({ children }: { children: ReactNode }) {
 
 function Label({ children }: { children: ReactNode }) {
   return (
-    <p style={{ fontFamily: font.sans, fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: fg.muted, textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>
+    <p style={{
+      margin:        0,
+      fontFamily:    font.sans,
+      fontSize:      fontSize.xs,
+      fontWeight:    fontWeight.semibold,
+      color:         fg.secondary,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+    }}>
       {children}
     </p>
   );
