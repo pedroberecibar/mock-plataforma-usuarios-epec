@@ -162,4 +162,10 @@ class EpecDocumentosSourceReader(FacturaSourceReader):
             return None
         docs = [parse_documento(d, self._base_url) for d in documentos]
         total = round(sum(d.importe or 0.0 for d in docs), 2)
-        return FacturaCuenta(documentos=docs, total_deuda=total, pago_online=pago_online)
+        return FacturaCuenta(
+            documentos=docs,
+            total_deuda=total,
+            pago_online=pago_online,
+            cliente_id=ids.cliente_id,
+            contrato_id=ids.contrato_id,
+        )

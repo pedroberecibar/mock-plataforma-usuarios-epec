@@ -23,6 +23,8 @@ function cuenta(documentos: FacturaDocumento[]): FacturaDatosResponse {
   return {
     total_deuda: documentos.reduce((s, d) => s + (d.importe ?? 0), 0),
     pago_online: true,
+    cliente_id: "1109294",
+    contrato_id: "0281767003",
     documentos,
   };
 }
@@ -71,6 +73,14 @@ describe("FacturaPage — deuda total y listado", () => {
     render(<FacturaPage token={TOKEN} />);
     await waitFor(() => expect(screen.getByText(/Período 07\/2026/)).not.toBeNull());
     expect(screen.getByText(/Período 06\/2026/)).not.toBeNull();
+  });
+
+  it("muestra el cliente y contrato para copiar al pagar", async () => {
+    vi.mocked(facturaApi.fetchFacturaDatos).mockResolvedValue(cuenta([doc()]));
+    render(<FacturaPage token={TOKEN} />);
+    await waitFor(() => expect(screen.getByText("1109294")).not.toBeNull());
+    expect(screen.getByText("0281767003")).not.toBeNull();
+    expect(screen.getByLabelText("Copiar N° de cliente")).not.toBeNull();
   });
 });
 

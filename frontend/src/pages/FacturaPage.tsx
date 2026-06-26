@@ -135,6 +135,8 @@ export function FacturaPage({ token }: Props) {
             total={totalDeuda}
             hayDeuda={hayDeuda}
             cantidad={documentos.length}
+            clienteId={facturaDatos?.cliente_id ?? null}
+            contratoId={facturaDatos?.contrato_id ?? null}
           />
 
           {/* Row 2 — Listado de facturas */}
@@ -160,7 +162,15 @@ export function FacturaPage({ token }: Props) {
 // ---------------------------------------------------------------------------
 // Row 1 — Deuda total + botón de pago
 // ---------------------------------------------------------------------------
-function DeudaHero({ total, hayDeuda, cantidad }: { total: number; hayDeuda: boolean; cantidad: number }) {
+function DeudaHero({
+  total, hayDeuda, cantidad, clienteId, contratoId,
+}: {
+  total: number;
+  hayDeuda: boolean;
+  cantidad: number;
+  clienteId: string | null;
+  contratoId: string | null;
+}) {
   return (
     <section
       aria-label="Deuda total"
@@ -205,30 +215,90 @@ function DeudaHero({ total, hayDeuda, cantidad }: { total: number; hayDeuda: boo
       </div>
 
       {hayDeuda && (
-        <a
-          data-testid="enlace-epec"
-          href={EPEC_PAGOS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display:        "inline-flex",
-            alignItems:     "center",
-            gap:            space[2],
-            background:     brand.primary,
-            color:          fg.onDark,
-            borderRadius:   radius.md,
-            padding:        `${space[3]}px ${space[6]}px`,
-            fontSize:       fontSize.base,
-            fontWeight:     fontWeight.semibold,
-            fontFamily:     font.sans,
-            textDecoration: "none",
-            whiteSpace:     "nowrap",
-          }}
-        >
-          Pagar mi factura
-        </a>
+        <div style={{ display: "flex", flexDirection: "column", gap: space[3], minWidth: 260 }}>
+          {(clienteId || contratoId) && (
+            <div>
+              <p style={{ margin: `0 0 ${space[2]}px`, fontSize: fontSize.xs, color: fg.muted }}>
+                Ingresá estos datos en el portal de EPEC:
+              </p>
+              {clienteId && <CopyField label="N° de cliente" value={clienteId} />}
+              {contratoId && <CopyField label="N° de contrato" value={contratoId} />}
+            </div>
+          )}
+          <a
+            data-testid="enlace-epec"
+            href={EPEC_PAGOS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:        "inline-flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              gap:            space[2],
+              background:     brand.primary,
+              color:          fg.onDark,
+              borderRadius:   radius.md,
+              padding:        `${space[3]}px ${space[6]}px`,
+              fontSize:       fontSize.base,
+              fontWeight:     fontWeight.semibold,
+              fontFamily:     font.sans,
+              textDecoration: "none",
+              whiteSpace:     "nowrap",
+            }}
+          >
+            Pagar mi factura
+          </a>
+        </div>
       )}
     </section>
+  );
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copiado, setCopiado] = useState(false);
+  function copiar() {
+    navigator.clipboard?.writeText(value).then(
+      () => {
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 1500);
+      },
+      () => { /* clipboard no disponible */ },
+    );
+  }
+  return (
+    <div style={{
+      display:        "flex",
+      alignItems:     "center",
+      justifyContent: "space-between",
+      gap:            space[3],
+      padding:        `${space[2]}px ${space[3]}px`,
+      background:     bg.surface,
+      borderRadius:   `${radius.sm}px`,
+      marginBottom:   space[2],
+    }}>
+      <span style={{ fontSize: fontSize.xs, color: fg.secondary }}>{label}</span>
+      <span style={{ display: "flex", alignItems: "center", gap: space[2] }}>
+        <span style={{ fontFamily: font.technical, fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: fg.primary }}>
+          {value}
+        </span>
+        <button
+          onClick={copiar}
+          aria-label={`Copiar ${label}`}
+          style={{
+            border:       "none",
+            background:   "none",
+            cursor:       "pointer",
+            fontSize:     fontSize.xs,
+            fontWeight:   fontWeight.semibold,
+            color:        copiado ? color.successDark : fg.link,
+            padding:      0,
+            fontFamily:   font.sans,
+          }}
+        >
+          {copiado ? "✓ copiado" : "copiar"}
+        </button>
+      </span>
+    </div>
   );
 }
 

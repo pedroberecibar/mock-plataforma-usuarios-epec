@@ -31,6 +31,8 @@ def build_router(epec_base_url: str | None) -> APIRouter:
     class FacturaDatosResponse(BaseModel):
         total_deuda: float = 0.0
         pago_online: bool = False
+        cliente_id: str | None = None
+        contrato_id: str | None = None
         documentos: list[FacturaDocumentoResponse] = []
 
     class DocumentoPagoResponse(BaseModel):
@@ -50,6 +52,8 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         return FacturaDatosResponse(
             total_deuda=cuenta.total_deuda,
             pago_online=cuenta.pago_online,
+            cliente_id=cuenta.cliente_id,
+            contrato_id=cuenta.contrato_id,
             documentos=[
                 FacturaDocumentoResponse(
                     periodo=d.periodo,

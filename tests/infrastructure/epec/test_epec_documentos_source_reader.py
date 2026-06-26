@@ -190,6 +190,8 @@ async def test_cuenta_devuelve_todos_los_documentos_y_total() -> None:
     assert cuenta.total_deuda == round(133372.90 + 1000.10, 2)
     assert cuenta.pago_online is True
     assert cuenta.documentos[0].url_pdf == "https://www.epec.com.ar/api/reportes/abc123"
+    assert cuenta.cliente_id == "1109294"
+    assert cuenta.contrato_id == "0281767003"
 
 
 async def test_cuenta_devuelve_none_si_no_hay_documentos() -> None:

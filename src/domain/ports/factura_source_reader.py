@@ -30,6 +30,8 @@ class FacturaCuenta:
     documentos: list[FacturaDocumento] = field(default_factory=list)
     total_deuda: float = 0.0
     pago_online: bool = False
+    cliente_id: str | None = None
+    contrato_id: str | None = None
 
 
 class FacturaSourceReader(ABC):

@@ -39,4 +39,6 @@ class FakeFacturaSourceReader(FacturaSourceReader):
             ],
             total_deuda=self._importe,
             pago_online=True,
+            cliente_id="1109294",
+            contrato_id="0281767003",
         )

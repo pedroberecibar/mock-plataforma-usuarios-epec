@@ -62,6 +62,8 @@ export interface FacturaDocumento {
 export interface FacturaDatosResponse {
   total_deuda: number;
   pago_online: boolean;
+  cliente_id: string | null;
+  contrato_id: string | null;
   documentos: FacturaDocumento[];
 }
 
