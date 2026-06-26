@@ -78,6 +78,26 @@ export function AlertasPage({ token }: Props) {
 
   const activas = ALERTA_META.filter((m) => config.get(m.tipo) ?? false).length;
 
+  // Campana maestra: si hay alguna encendida, apaga todas; si están todas
+  // apagadas, las enciende todas.
+  async function handleToggleAll() {
+    const nuevoValor = activas === 0;
+    setSaving("__all__");
+    setError(null);
+    try {
+      await Promise.all(ALERTA_META.map((m) => patchAlertaConfig(token, m.tipo, nuevoValor)));
+      setConfig((prev) => {
+        const next = new Map(prev);
+        ALERTA_META.forEach((m) => next.set(m.tipo, nuevoValor));
+        return next;
+      });
+    } catch {
+      setError("No se pudo guardar el cambio. Intentá de nuevo.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   return (
     <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
       <PageHeader title="Alertas" />
@@ -98,7 +118,12 @@ export function AlertasPage({ token }: Props) {
           ) : (
             <>
               {/* Row 1 — Hero: resumen de avisos activos a todo el ancho */}
-              <HeroAlertas activas={activas} total={ALERTA_META.length} />
+              <HeroAlertas
+                activas={activas}
+                total={ALERTA_META.length}
+                togglingAll={saving === "__all__"}
+                onToggleAll={handleToggleAll}
+              />
 
               {/* Row 2 — Card de configuración de toggles */}
               <Card style={{ marginBottom: space[4], padding: 0, overflow: "hidden" }}>
@@ -142,7 +167,15 @@ export function AlertasPage({ token }: Props) {
 // ---------------------------------------------------------------------------
 // Row 1 — Hero: avisos activos
 // ---------------------------------------------------------------------------
-function HeroAlertas({ activas, total }: { activas: number; total: number }) {
+function HeroAlertas({
+  activas, total, togglingAll, onToggleAll,
+}: {
+  activas: number;
+  total: number;
+  togglingAll: boolean;
+  onToggleAll: () => void;
+}) {
+  const algunaActiva = activas > 0;
   return (
     <section
       aria-label="Resumen de alertas"
@@ -177,11 +210,37 @@ function HeroAlertas({ activas, total }: { activas: number; total: number }) {
           </span>
         </p>
         <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary, lineHeight: 1.5 }}>
-          Elegí qué avisos querés recibir por correo electrónico.
+          {algunaActiva
+            ? "Tocá la campana para silenciar todas las alertas."
+            : "Tocá la campana para activar todas las alertas."}
         </p>
       </div>
 
-      <IconBell />
+      <button
+        type="button"
+        onClick={onToggleAll}
+        disabled={togglingAll}
+        aria-label={algunaActiva ? "Desactivar todas las alertas" : "Activar todas las alertas"}
+        title={algunaActiva ? "Desactivar todas las alertas" : "Activar todas las alertas"}
+        style={{
+          display:        "inline-flex",
+          alignItems:     "center",
+          justifyContent: "center",
+          width:          72,
+          height:         72,
+          borderRadius:   radius.full,
+          border:         "none",
+          background:     algunaActiva ? color.green100 : bg.selected,
+          color:          algunaActiva ? brand.primary : fg.muted,
+          cursor:         togglingAll ? "wait" : "pointer",
+          opacity:        togglingAll ? 0.6 : 1,
+          flexShrink:     0,
+          transition:     "background 0.2s, color 0.2s",
+          padding:        0,
+        }}
+      >
+        {algunaActiva ? <IconBell /> : <IconBellOff />}
+      </button>
     </section>
   );
 }
@@ -294,11 +353,25 @@ function IconMail() {
 
 function IconBell() {
   return (
-    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-      style={{ color: brand.primary, opacity: 0.9, flexShrink: 0 }}>
+      style={{ flexShrink: 0 }}>
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+function IconBellOff() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{ flexShrink: 0 }}>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      <path d="M18.63 13A17.89 17.89 0 0 1 18 8" />
+      <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
+      <path d="M18 8a6 6 0 0 0-9.33-5" />
+      <line x1="1" y1="1" x2="23" y2="23" />
     </svg>
   );
 }

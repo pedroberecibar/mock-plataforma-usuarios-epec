@@ -4,7 +4,7 @@ import { bg, color, font, fontSize, fontWeight, space, radius, brand } from "../
 // ---------------------------------------------------------------------------
 // Vista → página title mapping (used by mobile top bar)
 // ---------------------------------------------------------------------------
-export type Vista = "home" | "consumo" | "objetivos" | "factura" | "alertas";
+export type Vista = "home" | "consumo" | "objetivos" | "factura" | "alertas" | "cuenta";
 
 const VISTA_LABELS: Record<Vista, string> = {
   home:      "Inicio",
@@ -12,6 +12,7 @@ const VISTA_LABELS: Record<Vista, string> = {
   objetivos: "Objetivos",
   factura:   "Mi Factura",
   alertas:   "Alertas",
+  cuenta:    "Mi cuenta",
 };
 
 // ---------------------------------------------------------------------------
@@ -206,14 +207,25 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
 
         {/* User chip + logout at bottom */}
         <div style={{ padding: `0 ${space[6]}px`, marginTop: space[8], display: "flex", flexDirection: "column", gap: space[2] }}>
-          <div style={{
+          <button
+            type="button"
+            onClick={() => onNavegar("cuenta")}
+            aria-current={vistaActiva === "cuenta" ? "page" : undefined}
+            aria-label="Ver Mi cuenta"
+            style={{
             display:      "flex",
             alignItems:   "center",
             gap:          space[3],
+            width:        "100%",
+            textAlign:    "left",
+            cursor:       "pointer",
             padding:      space[2],
-            background:   "rgba(255,255,255,0.10)",
+            background:   vistaActiva === "cuenta" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.10)",
             borderRadius: radius.md,
-            border:       "1px solid rgba(255,255,255,0.10)",
+            border:       vistaActiva === "cuenta"
+              ? "1px solid rgba(255,255,255,0.30)"
+              : "1px solid rgba(255,255,255,0.10)",
+            transition:   "background 150ms ease, border 150ms ease",
           }}>
             <div style={{
               width:          40,
@@ -230,7 +242,7 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
             }}>
               {initials}
             </div>
-            <div style={{ overflow: "hidden" }}>
+            <div style={{ overflow: "hidden", flex: 1 }}>
               <p style={{
                 color:         color.white,
                 fontSize:      fontSize.xs,
@@ -244,8 +256,21 @@ export function AppShell({ vistaActiva, onNavegar, onLogout, usuarioNombre, chil
               }}>
                 {usuarioNombre ?? "Mi cuenta"}
               </p>
+              <p style={{
+                color:      color.green300,
+                fontSize:   10,
+                fontFamily: font.sans,
+                margin:     "2px 0 0",
+              }}>
+                Ver mis datos
+              </p>
             </div>
-          </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color.green300}
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+              style={{ flexShrink: 0 }}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
 
           <button
             onClick={onLogout}

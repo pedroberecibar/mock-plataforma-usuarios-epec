@@ -118,6 +118,50 @@ export interface HoraPicoResponse {
   perfil_24h: PuntoSerieHoraria[];
 }
 
+// ---------------------------------------------------------------------------
+// Mi cuenta — datos que EPEC tiene del cliente (solo lectura).
+// La PII (DNI/CUIT) llega SIEMPRE enmascarada desde el backend.
+// ---------------------------------------------------------------------------
+export interface CuentaPersonales {
+  nombre_o_razon_social: string | null;
+  tipo_documento: string | null;
+  nro_documento_masked: string | null;
+  cuit_masked: string | null;
+  email: string | null;
+}
+
+export interface CuentaSuministro {
+  numero: string;
+  estado_servicio: string | null;
+  direccion: string | null;
+  barrio: string | null;
+  localidad: string | null;
+  cp: string | null;
+}
+
+export interface CuentaTarifa {
+  codigo: string | null;
+  descripcion: string | null;
+  grupo_tarifario: string | null;
+  clase: string | null;
+  clase_descripcion: string | null;
+  tension: string | null;
+}
+
+export interface CuentaMedidor {
+  numero: string | null;
+  marca: string | null;
+  fase: string;
+  inteligente_desde: string | null; // ISO date "YYYY-MM-DD"
+}
+
+export interface CuentaResponse {
+  personales: CuentaPersonales;
+  suministro: CuentaSuministro;
+  tarifa: CuentaTarifa;
+  medidor: CuentaMedidor;
+}
+
 export interface ObjetivoEstadoResponse {
   objetivo_kwh: number | null;
   promedio_vecinos_kwh: number | null;

@@ -7,6 +7,7 @@ import { triggerPoblar } from "./api/ingest";
 import { LoginPage } from "./pages/LoginPage";
 import { AlertasPage } from "./pages/AlertasPage";
 import { ConsumoPage } from "./pages/ConsumoPage";
+import { CuentaPage } from "./pages/CuentaPage";
 import { FacturaPage } from "./pages/FacturaPage";
 import { HomePage } from "./pages/HomePage";
 import { ObjetivosPage } from "./pages/ObjetivosPage";
@@ -74,6 +75,7 @@ function App() {
         {vista === "objetivos" && <ObjetivosPage token={auth.token} suministroId={auth.suministroId} onLogout={handleLogout} />}
         {vista === "factura" && <FacturaPage token={auth.token} />}
         {vista === "alertas" && <AlertasPage token={auth.token} />}
+        {vista === "cuenta" && <CuentaPage token={auth.token} />}
       </div>
     </AppShell>
   );
