@@ -23,6 +23,10 @@ def build_router(epec_base_url: str | None) -> APIRouter:
 
     class FacturaDatosResponse(BaseModel):
         fecha_vencimiento: date | None
+        importe: float | None = None
+        periodo: str | None = None
+        url_pdf: str | None = None
+        pago_online: bool = False
 
     class DocumentoPagoResponse(BaseModel):
         periodo: str
@@ -36,8 +40,15 @@ def build_router(epec_base_url: str | None) -> APIRouter:
         factura_reader: FacturaSourceReader = Depends(get_factura_reader),
     ) -> FacturaDatosResponse:
         factura = await factura_reader.get_factura(suministro_id)
-        fecha_vcto = factura.fecha_vencimiento if factura else None
-        return FacturaDatosResponse(fecha_vencimiento=fecha_vcto)
+        if factura is None:
+            return FacturaDatosResponse(fecha_vencimiento=None)
+        return FacturaDatosResponse(
+            fecha_vencimiento=factura.fecha_vencimiento,
+            importe=factura.importe,
+            periodo=factura.periodo,
+            url_pdf=factura.url_pdf,
+            pago_online=factura.pago_online,
+        )
 
     @router.get("/link", response_model=LinkResponse)
     async def get_link_factura(

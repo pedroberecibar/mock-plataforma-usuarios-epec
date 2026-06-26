@@ -71,6 +71,7 @@ class FacturaRedireccion(Base):
     __tablename__ = "factura_redireccion"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    suministro_id: Mapped[str | None] = mapped_column(unique=True, nullable=True, default=None)
     numero_cliente: Mapped[str]
     numero_contrato: Mapped[str]
 
@@ -100,3 +101,12 @@ class VecinosCache(Base):
     suministro_id: Mapped[str] = mapped_column(primary_key=True)
     vecinos_json: Mapped[str]
     updated_at: Mapped[datetime]
+
+
+class CuentaDatosSensibles(Base):
+    __tablename__ = "cuenta_datos_sensibles"
+
+    suministro_id: Mapped[str] = mapped_column(primary_key=True)
+    nro_documento_enc: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    cuit_enc: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    actualizado_en: Mapped[datetime]

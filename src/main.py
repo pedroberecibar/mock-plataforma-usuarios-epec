@@ -19,6 +19,7 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
+from infrastructure.crypto.fernet_pii_cipher import FernetPiiCipher
 from infrastructure.epec.epec_factura_verificacion import EpecFacturaVerificacion
 from infrastructure.fakes.factura_source_reader import FakeFacturaSourceReader
 from infrastructure.fakes.medicion_horaria_source_reader import FakeMedicionHorariaSourceReader
@@ -27,6 +28,7 @@ from infrastructure.smtp.notification_sender import SmtpNotificationSender
 from infrastructure.sqlite.cached_vecinos_repository import CachedVecinosRepository
 from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
 from infrastructure.sqlite.consumo_horario_repository import SQLiteConsumoHorarioRepository
+from infrastructure.sqlite.cuenta_sensible_repository import SQLiteCuentaSensibleRepository
 from infrastructure.sqlite.notificacion_config_repository import SQLiteNotificacionConfigRepository
 from infrastructure.sqlite.objetivo_consumo_repository import SQLiteObjetivoConsumoRepository
 from infrastructure.sqlite.proyeccion_repository import SQLiteProyeccionRepository
@@ -36,16 +38,20 @@ from infrastructure.sqlite.vecinos_repository import SQLiteVecinosRepository
 from interface.alertas_router import router as alertas_router
 from interface.auth_router import router as auth_router
 from interface.consumo_router import router as consumo_router
+from interface.cuenta_router import router as cuenta_router
 from interface.dependencies import (
     get_auth_provider,
     get_consumo_horario_repo,
     get_consumo_repo,
+    get_cuenta_reader,
+    get_cuenta_sensible_repo,
     get_factura_reader,
     get_factura_verificacion,
     get_medicion_reader,
     get_notificacion_config_repo,
     get_notification_sender,
     get_objetivo_repo,
+    get_pii_cipher,
     get_poblar_use_case,
     get_proyeccion_repo,
     get_suministro_repo,
@@ -131,6 +137,8 @@ def create_app() -> FastAPI:
     _poblar_use_case = None
     _meta_reader = None
     _selector = None
+    _cuenta_reader = None
+    _factura_ids_reader = None
     if oracle_available:
         # Registra el dir de Instant Client para DLL search (os.add_dll_directory
         # actúa en el proceso actual — os.environ["PATH"] no es suficiente en Windows)
@@ -138,6 +146,10 @@ def create_app() -> FastAPI:
         if instant_client and hasattr(os, "add_dll_directory"):
             os.add_dll_directory(instant_client)
 
+        from infrastructure.oracle.cuenta_reader import OracleCuentaReader
+        from infrastructure.oracle.factura_identificadores_reader import (
+            OracleFacturaIdentificadoresReader,
+        )
         from infrastructure.oracle.ingestion_strategy_selector import IngestionStrategySelector
         from infrastructure.oracle.medicion_horaria_reader import OracleMedicionHorariaReader
         from infrastructure.oracle.medicion_reader import OracleMedicionReader
@@ -158,6 +170,8 @@ def create_app() -> FastAPI:
             chupete=ChupeteIngestionStrategy(),
         )
         _meta_reader = OracleSuministroMetaReader()
+        _cuenta_reader = OracleCuentaReader()
+        _factura_ids_reader = OracleFacturaIdentificadoresReader()
 
     def _build_notification_sender() -> SmtpNotificationSender | FakeNotificationSender:
         smtp_host = os.environ.get("SMTP_HOST")
@@ -227,6 +241,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(alertas_router)
     app.include_router(consumo_router)
+    app.include_router(cuenta_router)
     app.include_router(home_router)
     app.include_router(ingest_router)
     app.include_router(objetivos_router)
@@ -265,19 +280,43 @@ def create_app() -> FastAPI:
         async with session_factory() as session:
             yield SQLiteObjetivoConsumoRepository(session)
 
+    async def _get_cuenta_sensible_repo() -> AsyncGenerator[SQLiteCuentaSensibleRepository, None]:
+        async with session_factory() as session:
+            yield SQLiteCuentaSensibleRepository(session)
+
     async def _get_consumo_horario_repo() -> AsyncGenerator[SQLiteConsumoHorarioRepository, None]:
         async with session_factory() as session:
             yield SQLiteConsumoHorarioRepository(session)
 
     _notification_sender = _build_notification_sender()
-    _factura_reader = FakeFacturaSourceReader()
     _factura_verificacion = EpecFacturaVerificacion()
     app.dependency_overrides[get_notification_sender] = lambda: _notification_sender
-    app.dependency_overrides[get_factura_reader] = lambda: _factura_reader
     app.dependency_overrides[get_factura_verificacion] = lambda: _factura_verificacion
+
+    if _factura_ids_reader is not None:
+        from infrastructure.epec.epec_documentos_source_reader import EpecDocumentosSourceReader
+        from infrastructure.sqlite.factura_identificadores_cache import (
+            SQLiteFacturaIdentificadoresCache,
+        )
+
+        _ids_reader = _factura_ids_reader
+
+        async def _get_factura_reader() -> AsyncGenerator[EpecDocumentosSourceReader, None]:
+            async with session_factory() as session:
+                yield EpecDocumentosSourceReader(
+                    cache=SQLiteFacturaIdentificadoresCache(session),
+                    identificadores_reader=_ids_reader,
+                )
+
+        app.dependency_overrides[get_factura_reader] = _get_factura_reader
+    else:
+        _factura_reader = FakeFacturaSourceReader()
+        app.dependency_overrides[get_factura_reader] = lambda: _factura_reader
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
     app.dependency_overrides[get_consumo_horario_repo] = _get_consumo_horario_repo
     app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
+    app.dependency_overrides[get_cuenta_sensible_repo] = _get_cuenta_sensible_repo
+    app.dependency_overrides[get_pii_cipher] = lambda: FernetPiiCipher(secret_key=secret_key)
     app.dependency_overrides[get_vecinos_repo] = _get_vecinos_repo
     app.dependency_overrides[get_proyeccion_repo] = _get_proyeccion_repo
     app.dependency_overrides[get_suministro_repo] = _get_suministro_repo
@@ -308,6 +347,9 @@ def create_app() -> FastAPI:
             bulk_reader=_non_blocking_reader,
         )
         app.dependency_overrides[get_poblar_use_case] = lambda: _poblar_use_case
+
+        assert _cuenta_reader is not None
+        app.dependency_overrides[get_cuenta_reader] = lambda: _cuenta_reader
     else:
 
         def _oracle_no_configurado() -> None:
@@ -317,5 +359,6 @@ def create_app() -> FastAPI:
             )
 
         app.dependency_overrides[get_medicion_reader] = _oracle_no_configurado
+        app.dependency_overrides[get_cuenta_reader] = _oracle_no_configurado
 
     return app

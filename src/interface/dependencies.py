@@ -3,12 +3,15 @@ from fastapi import Depends, Header, HTTPException
 from domain.ports.auth_provider import AuthProvider
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.consumo_horario_repository import ConsumoHorarioRepository
+from domain.ports.cuenta_reader import CuentaReader
+from domain.ports.cuenta_sensible_repository import CuentaSensibleRepository
 from domain.ports.factura_source_reader import FacturaSourceReader
 from domain.ports.factura_verificacion_port import FacturaVerificacionPort
 from domain.ports.medicion_source_reader import MedicionSourceReader
 from domain.ports.notificacion_config_repository import NotificacionConfigRepository
 from domain.ports.notification_sender import NotificationSender
 from domain.ports.objetivo_consumo_repository import ObjetivoConsumoRepository
+from domain.ports.pii_cipher import PiiCipher
 from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.suministro_repository import SuministroRepository
 from domain.ports.usuario_repository import UsuarioRepository
@@ -70,6 +73,20 @@ def get_suministro_repo() -> SuministroRepository:
 def get_objetivo_repo() -> ObjetivoConsumoRepository:
     raise NotImplementedError(
         "ObjetivoConsumoRepository debe ser wireado en el composition root (src/main.py)"
+    )
+
+
+def get_cuenta_reader() -> CuentaReader:
+    raise NotImplementedError("CuentaReader debe ser wireado en el composition root (src/main.py)")
+
+
+def get_pii_cipher() -> PiiCipher:
+    raise NotImplementedError("PiiCipher debe ser wireado en el composition root (src/main.py)")
+
+
+def get_cuenta_sensible_repo() -> CuentaSensibleRepository:
+    raise NotImplementedError(
+        "CuentaSensibleRepository debe ser wireado en el composition root (src/main.py)"
     )
 
 

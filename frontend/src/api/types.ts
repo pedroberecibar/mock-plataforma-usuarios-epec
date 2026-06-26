@@ -53,6 +53,10 @@ export interface ComparacionResponse {
 
 export interface FacturaDatosResponse {
   fecha_vencimiento: string | null; // "YYYY-MM-DD"
+  importe?: number | null;
+  periodo?: string | null; // "MM/YYYY"
+  url_pdf?: string | null;
+  pago_online?: boolean;
 }
 
 export interface DocumentoPago {

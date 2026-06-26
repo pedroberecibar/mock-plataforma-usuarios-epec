@@ -6,6 +6,10 @@ from datetime import date
 @dataclass
 class FacturaResult:
     fecha_vencimiento: date | None
+    importe: float | None = None
+    periodo: str | None = None
+    url_pdf: str | None = None
+    pago_online: bool = False
 
 
 class FacturaSourceReader(ABC):

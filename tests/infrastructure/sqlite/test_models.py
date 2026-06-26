@@ -16,10 +16,16 @@ EXPECTED_TABLES = {
         "rango_superior_kwh",
     },
     "notificaciones_config": {"usuario_id", "tipo", "canal", "habilitado"},
-    "factura_redireccion": {"id", "numero_cliente", "numero_contrato"},
+    "factura_redireccion": {"id", "suministro_id", "numero_cliente", "numero_contrato"},
     "usuarios": {"usuario", "suministro_id", "nombre", "email", "password_hash"},
     "notificaciones_enviadas": {"id", "suministro_id", "tipo_alerta", "fecha_envio"},
     "vecinos_cache": {"suministro_id", "vecinos_json", "updated_at"},
+    "cuenta_datos_sensibles": {
+        "suministro_id",
+        "nro_documento_enc",
+        "cuit_enc",
+        "actualizado_en",
+    },
 }
 
 
