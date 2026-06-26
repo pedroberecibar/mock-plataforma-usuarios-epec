@@ -107,9 +107,15 @@ apiKey: web-prod
   `https://www.epec.com.ar/oficina-virtual/mis-tramites/segmentacion/{contrato}/{cliente}`.
 - **Página de pago (manual):** `https://www.epec.com.ar/tramites/pagos` (el usuario tipea
   contrato/cliente).
-- **Deep-link NO disponible (probado 2026-06-26):**
+- **Deep-link NO disponible (confirmado 2026-06-26):**
   `?contrato=...&cliente=...` ignora los query params y muestra el formulario vacío;
-  `/tramites/pagos/{contrato}/{cliente}` da 404. No se puede precargar la factura por URL.
+  `/tramites/pagos/{contrato}/{cliente}` da 404. Además, al completar el flujo y llegar a
+  la pantalla de pago, la URL **sigue siendo** `/tramites/pagos` (sin params) y un **F5
+  rebota al formulario**: el SPA guarda contrato/cliente en memoria, no en la URL. No hay
+  forma de precargar la factura por URL, y no se puede escribir el sessionStorage de
+  epec.com.ar desde otro origen (cross-origin). **Máximo alcance del botón: redirigir al
+  formulario** (el usuario tipea contrato/cliente). Mitigación posible: mostrarle al usuario
+  sus números de cliente/contrato en nuestra pantalla para copiar-pegar.
 - **Embeber el pago es inviable:** las respuestas de EPEC traen `X-Frame-Options: DENY`
   ⇒ no se puede iframe. El pago debe abrirse en pestaña nueva en el sitio de EPEC
   (ventaja: no tocamos dinero ni datos de tarjeta, cero responsabilidad PCI).
