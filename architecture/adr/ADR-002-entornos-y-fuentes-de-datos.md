@@ -126,7 +126,12 @@ Trabajo de implementación:
       Test: `tests/test_main.py::test_factura_datos_returns_503_when_oracle_not_configured`.
 - [x] Comando único `scripts/refresh_demo.py` (ingesta 2817670 → fixtures → instrucción de
       commit/push). Tests: `tests/scripts/test_refresh_demo.py`.
-- [ ] Purgar consumo sintético de `data/plataforma_clientes.db` (DB fresca + re-ingesta
-      Oracle). **Operativo/destructivo**: requiere sesión Oracle viva + backup explícito.
+- [x] Purgar consumo sintético de `data/plataforma_clientes.db` (2026-06-29). Enfoque
+      elegido: DB mínima con **un único login (2817670)** + consumo real re-ingestado de
+      Oracle para 2817670 y sus **vecinos por subestación** (189). Backups:
+      `plataforma_clientes.prepurga-*.db` y `*.purgado-old.db`. `consumo_horario` queda
+      vacío (2817670 es NANSEN, sin perfiles de 15 min). `INGEST_EQUIPOS=91013486` en `.env`.
 - [ ] (Opcional) ampliar `INGEST_EQUIPOS` para sumar usuarios reales a `main`.
+- [ ] (Opcional) excluir medidores NANSEN de la ingesta horaria (hoy el scheduler loguea
+      `ORA-01722` al intentar leer 15-min de 2817670; es no-fatal pero ruidoso).
 - [ ] (Opcional) fitness test anti-seed-sintético.
