@@ -8,7 +8,11 @@ export interface ObjetivoResponse {
 }
 
 export async function fetchObjetivo(_token: string): Promise<ObjetivoResponse | null> {
-  return null;
+  return {
+    valor_kwh: 300,
+    origen: "sugerido",
+    vigente_desde: "2026-06-01",
+  };
 }
 
 export async function setObjetivo(
