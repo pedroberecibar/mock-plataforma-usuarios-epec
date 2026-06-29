@@ -1,21 +1,26 @@
-"""Seeder de demo — datos reales de Oracle + consumo simulado.
+"""Seeder de demo — identidades reales de Oracle + consumo SINTÉTICO.
+
+⚠️ QUARANTINE (ADR-002): este script genera consumo inventado con random y SOLO sirve
+para desarrollo de UI offline sin Oracle. NUNCA debe escribir en la DB real
+(`data/plataforma_clientes.db`): el guard `assert_safe_seed_target` aborta si el destino
+es la DB real. Por defecto escribe en `data/ui-dev.db` (descartable).
 
 Clientes y suministros obtenidos de GEOREF.VM_INTELIGENTES (spike_cliente_seeder.py).
 Mayormente medidores CLOU del listado-mi-activos.md en Villa el Libertador, Córdoba.
-Incluye también a 2817670 (Palacios N.), medidor NANSEN — usuario real del spike de
-perfiles/georef. Su consumo real + vecinos por subestación se sobreponen luego vía
-seed_vecinos_reales.py (INGEST_EQUIPOS incluye su medidor 91013486); acá solo se asegura
-que el usuario/suministro existan tras un reset, con un baseline simulado.
+Incluye también a 2817670 (Palacios N.), medidor NANSEN. Para datos reales usar la
+ingesta de Oracle (seed_vecinos_reales.py / ingest_oracle.py), no este seeder.
 
 Uso:
-    uv run python scripts/seed_demo.py
+    uv run python scripts/seed_demo.py                          # → data/ui-dev.db
+    SEED_DEMO_DATABASE_URL=sqlite+aiosqlite:///./data/otra.db uv run python scripts/seed_demo.py
 
-NOTA: Si la tabla 'usuarios' ya existe sin la columna 'nombre', borrar la DB primero:
-    Remove-Item data/plataforma_clientes.db
+NOTA: Si la tabla 'usuarios' ya existe sin la columna 'nombre', borrar la DB descartable:
+    Remove-Item data/ui-dev.db
 """
 
 import asyncio
 import math
+import os
 import random
 import sys
 from datetime import date, timedelta
@@ -28,7 +33,37 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from infrastructure.sqlite.models import Base, ConsumoDiario, ConsumoHorario, Suministro, Usuario
 
-DB = "sqlite+aiosqlite:///./data/plataforma_clientes.db"
+# Quarantine (ADR-002): seed_demo genera consumo SINTÉTICO y NUNCA debe escribir en la
+# DB real. Destino por defecto = DB descartable; se puede overridear con
+# SEED_DEMO_DATABASE_URL, pero el guard aborta igual si apunta a la DB real.
+DEFAULT_DB = "sqlite+aiosqlite:///./data/ui-dev.db"
+# Prefijo de la(s) DB real(es) que el seed jamás debe tocar (incluye backups).
+_REAL_DB_PREFIX = "plataforma_clientes"
+
+
+def _resolve_db_url() -> str:
+    return os.environ.get("SEED_DEMO_DATABASE_URL", DEFAULT_DB)
+
+
+def _sqlite_filename(db_url: str) -> str:
+    path = db_url.rsplit("///", 1)[-1] if "///" in db_url else db_url
+    return os.path.basename(path.split("?", 1)[0])
+
+
+def assert_safe_seed_target(db_url: str) -> None:
+    """Aborta si el destino no es una DB SQLite descartable (protege la DB real)."""
+    if not db_url.startswith("sqlite"):
+        raise RuntimeError(
+            f"seed_demo solo escribe SQLite descartable, no {db_url!r}. "
+            "Definí SEED_DEMO_DATABASE_URL a una DB de prueba (ej. data/ui-dev.db)."
+        )
+    nombre = _sqlite_filename(db_url)
+    if nombre.startswith(_REAL_DB_PREFIX):
+        raise RuntimeError(
+            f"seed_demo NO puede escribir en la DB real ({nombre}). "
+            "Es un seeder sintético (ADR-002). Usá data/ui-dev.db u otra DB descartable."
+        )
+
 
 _ph = PasswordHasher()
 _DEFAULT_PASSWORD_HASH = _ph.hash("demo")
@@ -391,7 +426,10 @@ def perfil_horario_kwh(hora: int, grupo_tar: str, total_dia: float) -> float:
 
 
 async def seed() -> None:
-    engine = create_async_engine(DB, echo=False)
+    db_url = _resolve_db_url()
+    assert_safe_seed_target(db_url)
+    print(f"Sembrando en DB descartable: {db_url}")
+    engine = create_async_engine(db_url, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -519,4 +557,5 @@ async def seed() -> None:
     print('  echo "35526143:mi_password" | uv run scripts/seed_passwords.py')
 
 
-asyncio.run(seed())
+if __name__ == "__main__":
+    asyncio.run(seed())
