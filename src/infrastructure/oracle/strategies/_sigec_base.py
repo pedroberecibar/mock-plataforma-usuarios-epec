@@ -66,6 +66,12 @@ class SigecBaseStrategy:
     Cuando AMI esté disponible, cada subclase puede sobreescribir `leer_lecturas`.
     """
 
+    # Por defecto, los medidores sobre SIGEC no exponen perfiles 15-min (ADR-003).
+    # CLOU lo sobrescribe a True; NANSEN/CHUPETE heredan False.
+    @property
+    def soporta_perfiles(self) -> bool:
+        return False
+
     def __init__(self) -> None:
         _init_oracle_client()
         self._dsn = oracledb.makedsn(

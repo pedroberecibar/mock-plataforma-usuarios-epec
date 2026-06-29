@@ -61,3 +61,18 @@ def test_selecciona_chupete_para_telemedible_none(selector: IngestionStrategySel
 def test_selecciona_chupete_para_cadena_vacia(selector: IngestionStrategySelector) -> None:
     s = selector.seleccionar("")
     assert s.nombre == "CHUPETE"
+
+
+# --- Capacidad de perfiles (15 min) por tipo de medidor (ADR-003) ---
+
+
+def test_clou_soporta_perfiles(selector: IngestionStrategySelector) -> None:
+    assert selector.seleccionar("CLOU").soporta_perfiles is True
+
+
+def test_nansen_no_soporta_perfiles(selector: IngestionStrategySelector) -> None:
+    assert selector.seleccionar("NANSEN").soporta_perfiles is False
+
+
+def test_chupete_no_soporta_perfiles(selector: IngestionStrategySelector) -> None:
+    assert selector.seleccionar("OTRO").soporta_perfiles is False

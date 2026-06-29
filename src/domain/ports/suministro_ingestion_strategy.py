@@ -9,6 +9,13 @@ class SuministroIngestionStrategy(ABC):
     @abstractmethod
     def nombre(self) -> str: ...
 
+    @property
+    @abstractmethod
+    def soporta_perfiles(self) -> bool:
+        """True si el tipo de medidor expone perfiles de 15 min (CLOU), False si solo
+        admite granularidad diaria (NANSEN/CHUPETE). Ver ADR-003."""
+        ...
+
     @abstractmethod
     async def leer_lecturas(
         self,

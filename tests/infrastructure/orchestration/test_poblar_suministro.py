@@ -28,6 +28,10 @@ class _FakeStrategy(SuministroIngestionStrategy):
     def nombre(self) -> str:
         return self._nombre
 
+    @property
+    def soporta_perfiles(self) -> bool:
+        return False
+
     async def leer_lecturas(
         self, medidor: str, srv_codigo: str, desde: date, hasta: date
     ) -> list[LecturaTelemedida]:
@@ -39,6 +43,10 @@ def _make_selector(strategy: SuministroIngestionStrategy) -> IngestionStrategySe
         @property
         def nombre(self) -> str:
             return "CLOU"
+
+        @property
+        def soporta_perfiles(self) -> bool:
+            return True
 
         async def leer_lecturas(self, m: str, s: str, d: date, h: date) -> list[LecturaTelemedida]:
             return []
