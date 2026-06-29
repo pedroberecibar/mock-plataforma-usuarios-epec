@@ -82,6 +82,26 @@ async def test_vs_mes_anterior_positivo_si_consumo_subio() -> None:
     assert result.consumo_mes.vs_mes_anterior_pct > 0
 
 
+async def test_vs_mes_anterior_matchea_por_dia_calendario_con_huecos() -> None:
+    """Con huecos en el mes en curso, la comparación matchea por día calendario
+    (no por los primeros N días del mes anterior)."""
+    consumo = FakeConsumoDiarioRepository()
+    # Junio en curso: solo días 1, 2 y 28 (hay huecos) → 3 días con dato, 30 kWh.
+    for dia in (1, 2, 28):
+        await consumo.upsert_consumo("S1", date(2026, 6, dia), 10.0)
+    # Mayo: días 1, 2 y 28 valen 5 kWh; el resto vale 100 kWh (no deben entrar).
+    for dia in range(1, 32):
+        await consumo.upsert_consumo("S1", date(2026, 5, dia), 100.0)
+    for dia in (1, 2, 28):
+        await consumo.upsert_consumo("S1", date(2026, 5, dia), 5.0)
+
+    uc = _make_uc(consumo, FakeVecinosRepository(), FakeProyeccionRepository())
+    result = await uc.ejecutar("S1", date(2026, 6, 1))
+
+    # Mismo período (días 1,2,28): 30 vs 15 → +100%. NO los primeros 3 días de mayo.
+    assert result.consumo_mes.vs_mes_anterior_pct == 100.0
+
+
 async def test_vs_anio_anterior_compara_mismo_periodo() -> None:
     consumo = FakeConsumoDiarioRepository()
     await _seed_mes(consumo, "S1", 2025, 6, 10.0, 10)  # 100 kWh año anterior

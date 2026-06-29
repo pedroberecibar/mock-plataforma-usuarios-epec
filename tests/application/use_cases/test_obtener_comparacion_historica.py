@@ -53,6 +53,31 @@ async def test_total_kwh_suma_correctamente() -> None:
     assert resultado.mismo_mes_anio_anterior.total_kwh == 360.0
 
 
+async def test_variacion_pct_a_igual_periodo() -> None:
+    """El % compara el mes en curso contra la misma cantidad de días
+    (matcheando por día calendario), no contra el mes completo."""
+    repo = await _repo_con_junio_2026()
+    uc = ObtenerComparacionHistoricaUseCase(repo)
+
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    # Junio 1-15 = 150. Mayo 1-15 (igual período) = 15×8 = 120 → +25%.
+    assert resultado.vs_mes_anterior_pct == 25.0
+    # Junio 2025 1-15 (igual período) = 15×12 = 180 → (150-180)/180 = -16.67%.
+    assert resultado.vs_anio_anterior_pct == -16.67
+
+
+async def test_variacion_pct_none_sin_datos_de_comparacion() -> None:
+    repo = FakeConsumoDiarioRepository()
+    await repo.upsert_consumo("S1", date(2026, 6, 1), 10.0)
+
+    uc = ObtenerComparacionHistoricaUseCase(repo)
+    resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
+
+    assert resultado.vs_mes_anterior_pct is None
+    assert resultado.vs_anio_anterior_pct is None
+
+
 async def test_periodo_sin_datos_devuelve_lista_vacia_y_total_none() -> None:
     repo = FakeConsumoDiarioRepository()
     # Solo tiene datos en mes actual

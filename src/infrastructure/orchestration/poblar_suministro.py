@@ -83,6 +83,8 @@ class PoblarSuministroUseCase:
                 await suministro_repo.crear_placeholder(suministro_id)
             if meta.codigo_tarifa:
                 await suministro_repo.upsert_tarifa(suministro_id, meta.codigo_tarifa)
+            if meta.telemedible:
+                await suministro_repo.upsert_telemedible(suministro_id, meta.telemedible)
             await session.commit()
 
         # 3. Vecinos Oracle → vecinos_cache SQLite

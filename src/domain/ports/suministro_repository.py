@@ -20,3 +20,11 @@ class SuministroRepository(abc.ABC):
     @abc.abstractmethod
     async def upsert_tarifa(self, suministro_id: str, tarifa_codigo: str) -> None:
         """Actualiza el código de tarifa. Crea el registro si no existe."""
+
+    @abc.abstractmethod
+    async def get_telemedible(self, suministro_id: str) -> str | None:
+        """Devuelve el tipo de telemedición (CLOU/NANSEN/...), o None si no se conoce."""
+
+    @abc.abstractmethod
+    async def upsert_telemedible(self, suministro_id: str, telemedible: str) -> None:
+        """Actualiza el tipo de telemedición. Crea el registro si no existe."""

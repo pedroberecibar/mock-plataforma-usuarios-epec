@@ -12,7 +12,3 @@ class ClouIngestionStrategy(SigecBaseStrategy, SuministroIngestionStrategy):
     @property
     def nombre(self) -> str:
         return "CLOU"
-
-    @property
-    def soporta_perfiles(self) -> bool:
-        return True

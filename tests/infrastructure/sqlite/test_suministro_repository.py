@@ -86,3 +86,32 @@ async def test_crear_placeholder_no_pisa_coordenadas_reales(
     result = await db_session.execute(select(Suministro).where(Suministro.id == "SRV-001"))
     row = result.scalar_one()
     assert row.lat == -31.45  # coordenadas reales intactas
+
+
+# --- telemedible (ADR-003) ---
+
+
+async def test_get_telemedible_devuelve_none_si_no_seteado(
+    repo: SQLiteSuministroRepository,
+) -> None:
+    await repo.crear_placeholder("SRV-001")
+    assert await repo.get_telemedible("SRV-001") is None
+
+
+async def test_upsert_telemedible_crea_y_persiste(
+    repo: SQLiteSuministroRepository,
+) -> None:
+    await repo.upsert_telemedible("SRV-NANSEN", "NANSEN")
+    assert await repo.get_telemedible("SRV-NANSEN") == "NANSEN"
+
+
+async def test_upsert_telemedible_actualiza_existente_sin_pisar_coordenadas(
+    repo: SQLiteSuministroRepository,
+    db_session: AsyncSession,
+) -> None:
+    await repo.upsert_coordenadas("SRV-001", -31.45, -64.14)
+    await repo.upsert_telemedible("SRV-001", "CLOU")
+    result = await db_session.execute(select(Suministro).where(Suministro.id == "SRV-001"))
+    row = result.scalar_one()
+    assert row.telemedible == "CLOU"
+    assert row.lat == -31.45  # coordenadas intactas

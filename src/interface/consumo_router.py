@@ -55,6 +55,8 @@ class ComparacionResponse(BaseModel):
     mismo_mes_anio_anterior: PeriodoResponse
     zona_mes_actual: ZonaResumenResponse
     datos_hasta: date | None
+    vs_mes_anterior_pct: float | None
+    vs_anio_anterior_pct: float | None
 
 
 class DetalleDiaResponse(BaseModel):
@@ -137,6 +139,8 @@ async def get_comparacion_historica(
             serie=[PuntoSerie(fecha=f, kwh=kwh) for f, kwh in resultado.zona_mes_actual.serie],
         ),
         datos_hasta=resultado.datos_hasta,
+        vs_mes_anterior_pct=resultado.vs_mes_anterior_pct,
+        vs_anio_anterior_pct=resultado.vs_anio_anterior_pct,
     )
 
 

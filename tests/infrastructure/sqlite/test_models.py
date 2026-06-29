@@ -1,7 +1,7 @@
 from infrastructure.sqlite.models import Base
 
 EXPECTED_TABLES = {
-    "suministros": {"id", "lat", "lon", "suministro_referencia", "tarifa_codigo"},
+    "suministros": {"id", "lat", "lon", "suministro_referencia", "tarifa_codigo", "telemedible"},
     "consumo_diario": {"suministro_id", "fecha", "kwh"},
     "consumo_horario": {"suministro_id", "fecha", "hora", "kwh"},
     "objetivo_consumo": {"id", "suministro_id", "valor_kwh", "origen", "vigente_desde"},

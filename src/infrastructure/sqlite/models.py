@@ -16,6 +16,8 @@ class Suministro(Base):
     lon: Mapped[float]
     suministro_referencia: Mapped[str]
     tarifa_codigo: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    # Tipo de telemedición (CLOU/NANSEN/CHUPETE). Determina si hay perfiles 15-min (ADR-003).
+    telemedible: Mapped[str | None] = mapped_column(nullable=True, default=None)
 
 
 class ConsumoDiario(Base):

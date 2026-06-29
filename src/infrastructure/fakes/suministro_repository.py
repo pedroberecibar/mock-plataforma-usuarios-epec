@@ -6,6 +6,7 @@ class FakeSuministroRepository(SuministroRepository):
         self._suministros: set[str] = set()
         self._coordenadas: dict[str, tuple[float, float]] = {}
         self._tarifas: dict[str, str] = {}
+        self._telemedibles: dict[str, str] = {}
 
     async def existe(self, suministro_id: str) -> bool:
         return suministro_id in self._suministros
@@ -23,3 +24,10 @@ class FakeSuministroRepository(SuministroRepository):
     async def upsert_tarifa(self, suministro_id: str, tarifa_codigo: str) -> None:
         self._suministros.add(suministro_id)
         self._tarifas[suministro_id] = tarifa_codigo
+
+    async def get_telemedible(self, suministro_id: str) -> str | None:
+        return self._telemedibles.get(suministro_id)
+
+    async def upsert_telemedible(self, suministro_id: str, telemedible: str) -> None:
+        self._suministros.add(suministro_id)
+        self._telemedibles[suministro_id] = telemedible

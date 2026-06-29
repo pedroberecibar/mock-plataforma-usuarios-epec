@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from application.use_cases.calcular_proyeccion_mensual import CalcularProyeccionMensualUseCase
+from domain.comparacion_periodo import dias_con_dato, total_en_dias, variacion_pct
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.vecinos_repository import VecinosRepository
@@ -119,15 +120,8 @@ class ObtenerHomeUseCase:
         else:
             prev_inicio = date(mes_inicio.year, mes_inicio.month - 1, 1)
 
-        days_in_prev = calendar.monthrange(prev_inicio.year, prev_inicio.month)[1]
-        prev_fin = prev_inicio.replace(day=min(dias_transcurridos, days_in_prev))
-
-        prev_serie = await self._consumo_repo.get_serie(suministro_id, prev_inicio, prev_fin)
-        prev_total = sum(kwh for _, kwh in prev_serie) if prev_serie else 0.0
-        if prev_total <= 0:
-            return None
-
-        return round((total_kwh - prev_total) / prev_total * 100, 2)
+        base = await self._total_mismo_periodo(suministro_id, prev_inicio, current_serie)
+        return variacion_pct(total_kwh, base)
 
     async def _calcular_vs_anio_anterior(
         self,
@@ -141,21 +135,21 @@ class ObtenerHomeUseCase:
             return None
 
         last_year_inicio = mes_inicio.replace(year=mes_inicio.year - 1)
-        days_in_last_year_month = calendar.monthrange(
-            last_year_inicio.year, last_year_inicio.month
-        )[1]
-        last_year_fin = last_year_inicio.replace(
-            day=min(dias_transcurridos, days_in_last_year_month)
-        )
+        base = await self._total_mismo_periodo(suministro_id, last_year_inicio, current_serie)
+        return variacion_pct(total_kwh, base)
 
-        last_year_serie = await self._consumo_repo.get_serie(
-            suministro_id, last_year_inicio, last_year_fin
-        )
-        last_year_total = sum(kwh for _, kwh in last_year_serie) if last_year_serie else 0.0
-        if last_year_total <= 0:
-            return None
-
-        return round((total_kwh - last_year_total) / last_year_total * 100, 2)
+    async def _total_mismo_periodo(
+        self,
+        suministro_id: str,
+        mes_inicio_comparacion: date,
+        current_serie: list[tuple[date, float]],
+    ) -> float:
+        """Total del mes de comparación restringido a los mismos días calendario
+        que tienen dato en el mes en curso (comparación a igual período)."""
+        days = calendar.monthrange(mes_inicio_comparacion.year, mes_inicio_comparacion.month)[1]
+        fin = mes_inicio_comparacion.replace(day=days)
+        serie = await self._consumo_repo.get_serie(suministro_id, mes_inicio_comparacion, fin)
+        return total_en_dias(serie, dias_con_dato(current_serie))
 
     async def _calcular_zona(
         self,

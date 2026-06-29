@@ -88,7 +88,9 @@ Concretamente:
 - [x] **Fase 0** — Diagnóstico read-only (2026-06-29). Hallazgos arriba.
 - [ ] **Fase 1** — `soporta_perfiles: bool` en el puerto + 3 estrategias + tests.
 - [ ] **Fase 2** — (opcional) filtrar el lote horario a equipos con `soporta_perfiles`.
-- [ ] **Fase 3** — Migración `suministros.telemedible` + persistir en poblar + backfill 2817670.
+- [x] **Fase 3** — Migración `suministros.telemedible` (`d7e8f9a0b1c2`) + repo
+      `upsert/get_telemedible` + persistir en `PoblarSuministroUseCase` + helper de dominio
+      `domain/perfiles.soporta_perfiles` (única fuente de verdad) + backfill 2817670=NANSEN.
 - [ ] **Fase 4** — Exponer `soporta_perfiles` por la API (`/cuenta`).
 - [ ] **Fase 5** — UI: aviso NANSEN + gating del perfil horario (TDD + validación browser).
 - [ ] **Fase 6** — (futuro EPEC) `NansenStrategy.leer_perfiles` + flip del flag.

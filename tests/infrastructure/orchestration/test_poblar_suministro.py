@@ -161,3 +161,26 @@ async def test_poblar_con_lecturas_persiste_consumo(db_session_factory: object) 
         )
         count = result.scalar()
     assert count == 5  # 5 días entre d0 y d1
+
+
+async def test_poblar_persiste_telemedible(db_session_factory: object) -> None:
+    """El tipo de telemedición de Oracle se persiste en suministros (ADR-003)."""
+    from sqlalchemy import text
+
+    meta_reader = MagicMock()
+    meta_reader.leer_meta = AsyncMock(return_value=_meta(medidor="99000001", telemedible="NANSEN"))
+    strategy = _FakeStrategy([], nombre="NANSEN")
+
+    uc = PoblarSuministroUseCase(
+        meta_reader=meta_reader,
+        selector=_make_selector(strategy),
+        vecinos_repo=FakeVecinosRepository({"SRV-TEST": []}),
+        session_factory=db_session_factory,  # type: ignore[arg-type]
+    )
+    await uc.ejecutar("SRV-TEST")
+
+    async with db_session_factory() as session:  # type: ignore[attr-defined]
+        result = await session.execute(
+            text("SELECT telemedible FROM suministros WHERE id = 'SRV-TEST'")
+        )
+        assert result.scalar() == "NANSEN"

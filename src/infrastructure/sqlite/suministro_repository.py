@@ -57,3 +57,26 @@ class SQLiteSuministroRepository(SuministroRepository):
             )
         )
         await self._session.execute(stmt)
+
+    async def get_telemedible(self, suministro_id: str) -> str | None:
+        result = await self._session.execute(
+            select(Suministro.telemedible).where(Suministro.id == suministro_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def upsert_telemedible(self, suministro_id: str, telemedible: str) -> None:
+        stmt = (
+            insert(Suministro)
+            .values(
+                id=suministro_id,
+                lat=0.0,
+                lon=0.0,
+                suministro_referencia=suministro_id,
+                telemedible=telemedible,
+            )
+            .on_conflict_do_update(
+                index_elements=["id"],
+                set_={"telemedible": telemedible},
+            )
+        )
+        await self._session.execute(stmt)

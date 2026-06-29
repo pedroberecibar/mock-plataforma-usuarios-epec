@@ -11,6 +11,8 @@ from typing import Any
 import oracledb
 
 from domain.lecturas import LecturaTelemedida
+from domain.perfiles import soporta_perfiles
+from domain.ports.suministro_ingestion_strategy import SuministroIngestionStrategy
 from infrastructure.oracle.medicion_reader import _init_oracle_client
 
 # Filtra por medidor exacto (un suministro a la vez, distinto al bulk reader).
@@ -59,18 +61,18 @@ def _normalizar_valor(val: object) -> float | None:
         return None
 
 
-class SigecBaseStrategy:
+class SigecBaseStrategy(SuministroIngestionStrategy):
     """Base para estrategias de ingesta que leen de XXCO_LECTURAS_TELEMEDIDAS.
 
     Subclases sólo difieren en `nombre` (CLOU, NANSEN, CHUPETE).
     Cuando AMI esté disponible, cada subclase puede sobreescribir `leer_lecturas`.
     """
 
-    # Por defecto, los medidores sobre SIGEC no exponen perfiles 15-min (ADR-003).
-    # CLOU lo sobrescribe a True; NANSEN/CHUPETE heredan False.
+    # La capacidad de perfiles se deriva del tipo de medidor (nombre) vía la regla de
+    # dominio única (ADR-003): CLOU=True, NANSEN/CHUPETE=False. Sin duplicar el criterio.
     @property
     def soporta_perfiles(self) -> bool:
-        return False
+        return soporta_perfiles(self.nombre)
 
     def __init__(self) -> None:
         _init_oracle_client()

@@ -2,6 +2,7 @@ import calendar
 from dataclasses import dataclass
 from datetime import date
 
+from domain.comparacion_periodo import dias_con_dato, total_en_dias, variacion_pct
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.vecinos_repository import VecinosRepository
 
@@ -30,6 +31,9 @@ class ComparacionHistorica:
     mismo_mes_anio_anterior: PeriodoConsumo
     zona_mes_actual: ZonaResumen
     datos_hasta: date | None
+    # Variación a igual período (mismos días calendario que el mes en curso).
+    vs_mes_anterior_pct: float | None
+    vs_anio_anterior_pct: float | None
 
 
 def _primer_dia(mes: date) -> date:
@@ -77,12 +81,24 @@ class ObtenerComparacionHistoricaUseCase:
             suministro_id, actual, mes_actual.total_kwh, len(mes_actual.serie)
         )
 
+        # Variación a igual período: comparar el mes en curso contra los mismos
+        # días calendario del mes anterior / año anterior (no el mes completo).
+        dias_actuales = dias_con_dato(mes_actual.serie)
+        vs_mes_anterior_pct = variacion_pct(
+            mes_actual.total_kwh, total_en_dias(mes_anterior.serie, dias_actuales)
+        )
+        vs_anio_anterior_pct = variacion_pct(
+            mes_actual.total_kwh, total_en_dias(mismo_mes_anio_anterior.serie, dias_actuales)
+        )
+
         return ComparacionHistorica(
             mes_actual=mes_actual,
             mes_anterior=mes_anterior,
             mismo_mes_anio_anterior=mismo_mes_anio_anterior,
             zona_mes_actual=zona_mes_actual,
             datos_hasta=datos_hasta,
+            vs_mes_anterior_pct=vs_mes_anterior_pct,
+            vs_anio_anterior_pct=vs_anio_anterior_pct,
         )
 
     async def _calcular_zona(
