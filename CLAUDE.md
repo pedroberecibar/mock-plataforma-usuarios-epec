@@ -58,6 +58,32 @@ Proyecto: **Plataforma de Clientes EPEC** (MVP).
 - **Otros:**    EPEC Design System (ver `docs/EPEC Design System/`), prompts de Stitch para UI (`docs/stitch-prompts-plataforma-clientes.md`)
 - **Browser:**  `agent-browser 0.28.0` — MCP configurado en `.claude/settings.json`. Usar para validación visual de UI antes de commit.
 
+## Entornos y datos (OBLIGATORIO — ver ADR-002)
+
+Un único origen de verdad: **Oracle `PRODEBS_SEE`** (interno, read-only). Dos entornos:
+
+- **Desarrollo (`main` + ramas):** backend FastAPI + SQLite como cache ingestada de
+  Oracle. **Datos reales, CERO sintético.** Sumar usuarios = ampliar la ingesta
+  (`INGEST_EQUIPOS` / on-demand), NUNCA sembrar consumo. `main` se mantiene estable.
+- **Demo portfolio (rama `mock-platform`, GitHub Pages):** build estático que sirve un
+  **snapshot real del suministro 2817670** (Palacios) desde `frontend/public/mock-data/`,
+  generado por `scripts/generate_mock_fixtures.py`. Estático ≠ sintético: es dato real
+  congelado. De vecinos solo se publican agregados ≥5, nunca individual.
+
+Reglas duras:
+- **Prohibido mostrar dato sintético como real.** Si falta dato, devolver `null`/503,
+  nunca inventar.
+- `scripts/seed_demo.py` está **quarantined**: solo para UI offline sin Oracle, aborta si
+  `DATABASE_URL` apunta a la DB real; escribe solo en DB descartable (`data/ui-dev.db`).
+- **CI no regenera fixtures** (no alcanza Oracle). El refresh de la demo es un comando
+  manual en la máquina del owner (ingesta 2817670 → fixtures → commit → push dispara
+  `deploy-demo.yml`).
+
+**Antes de tocar el deploy de la demo, leer `docs/RUNBOOK-deploy-mock-platform.md`**
+(procedimiento + 5 bloqueos conocidos: `cmd /c` por permisos corporativos, loop de
+onboarding por objetivo nulo, regex de aliasing en `vite.config.gh-pages.ts`, paridad de
+tipos en los mocks, y JSON anidados según `types.ts`).
+
 ## Idioma
 - Código, nombres y comentarios técnicos: inglés
 - Lógica de negocio, ADRs, contenido operativo: español rioplatense

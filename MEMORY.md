@@ -10,6 +10,12 @@
 - Alternativa descartada: GitNexus (solo lectura, menos estable).
 -->
 
+### 2026-06-29 — Entornos y fuentes de datos (ADR-002)
+- Único origen: Oracle `PRODEBS_SEE`. Dos entornos: `main` (backend real, cero sintético)
+  y `mock-platform` (GitHub Pages, snapshot real de 2817670 vía `generate_mock_fixtures.py`).
+- `seed_demo.py` quarantined (guard por `DATABASE_URL`, solo DB descartable). Factura fake → 503.
+- Detalle completo: `architecture/adr/ADR-002-entornos-y-fuentes-de-datos.md`.
+
 ## Patrones establecidos
 <!-- Patrones que ya se usan en el proyecto y no hay que rediscutir. -->
 
