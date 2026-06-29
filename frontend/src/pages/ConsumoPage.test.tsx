@@ -27,6 +27,9 @@ const SERIE_HORARIA_RESP = {
 beforeEach(() => {
   vi.mocked(consumoApi.fetchSerieDiaria).mockResolvedValue(SERIE_VACIA);
   vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_VACIA);
+  vi.mocked(consumoApi.fetchComparacionAnual).mockImplementation(
+    async (_t, _s, meses: string[]) => meses.map(() => COMPARACION_VACIA),
+  );
   vi.mocked(consumoApi.fetchAnomalia).mockResolvedValue(null);
   vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(null);
   vi.mocked(objetivosApi.fetchObjetivo).mockResolvedValue(null);
@@ -203,6 +206,59 @@ describe("ConsumoPage — filtro por mes", () => {
       expect(vi.mocked(consumoApi.fetchComparacion)).toHaveBeenCalled();
     });
     expect(vi.mocked(objetivosApi.fetchObjetivo)).not.toHaveBeenCalled();
+  });
+});
+
+describe("ConsumoPage — toggle día / mes del gráfico", () => {
+  async function renderListo() {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+  }
+
+  it("muestra el toggle 'Por día' / 'Por mes'", async () => {
+    await renderListo();
+    expect(screen.getByRole("button", { name: "Por día" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Por mes" })).not.toBeNull();
+  });
+
+  it("por defecto está en modo día y muestra el selector de mes", async () => {
+    await renderListo();
+    expect(screen.getByRole("button", { name: "Por día" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByLabelText("Mes")).not.toBeNull();
+    expect(screen.queryByLabelText("Año")).toBeNull();
+  });
+
+  it("al elegir 'Por mes' muestra el selector de año y pide la comparación anual", async () => {
+    await renderListo();
+    vi.mocked(consumoApi.fetchComparacionAnual).mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "Por mes" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Año")).not.toBeNull());
+    expect(screen.queryByLabelText("Mes")).toBeNull();
+    await waitFor(() => {
+      expect(vi.mocked(consumoApi.fetchComparacionAnual)).toHaveBeenCalledWith(
+        TOKEN,
+        SUMINISTRO,
+        expect.arrayContaining([expect.stringMatching(/^\d{4}-01$/)]),
+      );
+    });
+  });
+
+  it("muestra la comparación anual con vecinos en modo mes", async () => {
+    vi.mocked(consumoApi.fetchComparacionAnual).mockImplementation(async (_t, _s, meses: string[]) =>
+      meses.map((m) => ({
+        mes_actual:              { mes: `${m}-01`, serie: [], total_kwh: 100 },
+        mes_anterior:            { mes: "2026-05-01", serie: [], total_kwh: null },
+        mismo_mes_anio_anterior: { mes: "2025-06-01", serie: [], total_kwh: null },
+        zona_mes_actual:         { promedio_vecinos_kwh: 90, n_vecinos: 6, diferencia_pct: 11, serie: [] },
+        datos_hasta: null,
+      })),
+    );
+    await renderListo();
+    fireEvent.click(screen.getByRole("button", { name: "Por mes" }));
+    await waitFor(() => expect(screen.getByText(/Comparación con vecinos ·/)).not.toBeNull());
+    expect(screen.getByText(/Total del año/)).not.toBeNull();
   });
 });
 

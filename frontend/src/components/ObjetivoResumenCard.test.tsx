@@ -34,10 +34,15 @@ describe("ObjetivoResumenCard", () => {
     expect(screen.getByText("200")).not.toBeNull();
   });
 
-  it("muestra el consumo actual del mes", () => {
+  it("ya no muestra 'Consumo actual' (vive en el hero de Mi Consumo)", () => {
     render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={196} estado={makeEstado()} onEditar={() => {}} />);
-    expect(screen.getByText(/Consumo actual/i)).not.toBeNull();
-    expect(screen.getByText(/^196 kWh$/)).not.toBeNull();
+    expect(screen.queryByText(/Consumo actual/i)).toBeNull();
+  });
+
+  it("divide el contenido en card de objetivo y card de progreso", () => {
+    render(<ObjetivoResumenCard objetivo={OBJETIVO} consumoActualKwh={100} estado={makeEstado()} onEditar={() => {}} />);
+    expect(screen.getByText(/Tu objetivo de/i)).not.toBeNull();
+    expect(screen.getByText(/Progreso del mes/i)).not.toBeNull();
   });
 
   it("muestra el faltante cuando el consumo está por debajo del objetivo", () => {

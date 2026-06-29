@@ -7,6 +7,8 @@ interface Props {
   mesActual: PeriodoConsumo;
   mismoMesAnioAnterior: PeriodoConsumo;
   objetivoDiarioKwh?: number | null;
+  /** Nombre del mes en foco (ej. "junio") para rotular los KPIs. */
+  mesLabel?: string;
 }
 
 interface DimensionCardProps {
@@ -17,7 +19,11 @@ interface DimensionCardProps {
   unidad: string;
 }
 
-function DimensionCard({ label, miValor, promedioVecinos, diferenciaPct, unidad }: DimensionCardProps) {
+function capitalizar(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function DimensionCard({ label, miValor, promedioVecinos, diferenciaPct, unidad }: DimensionCardProps) {
   const sube = diferenciaPct !== null && diferenciaPct > 0;
   const signo = diferenciaPct !== null && diferenciaPct > 0 ? "+" : "";
   const badgeColor = sube ? color.error : color.success;
@@ -110,7 +116,8 @@ function DimensionCard({ label, miValor, promedioVecinos, diferenciaPct, unidad 
   );
 }
 
-export function PanelVecinosComparacion({ zona, mesActual, mismoMesAnioAnterior, objetivoDiarioKwh = null }: Props) {
+export function PanelVecinosComparacion({ zona, mesActual, mismoMesAnioAnterior, objetivoDiarioKwh = null, mesLabel }: Props) {
+  const sufijoMes = mesLabel ? capitalizar(mesLabel) : "este mes";
   // `zona != null` cubre null y undefined (la fixture demo puede no traer zona_mes_actual).
   const tieneZona = zona != null && zona.n_vecinos >= 5 && zona.promedio_vecinos_kwh !== null;
 
@@ -182,14 +189,14 @@ export function PanelVecinosComparacion({ zona, mesActual, mismoMesAnioAnterior,
         <>
           <div style={{ display: "flex", gap: space[4], flexWrap: "wrap" as const }}>
             <DimensionCard
-              label="Total acumulado (este mes)"
+              label={`Total acumulado · ${sufijoMes}`}
               miValor={mesActual.total_kwh}
               promedioVecinos={zona!.promedio_vecinos_kwh}
               diferenciaPct={zona!.diferencia_pct}
               unidad="kWh"
             />
             <DimensionCard
-              label="Promedio diario (este mes)"
+              label={`Promedio diario · ${sufijoMes}`}
               miValor={promedioDiarioMio}
               promedioVecinos={promedioDiarioZona}
               diferenciaPct={diferenciaDiariaPct}

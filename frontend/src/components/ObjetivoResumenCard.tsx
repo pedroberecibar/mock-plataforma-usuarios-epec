@@ -1,8 +1,8 @@
 import type React from "react";
-import type { ReactNode } from "react";
 import type { ObjetivoResponse } from "../api/objetivos";
 import type { ObjetivoEstadoResponse } from "../api/types";
-import { bg, color, fg, font, fontSize, fontWeight, radius, shadow, space } from "../design-tokens";
+import { bg, color, fg, font, fontSize, fontWeight, radius, space } from "../design-tokens";
+import { Card, CardLabel } from "./Card";
 
 interface Props {
   objetivo: ObjetivoResponse | null;
@@ -33,6 +33,7 @@ function fmtKwh(value: number): string {
 
 export function ObjetivoResumenCard({ objetivo, consumoActualKwh, estado, mesLabel, onEditar }: Props) {
   const sinObjetivo = !objetivo;
+  const mes = mesLabel ?? mesActualLabel();
 
   const pct =
     objetivo && consumoActualKwh != null
@@ -52,113 +53,110 @@ export function ObjetivoResumenCard({ objetivo, consumoActualKwh, estado, mesLab
       : "bien";
   const sem = SEMANTICA[semantica];
 
+  // Sin objetivo: una sola card con el call-to-action.
+  if (sinObjetivo) {
+    return (
+      <section aria-label="Objetivo de consumo" style={{ marginBottom: space[6] }}>
+        <Card style={{ position: "relative" }}>
+          <EditarLink sinObjetivo onEditar={onEditar} />
+          <CardLabel>{`Tu objetivo de ${mes}`}</CardLabel>
+          <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
+            Sin objetivo definido
+          </p>
+          <p style={{ margin: `${space[4]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary }}>
+            Definí una meta mensual para ver tu progreso de consumo.
+          </p>
+        </Card>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label="Objetivo de consumo"
       style={{
-        position:     "relative",
-        background:   bg.surfaceFeat,
-        borderRadius: `${radius.lg}px`,
-        boxShadow:    shadow.sm,
-        fontFamily:   font.sans,
-        marginBottom: space[6],
-        padding:      `${space[5]}px`,
+        display:             "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+        gap:                 space[4],
+        marginBottom:        space[6],
       }}
     >
-      {/* Link editar — esquina superior derecha de la card */}
-      <button
-        onClick={onEditar}
-        style={{ ...linkStyle, position: "absolute", top: space[5], right: space[5] }}
-      >
-        {sinObjetivo ? "Definir objetivo" : "Editar objetivo"}
-      </button>
-
-      {/* Fila superior: objetivo, consumo actual y excedente/faltante alineados a la izquierda */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: space[6], paddingRight: 120 }}>
-        {/* Objetivo hero */}
-        <div style={{ flex: "0 0 auto" }}>
-          <Label>{`Tu objetivo de ${mesLabel ?? mesActualLabel()}`}</Label>
-          {sinObjetivo ? (
-            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
-              Sin objetivo definido
-            </p>
-          ) : (
-            <p style={{
-              margin:        `${space[1]}px 0 0`,
-              fontFamily:    font.technical,
-              fontSize:      fontSize["3xl"],
-              fontWeight:    fontWeight.light,
-              color:         fg.link,
-              lineHeight:    1.1,
-              letterSpacing: "-0.02em",
-            }}>
-              {objetivo.valor_kwh}
-              <span style={{ fontFamily: font.sans, fontSize: fontSize.sm, fontWeight: fontWeight.regular, color: fg.muted, marginLeft: space[2] }}>
-                kWh / mes
-              </span>
-            </p>
-          )}
-        </div>
-
-        {!sinObjetivo && (
-          <>
-            <Stat
-              label="Consumo actual"
-              value={consumoActualKwh != null ? fmtKwh(consumoActualKwh) : "—"}
-              sub={`de ${objetivo.valor_kwh} kWh`}
-            />
-            <ExcedenteFaltante estado={estado} diff={diff} superado={superado} sem={sem} />
-          </>
-        )}
-      </div>
-
-      {/* Progreso del mes (kWh) — barra a todo el ancho */}
-      {sinObjetivo ? (
-        <p style={{ margin: `${space[4]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary }}>
-          Definí una meta mensual para ver tu progreso de consumo.
+      {/* Card 1 — Tu objetivo + faltante/excedente */}
+      <Card style={{ position: "relative" }}>
+        <EditarLink sinObjetivo={false} onEditar={onEditar} />
+        <CardLabel>{`Tu objetivo de ${mes}`}</CardLabel>
+        <p style={{
+          margin:        `${space[2]}px 0 0`,
+          fontFamily:    font.technical,
+          fontSize:      fontSize["2xl"],
+          fontWeight:    fontWeight.light,
+          color:         fg.link,
+          lineHeight:    1.1,
+          letterSpacing: "-0.02em",
+        }}>
+          {objetivo.valor_kwh}
+          <span style={{ fontFamily: font.sans, fontSize: fontSize.sm, fontWeight: fontWeight.regular, color: fg.muted, marginLeft: space[2] }}>
+            kWh / mes
+          </span>
         </p>
-      ) : (
-        <div style={{ marginTop: space[6] }}>
-          <Label>Progreso del mes</Label>
-          {pct !== null && consumoActualKwh != null ? (
-            <>
-              <ProgressBar pct={pct} fill={sem.fill} ariaLabel="Consumo vs objetivo" />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space[3], marginTop: space[2], flexWrap: "wrap" }}>
-                <p style={{ margin: 0, fontSize: fontSize.xs, color: fg.muted }}>
-                  {Math.round(consumoActualKwh)} de {objetivo.valor_kwh} kWh ({Math.round(pct * 100)}%)
-                </p>
-                {(superado || enAviso || estado?.texto_dinamico === "sobre_ritmo") && (
-                  <p role="alert" style={chipStyle(sem)}>
-                    {superado
-                      ? "Objetivo superado"
-                      : enAviso
-                        ? `Ya consumiste el ${Math.round(pct * 100)}% del objetivo`
-                        : "Consumís más rápido que tu objetivo"}
-                  </p>
-                )}
-              </div>
-            </>
-          ) : (
-            <p style={{ marginTop: space[2], fontSize: fontSize.xs, color: fg.muted }}>Sin datos de consumo aún</p>
-          )}
 
-          {/* Días de consumo — como en Objetivos */}
-          {estado && estado.dias_objetivo_consumidos != null && estado.dias_transcurridos > 0 && (
-            <div style={{ marginTop: space[5] }}>
-              <Label>Días de consumo</Label>
-              <ProgressBar
-                pct={Math.min(estado.dias_objetivo_consumidos / estado.dias_transcurridos, 1)}
-                fill={sem.fill}
-                ariaLabel="Días objetivo consumidos"
-              />
-              <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
-                {estado.dias_objetivo_consumidos.toFixed(1)} de {estado.dias_transcurridos} días objetivo consumidos
-              </p>
-            </div>
-          )}
+        <div style={{ marginTop: space[5] }}>
+          <ExcedenteFaltante estado={estado} diff={diff} superado={superado} sem={sem} />
         </div>
-      )}
+      </Card>
+
+      {/* Card 2 — Progreso del mes (kWh + días) */}
+      <Card>
+        <CardLabel>Progreso del mes</CardLabel>
+        {pct !== null && consumoActualKwh != null ? (
+          <>
+            <ProgressBar pct={pct} fill={sem.fill} ariaLabel="Consumo vs objetivo" />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space[3], marginTop: space[2], flexWrap: "wrap" }}>
+              <p style={{ margin: 0, fontSize: fontSize.xs, color: fg.muted }}>
+                {Math.round(consumoActualKwh)} de {objetivo.valor_kwh} kWh ({Math.round(pct * 100)}%)
+              </p>
+              {(superado || enAviso || estado?.texto_dinamico === "sobre_ritmo") && (
+                <p role="alert" style={chipStyle(sem)}>
+                  {superado
+                    ? "Objetivo superado"
+                    : enAviso
+                      ? `Ya consumiste el ${Math.round(pct * 100)}% del objetivo`
+                      : "Consumís más rápido que tu objetivo"}
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <p style={{ marginTop: space[2], fontSize: fontSize.xs, color: fg.muted }}>Sin datos de consumo aún</p>
+        )}
+
+        {/* Días de consumo — como en Objetivos */}
+        {estado && estado.dias_objetivo_consumidos != null && estado.dias_transcurridos > 0 && (
+          <div style={{ marginTop: space[5] }}>
+            <CardLabel>Días de consumo</CardLabel>
+            <ProgressBar
+              pct={Math.min(estado.dias_objetivo_consumidos / estado.dias_transcurridos, 1)}
+              fill={sem.fill}
+              ariaLabel="Días objetivo consumidos"
+            />
+            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
+              {estado.dias_objetivo_consumidos.toFixed(1)} de {estado.dias_transcurridos} días objetivo consumidos
+            </p>
+          </div>
+        )}
+      </Card>
     </section>
+  );
+}
+
+function EditarLink({ sinObjetivo, onEditar }: { sinObjetivo: boolean; onEditar: () => void }) {
+  return (
+    <button
+      onClick={onEditar}
+      style={{ ...linkStyle, position: "absolute", top: space[6], right: space[6] }}
+    >
+      {sinObjetivo ? "Definir objetivo" : "Editar objetivo"}
+    </button>
   );
 }
 
@@ -221,7 +219,7 @@ function ExcedenteFaltante({
 function Stat({ label, value, sub, accent }: { label: string; value: string; sub: string; accent?: string }) {
   return (
     <div style={{ flex: "0 1 auto" }}>
-      <Label>{label}</Label>
+      <CardLabel>{label}</CardLabel>
       <p style={{
         margin:     `${space[1]}px 0`,
         fontFamily: font.technical,
@@ -234,21 +232,6 @@ function Stat({ label, value, sub, accent }: { label: string; value: string; sub
       </p>
       <p style={{ margin: 0, fontSize: fontSize.xs, color: fg.muted }}>{sub}</p>
     </div>
-  );
-}
-
-function Label({ children }: { children: ReactNode }) {
-  return (
-    <p style={{
-      margin:        0,
-      fontSize:      fontSize.xs,
-      fontWeight:    fontWeight.semibold,
-      color:         fg.secondary,
-      textTransform: "uppercase",
-      letterSpacing: "0.05em",
-    }}>
-      {children}
-    </p>
   );
 }
 

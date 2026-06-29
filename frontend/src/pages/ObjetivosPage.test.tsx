@@ -115,25 +115,52 @@ describe("ObjetivosPage — Indicador 2 (texto_dinamico)", () => {
   });
 });
 
-describe("ObjetivosPage — Indicador 1 (vs zona)", () => {
-  it("muestra diferencia_pct positiva cuando el objetivo está por encima de la zona", async () => {
+describe("ObjetivosPage — card 'Tu objetivo vs. tu zona' eliminada", () => {
+  it("ya no renderiza la card de comparación con la zona", async () => {
     vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
       makeEstado({ promedio_vecinos_kwh: 160, diferencia_pct: 25.0, n_vecinos: 6 })
     );
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
-    await waitFor(() =>
-      expect(screen.getByText(/\+25/)).not.toBeNull()
-    );
+    await waitFor(() => expect(screen.getByRole("progressbar")).not.toBeNull());
+    expect(screen.queryByText(/Tu objetivo vs\. tu zona/i)).toBeNull();
+    expect(screen.queryByText(/Promedio zona/i)).toBeNull();
   });
+});
 
-  it("muestra 'Sin datos suficientes' cuando promedio_vecinos_kwh es null", async () => {
+describe("ObjetivosPage — días restantes + semáforo temporal", () => {
+  // Hoy es 2026-06-29 → diasDelMesActual() = 30 (junio).
+  it("muestra los días restantes del mes en ritmo y consumo acumulado", async () => {
     vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
-      makeEstado({ promedio_vecinos_kwh: null, diferencia_pct: null, n_vecinos: 0 })
+      makeEstado({ dias_transcurridos: 20, dias_objetivo_consumidos: 18, consumo_acumulado_kwh: 120 })
     );
     render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    // 30 - 20 = 10 días restantes
     await waitFor(() =>
-      expect(screen.getByText(/Sin datos suficientes/i)).not.toBeNull()
+      expect(screen.getAllByText(/días restantes/i).length).toBeGreaterThan(0)
     );
+    expect(screen.getAllByText("10").length).toBeGreaterThan(0);
+  });
+
+  it("NO marca alerta al consumir 98% del objetivo faltando 1 día (verde)", async () => {
+    // objetivo 200; consumoActual = 29.4 × 6.67 ≈ 196 (98%); 1 día restante → ritmo ~1.01
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ dias_transcurridos: 29, dias_objetivo_consumidos: 29.4, texto_dinamico: "en_ritmo" })
+    );
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.getByRole("progressbar")).not.toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("marca alerta roja al consumir 98% del objetivo faltando 10 días", async () => {
+    // objetivo 200; consumoActual = 29.4 × 6.67 ≈ 196 (98%); 20 días transcurridos → ritmo ~1.47
+    vi.mocked(objetivosApi.fetchObjetivoEstado).mockResolvedValue(
+      makeEstado({ dias_transcurridos: 20, dias_objetivo_consumidos: 29.4, texto_dinamico: "sobre_ritmo" })
+    );
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert.textContent).toMatch(/superado/i);
+    });
   });
 });
 

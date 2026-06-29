@@ -1,20 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchAnomalia, fetchComparacion, fetchDetalleDia, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
+import { fetchAnomalia, fetchComparacion, fetchComparacionAnual, fetchDetalleDia, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
 import { fetchObjetivo, fetchObjetivoEstado, type ObjetivoResponse } from "../api/objetivos";
 import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
+import { Card, CardLabel } from "../components/Card";
+import { DeltaChip } from "../components/BloqueConsumoMes";
 import { GraficoConsumoDiario } from "../components/GraficoConsumoDiario";
+import { GraficoConsumoMensual } from "../components/GraficoConsumoMensual";
 import { MesSelector } from "../components/MesSelector";
+import { SegmentedControl } from "../components/SegmentedControl";
+import { SelectControl } from "../components/SelectControl";
 import { ObjetivoResumenCard } from "../components/ObjetivoResumenCard";
 import { PanelDetalleDia } from "../components/PanelDetalleDia";
 import { PanelVecinosComparacion } from "../components/PanelVecinosComparacion";
+import { PanelVecinosAnual } from "../components/PanelVecinosAnual";
 import { PageHeader } from "../components/PageHeader";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { AlertBanner } from "../components/AlertBanner";
 import { listaMeses, primerDiaDeMes, ultimoDiaConDatos } from "../utils/meses";
+import { agregarComparacionAnual, mesesDelAnio, type ComparacionAnual, type MesTotal } from "../utils/consumo";
 import {
   bg,
   brand,
+  cardFeaturedStyle,
   color,
   fg,
   font,
@@ -54,26 +62,61 @@ function formatMes(fecha: string): string {
   return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
 }
 
-// Card fila superior: número kWh hero (igual estilo que home)
+function fmtKwh(kwh: number): string {
+  return kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 });
+}
+
+function pctDelta(actual: number | null | undefined, previo: number | null | undefined): number | null {
+  if (actual == null || previo == null || previo === 0) return null;
+  return ((actual - previo) / previo) * 100;
+}
+
+// Hero: consumo acumulado del mes — lo primero y más grande de la página.
+function HeroConsumoMes({
+  label, sublabel, kwh, vsMesAnterior, vsAnioAnterior,
+}: {
+  label: string; sublabel: string; kwh: number | null; vsMesAnterior: number | null; vsAnioAnterior: number | null;
+}) {
+  return (
+    <section
+      aria-label="consumo acumulado del mes"
+      style={{ ...cardFeaturedStyle, marginBottom: space[6] }}
+    >
+      <CardLabel>{label}</CardLabel>
+      <p style={{ margin: `${space[1]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
+        {sublabel}
+      </p>
+      <p style={{
+        margin:        `${space[3]}px 0`,
+        fontFamily:    font.technical,
+        fontSize:      fontSize["4xl"],
+        fontWeight:    fontWeight.light,
+        color:         fg.link,
+        lineHeight:    1.1,
+        letterSpacing: "-0.02em",
+      }}>
+        {kwh !== null ? fmtKwh(kwh) : "—"}
+        <span style={{
+          fontFamily: font.sans,
+          fontSize:   fontSize.xl,
+          fontWeight: fontWeight.light,
+          color:      fg.secondary,
+          marginLeft: space[2],
+        }}>kWh</span>
+      </p>
+      <div style={{ display: "flex", gap: space[2], flexWrap: "wrap" as const }}>
+        <DeltaChip value={vsMesAnterior} label="vs mes anterior" />
+        <DeltaChip value={vsAnioAnterior} label="vs año anterior" />
+      </div>
+    </section>
+  );
+}
+
+// Card de comparación histórica: total mensual en kWh.
 function KpiCard({ label, sublabel, kwh }: { label: string; sublabel: string; kwh: number | null }) {
   return (
-    <div style={{
-      background:   bg.surfaceFeat,
-      borderRadius: `${radius.lg}px`,
-      boxShadow:    shadow.sm,
-      padding:      `${space[5]}px`,
-      fontFamily:   font.sans,
-    }}>
-      <p style={{
-        margin:        0,
-        fontSize:      fontSize.xs,
-        fontWeight:    fontWeight.semibold,
-        color:         fg.secondary,
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-      }}>
-        {label}
-      </p>
+    <Card style={{ padding: `${space[5]}px` }}>
+      <CardLabel>{label}</CardLabel>
       <p style={{ margin: `${space[1]}px 0`, fontSize: fontSize.xs, color: fg.muted }}>
         {sublabel}
       </p>
@@ -87,7 +130,7 @@ function KpiCard({ label, sublabel, kwh }: { label: string; sublabel: string; kw
           lineHeight:    1.2,
           letterSpacing: "-0.02em",
         }}>
-          {kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 })}
+          {fmtKwh(kwh)}
           <span style={{
             fontFamily:  font.sans,
             fontSize:    fontSize.sm,
@@ -99,11 +142,11 @@ function KpiCard({ label, sublabel, kwh }: { label: string; sublabel: string; kw
       ) : (
         <p style={{ margin: 0, fontSize: fontSize.md, color: fg.muted }}>—</p>
       )}
-    </div>
+    </Card>
   );
 }
 
-// Card fila inferior: stat con valor destacado (igual estilo que home, sin borde)
+// Card de stat (día más alto/bajo, promedio) — clickeable opcional.
 function StatFeatCard({
   label, value, sub, accentColor, onClick,
 }: {
@@ -117,7 +160,7 @@ function StatFeatCard({
         background:   bg.surfaceFeat,
         borderRadius: `${radius.lg}px`,
         boxShadow:    shadow.sm,
-        padding:      `${space[4]}px ${space[5]}px`,
+        padding:      `${space[5]}px`,
         fontFamily:   font.sans,
         cursor:       clickable ? "pointer" : "default",
         transition:   clickable ? "box-shadow 150ms ease, transform 150ms ease" : undefined,
@@ -131,16 +174,7 @@ function StatFeatCard({
         (e.currentTarget as HTMLElement).style.transform = "";
       } : undefined}
     >
-      <p style={{
-        margin:        0,
-        fontSize:      fontSize.xs,
-        fontWeight:    fontWeight.semibold,
-        color:         fg.secondary,
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-      }}>
-        {label}
-      </p>
+      <CardLabel>{label}</CardLabel>
       <p style={{
         margin:     `${space[1]}px 0`,
         fontFamily: font.technical,
@@ -187,8 +221,16 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
   const [detalleDia, setDetalleDia] = useState<DetalleDiaResponse | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [detalleHorario, setDetalleHorario] = useState<SerieHorariaResponse | null>(null);
+  const [modoGrafico, setModoGrafico] = useState<"dia" | "mes">("dia");
+  const [anioGrafico, setAnioGrafico] = useState(new Date().getFullYear());
+  const [comparacionAnual, setComparacionAnual] = useState<ComparacionAnual | null>(null);
 
   const meses = useMemo(() => listaMeses(12), []);
+  // Años disponibles según la ventana de 12 meses (para comparar el año completo).
+  const anios = useMemo(
+    () => [...new Set(meses.map((m) => Number(m.value.slice(0, 4))))].sort((a, b) => b - a),
+    [meses],
+  );
 
   // Objetivo vigente: es la meta configurada actual, no depende del mes elegido.
   useEffect(() => {
@@ -230,8 +272,33 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
     return () => { cancelado = true; };
   }, [token, suministroId, mesSeleccionado]);
 
+  // Vista "Por mes": comparación anual con vecinos (agregada de las mensuales).
+  // De acá salen tanto el gráfico mensual propio como los KPIs vs zona del año.
+  useEffect(() => {
+    if (modoGrafico !== "mes") return;
+    let cancelado = false;
+    setComparacionAnual(null);
+    const meses = mesesDelAnio(anioGrafico);
+    fetchComparacionAnual(token, suministroId, meses)
+      .then((lista) => { if (!cancelado) setComparacionAnual(agregarComparacionAnual(lista)); })
+      .catch(() => { if (!cancelado) setComparacionAnual(null); });
+    return () => { cancelado = true; };
+  }, [token, suministroId, modoGrafico, anioGrafico]);
+
   function handleCambiarMes(mes: string) {
     setMesSeleccionado(mes);
+    handleCerrarDetalle();
+  }
+
+  function handleCambiarModo(modo: string) {
+    setModoGrafico(modo === "mes" ? "mes" : "dia");
+    handleCerrarDetalle();
+  }
+
+  // Click en una barra mensual: bajar al detalle diario de ese mes.
+  function handleClickMes(mes: string) {
+    setMesSeleccionado(mes);
+    setModoGrafico("dia");
     handleCerrarDetalle();
   }
 
@@ -328,6 +395,12 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
     ? "Mes actual"
     : mesLabelCorto.charAt(0).toUpperCase() + mesLabelCorto.slice(1);
 
+  const totalMesActual = comparacion?.mes_actual.total_kwh ?? null;
+  const vsMesAnterior = pctDelta(totalMesActual, comparacion?.mes_anterior.total_kwh);
+  const vsAnioAnterior = pctDelta(totalMesActual, comparacion?.mismo_mes_anio_anterior.total_kwh);
+  const serieMensual: MesTotal[] =
+    comparacionAnual?.meses.map((m) => ({ mes: m.mes, kwh: m.miKwh ?? 0 })) ?? [];
+
   return (
     <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
       <PageHeader title="Mi Consumo" actions={exportButton} />
@@ -337,9 +410,18 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
 
           <CartelLatencia datosHasta={datosHasta} />
 
+          {/* Hero: consumo acumulado del mes — lo primero y más grande */}
+          <HeroConsumoMes
+            label={mesLabelTitulo}
+            sublabel={formatMes(mesSeleccionado)}
+            kwh={totalMesActual}
+            vsMesAnterior={vsMesAnterior}
+            vsAnioAnterior={vsAnioAnterior}
+          />
+
           <ObjetivoResumenCard
             objetivo={objetivo}
-            consumoActualKwh={comparacion?.mes_actual.total_kwh ?? null}
+            consumoActualKwh={totalMesActual}
             estado={objetivoEstado}
             mesLabel={mesLabelCorto}
             onEditar={() => onEditarObjetivo?.()}
@@ -355,20 +437,15 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
             </div>
           )}
 
-          {/* Resumen del mes: dos filas de 3 cards */}
+          {/* Resumen del mes: comparación histórica + stats del mes */}
           <section style={{ marginBottom: space[8] }}>
-            {/* Fila superior: totales históricos */}
+            {/* Fila superior: comparación histórica (mes anterior / año anterior) */}
             <div style={{
               display:             "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
               gap:                 space[3],
               marginBottom:        space[3],
             }}>
-              <KpiCard
-                label={mesLabelTitulo}
-                sublabel={formatMes(mesSeleccionado)}
-                kwh={comparacion?.mes_actual.total_kwh ?? null}
-              />
               <KpiCard
                 label="Mes anterior"
                 sublabel={comparacion ? formatMes(comparacion.mes_anterior.mes) : ""}
@@ -416,17 +493,47 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
             </div>
           </section>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: space[4] }}>
-            <MesSelector value={mesSeleccionado} meses={meses} onChange={handleCambiarMes} />
+          <div style={{
+            display:        "flex",
+            justifyContent: "space-between",
+            alignItems:     "center",
+            gap:            space[3],
+            flexWrap:       "wrap",
+            marginBottom:   space[4],
+          }}>
+            <SegmentedControl
+              ariaLabel="Modo del gráfico de consumo"
+              value={modoGrafico}
+              opciones={[{ value: "dia", label: "Por día" }, { value: "mes", label: "Por mes" }]}
+              onChange={handleCambiarModo}
+            />
+            {modoGrafico === "dia" ? (
+              <MesSelector value={mesSeleccionado} meses={meses} onChange={handleCambiarMes} />
+            ) : (
+              <SelectControl
+                label="Año"
+                value={String(anioGrafico)}
+                opciones={anios.map((a) => ({ value: String(a), label: String(a) }))}
+                onChange={(v) => setAnioGrafico(Number(v))}
+              />
+            )}
           </div>
 
           <section style={{ marginBottom: space[8] }}>
-            <GraficoConsumoDiario
-              serie={diario?.serie ?? []}
-              onClickBarra={handleClickBarra}
-              maxFecha={stats.maxPunto?.fecha}
-              minFecha={stats.minPunto?.fecha}
-            />
+            {modoGrafico === "dia" ? (
+              <GraficoConsumoDiario
+                serie={diario?.serie ?? []}
+                onClickBarra={handleClickBarra}
+                maxFecha={stats.maxPunto?.fecha}
+                minFecha={stats.minPunto?.fecha}
+              />
+            ) : (
+              <GraficoConsumoMensual
+                serie={serieMensual}
+                onClickMes={handleClickMes}
+                mesDestacado={mesActualStr()}
+              />
+            )}
           </section>
 
           {fechaSeleccionada && (
@@ -439,16 +546,21 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
             />
           )}
 
-          {comparacion && (
-            <section style={{ marginBottom: space[8] }}>
-              <PanelVecinosComparacion
-                zona={comparacion.zona_mes_actual ?? null}
-                mesActual={comparacion.mes_actual}
-                mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
-                objetivoDiarioKwh={objetivoEstado?.consumo_diario_objetivo_kwh ?? null}
-              />
-            </section>
-          )}
+          <section style={{ marginBottom: space[8] }}>
+            {modoGrafico === "dia" ? (
+              comparacion && (
+                <PanelVecinosComparacion
+                  zona={comparacion.zona_mes_actual ?? null}
+                  mesActual={comparacion.mes_actual}
+                  mismoMesAnioAnterior={comparacion.mismo_mes_anio_anterior}
+                  objetivoDiarioKwh={objetivoEstado?.consumo_diario_objetivo_kwh ?? null}
+                  mesLabel={mesLabelCorto}
+                />
+              )
+            ) : (
+              <PanelVecinosAnual comparacion={comparacionAnual} anio={anioGrafico} />
+            )}
+          </section>
         </div>
       </main>
     </div>

@@ -21,7 +21,7 @@ interface DeltaChipProps {
   label: string;
 }
 
-function DeltaChip({ value, label }: DeltaChipProps) {
+export function DeltaChip({ value, label }: DeltaChipProps) {
   if (value === null) {
     return (
       <span

@@ -142,7 +142,7 @@ export function FacturaPage({ token }: Props) {
           {/* Row 2 — Listado de facturas */}
           {hayDeuda && (
             <section aria-label="Facturas a pagar" style={{ marginBottom: space[4] }}>
-              <Label>{documentos.length === 1 ? "Tu factura" : "Tus facturas"}</Label>
+              <Label>{documentos.length === 1 ? "Tus facturas" : "Tus facturas"}</Label>
               <div style={{ display: "flex", flexDirection: "column", gap: space[3], marginTop: space[3] }}>
                 {documentos.map((d, i) => (
                   <FacturaItemCard key={d.periodo ?? i} doc={d} />
@@ -185,22 +185,22 @@ function DeudaHero({
 
   return (
     <div style={{
-      display:             "grid",
+      display: "grid",
       gridTemplateColumns: "minmax(0, 7fr) minmax(280px, 3fr)",
-      gap:                 space[4],
-      alignItems:          "stretch",
-      marginBottom:        space[4],
+      gap: space[4],
+      alignItems: "stretch",
+      marginBottom: space[4],
     }}>
       {/* Card deuda total (70%) */}
       <Card style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <Label>Deuda total</Label>
         <p style={{
-          margin:        `${space[2]}px 0 0`,
-          fontFamily:    font.technical,
-          fontSize:      fontSize["3xl"],
-          fontWeight:    fontWeight.light,
-          color:         fg.primary,
-          lineHeight:    1.1,
+          margin: `${space[2]}px 0 0`,
+          fontFamily: font.technical,
+          fontSize: fontSize["3xl"],
+          fontWeight: fontWeight.light,
+          color: fg.primary,
+          lineHeight: 1.1,
           letterSpacing: "-0.02em",
         }}>
           {formatImporte(total)}
@@ -218,19 +218,19 @@ function DeudaHero({
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            display:        "inline-flex",
-            alignItems:     "center",
+            display: "inline-flex",
+            alignItems: "center",
             justifyContent: "center",
-            gap:            space[2],
-            background:     brand.primary,
-            color:          fg.onDark,
-            borderRadius:   radius.md,
-            padding:        `${space[3]}px ${space[6]}px`,
-            fontSize:       fontSize.base,
-            fontWeight:     fontWeight.semibold,
-            fontFamily:     font.sans,
+            gap: space[2],
+            background: brand.primary,
+            color: fg.onDark,
+            borderRadius: radius.md,
+            padding: `${space[3]}px ${space[6]}px`,
+            fontSize: fontSize.base,
+            fontWeight: fontWeight.semibold,
+            fontFamily: font.sans,
             textDecoration: "none",
-            whiteSpace:     "nowrap",
+            whiteSpace: "nowrap",
           }}
         >
           Pagar mi factura
@@ -262,14 +262,14 @@ function CopyField({ label, value }: { label: string; value: string }) {
   }
   return (
     <div style={{
-      display:        "flex",
-      alignItems:     "center",
+      display: "flex",
+      alignItems: "center",
       justifyContent: "space-between",
-      gap:            space[3],
-      padding:        `${space[2]}px ${space[3]}px`,
-      background:     bg.surface,
-      borderRadius:   `${radius.sm}px`,
-      marginBottom:   space[2],
+      gap: space[3],
+      padding: `${space[2]}px ${space[3]}px`,
+      background: bg.surface,
+      borderRadius: `${radius.sm}px`,
+      marginBottom: space[2],
     }}>
       <span style={{ fontSize: fontSize.xs, color: fg.secondary }}>{label}</span>
       <span style={{ display: "flex", alignItems: "center", gap: space[2] }}>
@@ -280,14 +280,14 @@ function CopyField({ label, value }: { label: string; value: string }) {
           onClick={copiar}
           aria-label={`Copiar ${label}`}
           style={{
-            border:       "none",
-            background:   "none",
-            cursor:       "pointer",
-            fontSize:     fontSize.xs,
-            fontWeight:   fontWeight.semibold,
-            color:        copiado ? color.successDark : fg.link,
-            padding:      0,
-            fontFamily:   font.sans,
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+            fontSize: fontSize.xs,
+            fontWeight: fontWeight.semibold,
+            color: copiado ? color.successDark : fg.link,
+            padding: 0,
+            fontFamily: font.sans,
           }}
         >
           {copiado ? "✓ copiado" : "copiar"}
@@ -315,15 +315,15 @@ function FacturaItemCard({ doc }: { doc: FacturaDocumento }) {
   const chip = estadoChip(doc.estado, dias);
   return (
     <div style={{
-      display:        "flex",
-      flexWrap:       "wrap",
-      gap:            space[4],
-      alignItems:     "center",
+      display: "flex",
+      flexWrap: "wrap",
+      gap: space[4],
+      alignItems: "center",
       justifyContent: "space-between",
-      background:     bg.surface,
-      borderRadius:   `${radius.md}px`,
-      boxShadow:      shadow.xs,
-      padding:        `${space[4]}px ${space[5]}px`,
+      background: bg.surface,
+      borderRadius: `${radius.md}px`,
+      boxShadow: shadow.xs,
+      padding: `${space[4]}px ${space[5]}px`,
     }}>
       {/* Período + vencimiento */}
       <div style={{ minWidth: 180 }}>
@@ -336,12 +336,12 @@ function FacturaItemCard({ doc }: { doc: FacturaDocumento }) {
               Vence el {formatFechaVcto(doc.fecha_vencimiento)}
             </span>
             <span style={{
-              padding:      `2px ${space[2]}px`,
+              padding: `2px ${space[2]}px`,
               borderRadius: radius.full,
-              fontSize:     fontSize.xs,
-              fontWeight:   fontWeight.semibold,
-              background:   chip.bg,
-              color:        chip.color,
+              fontSize: fontSize.xs,
+              fontWeight: fontWeight.semibold,
+              background: chip.bg,
+              color: chip.color,
             }}>
               {dias !== null ? textoDiasRestantes(dias) : doc.estado}
             </span>
@@ -354,9 +354,9 @@ function FacturaItemCard({ doc }: { doc: FacturaDocumento }) {
         {doc.importe !== null && (
           <span style={{
             fontFamily: font.technical,
-            fontSize:   fontSize.lg,
+            fontSize: fontSize.lg,
             fontWeight: fontWeight.bold,
-            color:      fg.primary,
+            color: fg.primary,
           }}>
             {formatImporte(doc.importe)}
           </span>
@@ -367,11 +367,11 @@ function FacturaItemCard({ doc }: { doc: FacturaDocumento }) {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              fontSize:       fontSize.sm,
-              fontWeight:     fontWeight.semibold,
-              color:          fg.link,
+              fontSize: fontSize.sm,
+              fontWeight: fontWeight.semibold,
+              color: fg.link,
               textDecoration: "none",
-              whiteSpace:     "nowrap",
+              whiteSpace: "nowrap",
             }}
           >
             Ver PDF
@@ -406,19 +406,19 @@ function ConceptosCard({
                 onClick={() => onToggle(abierto ? null : i)}
                 aria-expanded={abierto}
                 style={{
-                  display:        "flex",
-                  alignItems:     "center",
+                  display: "flex",
+                  alignItems: "center",
                   justifyContent: "space-between",
-                  width:          "100%",
-                  background:     "none",
-                  border:         "none",
-                  cursor:         "pointer",
-                  padding:        `${space[3]}px 0`,
-                  fontFamily:     font.sans,
-                  fontSize:       fontSize.base,
-                  fontWeight:     fontWeight.medium,
-                  color:          fg.primary,
-                  textAlign:      "left",
+                  width: "100%",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: `${space[3]}px 0`,
+                  fontFamily: font.sans,
+                  fontSize: fontSize.base,
+                  fontWeight: fontWeight.medium,
+                  color: fg.primary,
+                  textAlign: "left",
                 }}
               >
                 {c.titulo}
@@ -426,11 +426,11 @@ function ConceptosCard({
               </button>
               {abierto && (
                 <p style={{
-                  margin:     `0 0 ${space[3]}px`,
-                  fontSize:   fontSize.sm,
-                  color:      fg.secondary,
+                  margin: `0 0 ${space[3]}px`,
+                  fontSize: fontSize.sm,
+                  color: fg.secondary,
                   lineHeight: 1.5,
-                  maxWidth:   620,
+                  maxWidth: 620,
                 }}>
                   {c.descripcion}
                 </p>
@@ -465,11 +465,11 @@ function ChevronIcon({ open }: { open: boolean }) {
 function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
     <div style={{
-      background:   bg.surfaceFeat,
+      background: bg.surfaceFeat,
       borderRadius: `${radius.lg}px`,
-      boxShadow:    shadow.sm,
-      padding:      `${space[6]}px`,
-      fontFamily:   font.sans,
+      boxShadow: shadow.sm,
+      padding: `${space[6]}px`,
+      fontFamily: font.sans,
       ...style,
     }}>
       {children}
@@ -480,11 +480,11 @@ function Card({ children, style }: { children: ReactNode; style?: CSSProperties 
 function Label({ children }: { children: ReactNode }) {
   return (
     <p style={{
-      margin:        0,
-      fontFamily:    font.sans,
-      fontSize:      fontSize.xs,
-      fontWeight:    fontWeight.semibold,
-      color:         fg.secondary,
+      margin: 0,
+      fontFamily: font.sans,
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.semibold,
+      color: fg.secondary,
       textTransform: "uppercase",
       letterSpacing: "0.05em",
     }}>

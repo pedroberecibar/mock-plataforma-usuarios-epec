@@ -35,7 +35,12 @@ function diasDelMesActual(): number {
   return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 }
 
-const WARN_THRESHOLD = 0.8;
+// Margen de tolerancia sobre el ritmo lineal antes de pasar a ambar / rojo.
+// ritmo = % consumido / % del mes transcurrido (1.0 = exactamente en linea).
+// El margen evita falsos rojos sobre el final del mes: consumir 98% faltando
+// 1 dia da ritmo ~1.01 (verde); el mismo 98% faltando 10 dias da ~1.47 (rojo).
+const RITMO_AVISO = 1.05;  // un poco por encima del ritmo proporcional al tiempo
+const RITMO_ALTO = 1.20;   // claramente acelerado respecto del tiempo restante
 
 // ---------------------------------------------------------------------------
 // Semantica consolidada — un solo eje de color (verde / ambar / rojo) basado
@@ -49,9 +54,20 @@ const SEMANTICA: Record<Semantica, { fill: string; text: string; chipBg: string 
   superado: { fill: color.error,      text: color.errorDark,   chipBg: color.errorLight },
 };
 
-function clasificar(pct: number | null, superado: boolean, sobreRitmo: boolean): Semantica {
-  if (superado) return "superado";
-  if ((pct !== null && pct >= WARN_THRESHOLD) || sobreRitmo) return "aviso";
+// Semaforo sensible al tiempo: compara cuanto se consumio del objetivo contra
+// cuanto del mes transcurrio. Consumir el 98% faltando 1 dia esta "en linea"
+// (verde); el mismo 98% faltando 10 dias va muy acelerado (rojo).
+function clasificarPorRitmo(
+  pctReal: number | null,
+  diasTranscurridos: number,
+  diasDelMes: number,
+): Semantica {
+  if (pctReal === null || diasDelMes <= 0 || diasTranscurridos <= 0) return "bien";
+  const fraccionMes = Math.min(diasTranscurridos / diasDelMes, 1);
+  if (fraccionMes <= 0) return "bien";
+  const ritmo = pctReal / fraccionMes; // 1.0 = consumo proporcional al tiempo transcurrido
+  if (ritmo > RITMO_ALTO) return "superado";
+  if (ritmo > RITMO_AVISO) return "aviso";
   return "bien";
 }
 
@@ -121,10 +137,18 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
     ? Math.min(consumoActual / estadoObj.objetivo_kwh, 1)
     : null;
 
-  const superado = estadoObj?.texto_dinamico === "agotado";
-  const enAviso = pct !== null && pct >= WARN_THRESHOLD && !superado;
-  const sobreRitmo = estadoObj?.texto_dinamico === "sobre_ritmo";
-  const sem = SEMANTICA[clasificar(pct, superado, sobreRitmo)];
+  // Porcentaje real (sin tope) para el semaforo temporal.
+  const pctReal = objetivo && estadoObj?.objetivo_kwh && consumoActual !== null
+    ? consumoActual / estadoObj.objetivo_kwh
+    : null;
+
+  const diasDelMes = diasDelMesActual();
+  const diasRestantes = estadoObj
+    ? Math.max(0, diasDelMes - estadoObj.dias_transcurridos)
+    : 0;
+
+  const nivel = clasificarPorRitmo(pctReal, estadoObj?.dias_transcurridos ?? 0, diasDelMes);
+  const sem = SEMANTICA[nivel];
 
   const tieneDatosMes = !!(estadoObj && estadoObj.texto_dinamico !== "sin_objetivo");
 
@@ -179,7 +203,12 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
               {/* Row 1 — Hero: objetivo vigente a todo el ancho */}
               <HeroObjetivo objetivo={objetivo} />
 
-              {/* Row 2 — Grilla de dos cards: zona | ritmo */}
+              {/* Row 2 — Resumen del mes (KPIs), directamente bajo el objetivo */}
+              {estadoObj && estadoObj.consumo_acumulado_kwh != null && objetivo && (
+                <ResumenMesCard estadoObj={estadoObj} objetivo={objetivo} />
+              )}
+
+              {/* Row 3 — Grilla de dos cards: ritmo | consumo acumulado (semaforo temporal) */}
               {tieneDatosMes && (
                 <div style={{
                   display:             "grid",
@@ -187,29 +216,23 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                   gap:                 space[4],
                   marginBottom:        space[4],
                 }}>
-                  <ZonaCard estadoObj={estadoObj!} />
-                  <RitmoCard estadoObj={estadoObj!} sem={sem} />
+                  {estadoObj!.dias_objetivo_consumidos != null && (
+                    <RitmoCard estadoObj={estadoObj!} sem={sem} diasRestantes={diasRestantes} />
+                  )}
+                  {pct !== null && estadoObj?.objetivo_kwh && consumoActual !== null && objetivo && (
+                    <ProgresoMesCard
+                      pct={pct}
+                      consumoActual={consumoActual}
+                      objetivoKwh={estadoObj.objetivo_kwh}
+                      sem={sem}
+                      nivel={nivel}
+                      diasRestantes={diasRestantes}
+                    />
+                  )}
                 </div>
               )}
 
-              {/* Row 3 — Progreso del mes en kWh a todo el ancho */}
-              {pct !== null && estadoObj?.objetivo_kwh && consumoActual !== null && objetivo && (
-                <ProgresoMesCard
-                  pct={pct}
-                  consumoActual={consumoActual}
-                  objetivoKwh={estadoObj.objetivo_kwh}
-                  sem={sem}
-                  superado={superado}
-                  enAviso={enAviso}
-                />
-              )}
-
-              {/* Row 4 — Resumen del mes (KPIs) */}
-              {estadoObj && estadoObj.consumo_acumulado_kwh != null && objetivo && (
-                <ResumenMesCard estadoObj={estadoObj} objetivo={objetivo} />
-              )}
-
-              {/* Row 5 — Card de edición / configuración */}
+              {/* Row 4 — Card de edición / configuración */}
               <EditorObjetivo
                 objetivo={objetivo}
                 inputKwh={inputKwh}
@@ -272,67 +295,6 @@ function HeroObjetivo({ objetivo }: { objetivo: ObjetivoResponse | null }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Row 2a — Tu objetivo vs. tu zona
-// ---------------------------------------------------------------------------
-function ZonaCard({ estadoObj }: { estadoObj: ObjetivoEstadoResponse }) {
-  const tieneZona = estadoObj.promedio_vecinos_kwh != null && estadoObj.diferencia_pct != null;
-  const objetivoKwh = estadoObj.objetivo_kwh ?? 0;
-  const zonaKwh = estadoObj.promedio_vecinos_kwh ?? 0;
-  const escala = Math.max(objetivoKwh, zonaKwh, 1);
-  const porEncima = (estadoObj.diferencia_pct ?? 0) > 0;
-
-  return (
-    <Card>
-      <Label>Tu objetivo vs. tu zona</Label>
-      {tieneZona ? (
-        <div style={{ marginTop: space[4] }}>
-          <Barra
-            etiqueta="Tu objetivo"
-            valor={`${objetivoKwh} kWh`}
-            valorColor={fg.link}
-            fill={color.green500}
-            pct={objetivoKwh / escala}
-          />
-          <div style={{ height: space[3] }} />
-          <Barra
-            etiqueta="Promedio zona"
-            valor={`${Math.round(zonaKwh)} kWh`}
-            valorColor={fg.primary}
-            fill={color.neutral300}
-            pct={zonaKwh / escala}
-          />
-          <div style={{
-            marginTop:  space[4],
-            paddingTop: space[3],
-            borderTop:  `1px solid ${border.default}`,
-          }}>
-            <span style={{
-              display:      "inline-block",
-              padding:      `${space[1]}px ${space[3]}px`,
-              borderRadius: radius.full,
-              fontSize:     fontSize.sm,
-              fontWeight:   fontWeight.semibold,
-              background:   porEncima ? color.errorLight : color.green100,
-              color:        porEncima ? color.errorDark : color.successDark,
-            }}>
-              {porEncima ? "+" : ""}{estadoObj.diferencia_pct!.toFixed(1)}% vs zona
-            </span>
-            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary, lineHeight: 1.5 }}>
-              Tu objetivo es {Math.abs(estadoObj.diferencia_pct!).toFixed(1)}% {porEncima ? "mayor" : "menor"} que el
-              promedio de tus vecinos ({estadoObj.n_vecinos} vecinos).
-            </p>
-          </div>
-        </div>
-      ) : (
-        <p style={{ marginTop: space[4], fontSize: fontSize.sm, color: fg.muted }}>
-          Sin datos suficientes de tu zona
-        </p>
-      )}
-    </Card>
-  );
-}
-
 function Barra({
   etiqueta, valor, valorColor, fill, pct,
 }: { etiqueta: string; valor: string; valorColor: string; fill: string; pct: number }) {
@@ -368,7 +330,13 @@ function Barra({
 // ---------------------------------------------------------------------------
 // Row 2b — Ritmo de consumo (días) + mensaje dinámico
 // ---------------------------------------------------------------------------
-function RitmoCard({ estadoObj, sem }: { estadoObj: ObjetivoEstadoResponse; sem: { fill: string; text: string; chipBg: string } }) {
+function RitmoCard({
+  estadoObj, sem, diasRestantes,
+}: {
+  estadoObj: ObjetivoEstadoResponse;
+  sem: { fill: string; text: string; chipBg: string };
+  diasRestantes: number;
+}) {
   const { texto_dinamico, dias_objetivo_consumidos, dias_transcurridos, excedente_kwh } = estadoObj;
 
   const mensajes: Record<string, string> = {
@@ -386,7 +354,10 @@ function RitmoCard({ estadoObj, sem }: { estadoObj: ObjetivoEstadoResponse; sem:
 
   return (
     <Card>
-      <Label>Ritmo de consumo</Label>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: space[3] }}>
+        <Label>Ritmo de consumo</Label>
+        <DiasRestantesChip dias={diasRestantes} sem={sem} />
+      </div>
 
       {dias_objetivo_consumidos != null && (
         <div style={{ marginTop: space[4] }}>
@@ -432,20 +403,25 @@ function RitmoCard({ estadoObj, sem }: { estadoObj: ObjetivoEstadoResponse; sem:
 // Row 3 — Progreso del mes (kWh)
 // ---------------------------------------------------------------------------
 function ProgresoMesCard({
-  pct, consumoActual, objetivoKwh, sem, superado, enAviso,
+  pct, consumoActual, objetivoKwh, sem, nivel, diasRestantes,
 }: {
   pct: number;
   consumoActual: number;
   objetivoKwh: number;
   sem: { fill: string; text: string; chipBg: string };
-  superado: boolean;
-  enAviso: boolean;
+  nivel: Semantica;
+  diasRestantes: number;
 }) {
-  return (
-    <Card style={{ marginBottom: space[4] }}>
-      <Label>Consumo acumulado este mes</Label>
+  const pctTxt = Math.round(pct * 100);
 
-      {(superado || enAviso) && (
+  return (
+    <Card>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: space[3] }}>
+        <Label>Consumo acumulado este mes</Label>
+        <DiasRestantesChip dias={diasRestantes} sem={sem} />
+      </div>
+
+      {nivel !== "bien" && (
         <p
           role="alert"
           style={{
@@ -458,9 +434,9 @@ function ProgresoMesCard({
             color:        sem.text,
           }}
         >
-          {superado
-            ? "Objetivo superado — revisá tu consumo."
-            : `Atención: ya consumiste el ${Math.round(pct * 100)}% del objetivo.`}
+          {nivel === "superado"
+            ? `Ritmo alto: consumiste el ${pctTxt}% del objetivo y todavía faltan ${diasRestantes} ${diasRestantes === 1 ? "día" : "días"}. A este paso vas a quedar superado.`
+            : `Atención: vas un poco acelerado — ${pctTxt}% del objetivo con ${diasRestantes} ${diasRestantes === 1 ? "día" : "días"} por delante.`}
         </p>
       )}
 
@@ -540,7 +516,7 @@ function ResumenMesCard({
           <Kpi
             label="Podés usar por día"
             value={`${kwhPorDia.toFixed(1)} kWh`}
-            sub={`${diasRestantes} días restantes`}
+            sub={`${diasRestantes} ${diasRestantes === 1 ? "día restante" : "días restantes"}`}
           />
         )}
       </div>
@@ -666,6 +642,30 @@ function Card({ children, style }: { children: ReactNode; style?: CSSProperties 
     }}>
       {children}
     </div>
+  );
+}
+
+function DiasRestantesChip({ dias, sem }: { dias: number; sem: { text: string; chipBg: string } }) {
+  return (
+    <span style={{
+      display:       "inline-flex",
+      alignItems:    "baseline",
+      gap:           space[1],
+      flexShrink:    0,
+      padding:       `${space[1]}px ${space[3]}px`,
+      borderRadius:  radius.full,
+      background:    sem.chipBg,
+      color:         sem.text,
+      fontFamily:    font.sans,
+      fontSize:      fontSize.xs,
+      fontWeight:    fontWeight.semibold,
+      whiteSpace:    "nowrap",
+    }}>
+      <span style={{ fontFamily: font.technical, fontSize: fontSize.sm, fontWeight: fontWeight.bold }}>
+        {dias}
+      </span>
+      {dias === 1 ? "día restante" : "días restantes"}
+    </span>
   );
 }
 

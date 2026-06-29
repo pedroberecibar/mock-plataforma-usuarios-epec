@@ -39,6 +39,15 @@ export async function fetchComparacion(
   return resp.json() as Promise<ComparacionResponse>;
 }
 
+/** Trae la comparación de varios meses en paralelo (para la vista anual de vecinos). */
+export async function fetchComparacionAnual(
+  token: string,
+  suministroId: string,
+  meses: string[],
+): Promise<ComparacionResponse[]> {
+  return Promise.all(meses.map((mes) => fetchComparacion(token, suministroId, mes)));
+}
+
 export async function fetchAnomalia(
   token: string,
   mes: string
