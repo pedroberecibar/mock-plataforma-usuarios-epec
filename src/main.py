@@ -21,7 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from infrastructure.auth.jwt_auth_provider import JwtAuthProvider
 from infrastructure.crypto.fernet_pii_cipher import FernetPiiCipher
 from infrastructure.epec.epec_factura_verificacion import EpecFacturaVerificacion
-from infrastructure.fakes.factura_source_reader import FakeFacturaSourceReader
 from infrastructure.fakes.medicion_horaria_source_reader import FakeMedicionHorariaSourceReader
 from infrastructure.fakes.notification_sender import FakeNotificationSender
 from infrastructure.smtp.notification_sender import SmtpNotificationSender
@@ -310,8 +309,15 @@ def create_app() -> FastAPI:
 
         app.dependency_overrides[get_factura_reader] = _get_factura_reader
     else:
-        _factura_reader = FakeFacturaSourceReader()
-        app.dependency_overrides[get_factura_reader] = lambda: _factura_reader
+        # Sin Oracle no hay factura real: 503 explícito (ADR-002), nunca deuda inventada.
+        def _factura_no_configurada() -> None:
+            raise HTTPException(
+                status_code=503,
+                detail="Factura no disponible — Oracle no configurado "
+                "(definir OR_HOST, OR_USER, OR_PASS, OR_SERVICE_NAME)",
+            )
+
+        app.dependency_overrides[get_factura_reader] = _factura_no_configurada
     app.dependency_overrides[get_consumo_repo] = _get_consumo_repo
     app.dependency_overrides[get_consumo_horario_repo] = _get_consumo_horario_repo
     app.dependency_overrides[get_objetivo_repo] = _get_objetivo_repo
