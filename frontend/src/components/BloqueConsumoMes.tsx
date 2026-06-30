@@ -1,4 +1,4 @@
-import type { ConsumoMesResponse } from "../api/types";
+import type { ConsumoMesResponse, ProyeccionResponse } from "../api/types";
 import {
   cardFeaturedStyle,
   labelStyle,
@@ -14,6 +14,7 @@ import {
 
 interface Props {
   consumoMes: ConsumoMesResponse;
+  proyeccion?: ProyeccionResponse | null;
 }
 
 interface DeltaChipProps {
@@ -68,8 +69,14 @@ export function DeltaChip({ value, label }: DeltaChipProps) {
   );
 }
 
-export function BloqueConsumoMes({ consumoMes }: Props) {
+export function BloqueConsumoMes({ consumoMes, proyeccion }: Props) {
   const { total_kwh, vs_mes_anterior_pct, vs_anio_anterior_pct } = consumoMes;
+
+  const proyeccionValida =
+    proyeccion != null &&
+    proyeccion.metodo_aplicado !== "insuficiente" &&
+    proyeccion.rango_inferior_kwh !== null &&
+    proyeccion.rango_superior_kwh !== null;
 
   return (
     <section aria-label="consumo del mes" style={cardFeaturedStyle}>
@@ -105,6 +112,21 @@ export function BloqueConsumoMes({ consumoMes }: Props) {
         <DeltaChip value={vs_mes_anterior_pct} label="vs mes anterior" />
         <DeltaChip value={vs_anio_anterior_pct} label="vs año anterior" />
       </div>
+
+      {proyeccionValida && (
+        <p style={{ margin: `${space[3]}px 0 0`, fontSize: fontSize.sm, color: fg.secondary }}>
+          Proyección fin de mes:{" "}
+          <strong style={{ color: fg.link, fontWeight: fontWeight.semibold }}>
+            {proyeccion!.rango_inferior_kwh!.toFixed(0)}–{proyeccion!.rango_superior_kwh!.toFixed(0)} kWh
+          </strong>
+        </p>
+      )}
+
+      {total_kwh !== null && (
+        <p style={{ margin: `${space[3]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
+          Compara tu consumo del mes contra el total del mes anterior; se ajusta a medida que avanza el mes.
+        </p>
+      )}
     </section>
   );
 }

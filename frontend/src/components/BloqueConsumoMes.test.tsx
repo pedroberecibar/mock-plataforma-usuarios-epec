@@ -1,7 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BloqueConsumoMes } from "./BloqueConsumoMes";
-import type { ConsumoMesResponse } from "../api/types";
+import type { ConsumoMesResponse, ProyeccionResponse } from "../api/types";
+
+const proyeccionOk: ProyeccionResponse = {
+  mes: "2026-06",
+  metodo_aplicado: "promedio_diario",
+  bandera_confianza: "alta",
+  rango_inferior_kwh: 195,
+  rango_superior_kwh: 225,
+};
+
+const proyeccionInsuficiente: ProyeccionResponse = {
+  mes: "2026-06",
+  metodo_aplicado: "insuficiente",
+  bandera_confianza: "sin_datos",
+  rango_inferior_kwh: null,
+  rango_superior_kwh: null,
+};
 
 const sinDatos: ConsumoMesResponse = {
   total_kwh: null,
@@ -47,5 +63,31 @@ describe("BloqueConsumoMes", () => {
   it("tiene aria-label de sección", () => {
     render(<BloqueConsumoMes consumoMes={sinDatos} />);
     expect(screen.getByRole("region", { name: "consumo del mes" })).not.toBeNull();
+  });
+
+  it("muestra la nota aclaratoria cuando hay total", () => {
+    render(<BloqueConsumoMes consumoMes={conDatos} />);
+    expect(screen.getByText(/se ajusta a medida que avanza el mes/i)).not.toBeNull();
+  });
+
+  it("no muestra la nota cuando no hay total", () => {
+    render(<BloqueConsumoMes consumoMes={sinDatos} />);
+    expect(screen.queryByText(/se ajusta a medida que avanza el mes/i)).toBeNull();
+  });
+
+  it("muestra la proyección de fin de mes cuando es válida", () => {
+    render(<BloqueConsumoMes consumoMes={conDatos} proyeccion={proyeccionOk} />);
+    expect(screen.getByText(/proyección fin de mes/i)).not.toBeNull();
+    expect(screen.getByText(/195–225 kWh/)).not.toBeNull();
+  });
+
+  it("no muestra proyección cuando los datos son insuficientes", () => {
+    render(<BloqueConsumoMes consumoMes={conDatos} proyeccion={proyeccionInsuficiente} />);
+    expect(screen.queryByText(/proyección fin de mes/i)).toBeNull();
+  });
+
+  it("no muestra proyección cuando no se pasa la prop", () => {
+    render(<BloqueConsumoMes consumoMes={conDatos} />);
+    expect(screen.queryByText(/proyección fin de mes/i)).toBeNull();
   });
 });

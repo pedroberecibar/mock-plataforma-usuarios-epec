@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { HomeResponse } from "../api/types";
+import type { FacturaDatosResponse, HomeResponse, ObjetivoEstadoResponse } from "../api/types";
 import { fetchHome } from "../api/home";
 import { fetchPerfil, type PerfilResponse } from "../api/usuario";
+import { fetchObjetivoEstado } from "../api/objetivos";
+import { fetchFacturaDatos } from "../api/factura";
 import { BloqueConsumoMes } from "../components/BloqueConsumoMes";
+import { BloqueObjetivo } from "../components/BloqueObjetivo";
+import { BloqueDeuda } from "../components/BloqueDeuda";
 import { BloqueZona } from "../components/BloqueZona";
-import { BloqueProyeccion } from "../components/BloqueProyeccion";
-import { BloqueAccesos } from "../components/BloqueAccesos";
 import { HeroSaludo } from "../components/HeroSaludo";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { AlertBanner } from "../components/AlertBanner";
@@ -43,6 +45,8 @@ export function HomePage({ token, suministroId, nombre, nroSuministro, mes, onNa
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [perfil, setPerfil] = useState<PerfilResponse | null>(null);
+  const [objetivoEstado, setObjetivoEstado] = useState<ObjetivoEstadoResponse | null>(null);
+  const [facturaDatos, setFacturaDatos] = useState<FacturaDatosResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,6 +74,20 @@ export function HomePage({ token, suministroId, nombre, nroSuministro, mes, onNa
   useEffect(() => {
     fetchPerfil(token)
       .then(setPerfil)
+      .catch(() => {});
+  }, [token]);
+
+  // Estado del objetivo para la card de Inicio (no bloquea el render)
+  useEffect(() => {
+    fetchObjetivoEstado(token, mesStr)
+      .then(setObjetivoEstado)
+      .catch(() => {});
+  }, [token, mesStr]);
+
+  // Datos de factura/deuda para la card de Inicio (no bloquea el render)
+  useEffect(() => {
+    fetchFacturaDatos(token)
+      .then(setFacturaDatos)
       .catch(() => {});
   }, [token]);
 
@@ -156,15 +174,25 @@ export function HomePage({ token, suministroId, nombre, nroSuministro, mes, onNa
         }}>
           {!dataReady && <ToastCargando />}
 
+          {/* Fila 1 (foco) — consumo del mes + objetivo */}
+          <div style={{
+            display:             "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap:                 space[6],
+            marginBottom:        space[6],
+          }}>
+            <BloqueConsumoMes consumoMes={data.consumo_mes} proyeccion={data.proyeccion} />
+            <BloqueObjetivo estado={objetivoEstado} onNavegar={onNavegar} />
+          </div>
+
+          {/* Fila 2 — deuda + comparación con la zona */}
           <div style={{
             display:             "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap:                 space[6],
           }}>
-            <BloqueConsumoMes consumoMes={data.consumo_mes} />
+            <BloqueDeuda datos={facturaDatos} onNavegar={onNavegar} />
             <BloqueZona zona={data.comparacion_zona} />
-            <BloqueProyeccion proyeccion={data.proyeccion} />
-            <BloqueAccesos suministroId={suministroId} onNavegar={onNavegar} />
           </div>
 
           <footer style={{
