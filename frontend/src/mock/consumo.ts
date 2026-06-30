@@ -43,6 +43,15 @@ export async function fetchComparacion(
   return fixture<ComparacionResponse>("comparacion");
 }
 
+/** Vista anual de vecinos: replica la comparación del fixture para cada mes pedido. */
+export async function fetchComparacionAnual(
+  token: string,
+  suministroId: string,
+  meses: string[]
+): Promise<ComparacionResponse[]> {
+  return Promise.all(meses.map((mes) => fetchComparacion(token, suministroId, mes)));
+}
+
 export async function fetchAnomalia(
   _token: string,
   _mes: string

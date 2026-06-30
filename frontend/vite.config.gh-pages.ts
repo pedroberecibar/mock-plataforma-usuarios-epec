@@ -14,7 +14,7 @@ export default mergeConfig(
     resolve: {
       alias: [
         {
-          find: /\/api\/(home|consumo|objetivos|factura|alertas|auth|usuario|ingest)/,
+          find: /\/api\/(home|consumo|objetivos|factura|alertas|auth|usuario|cuenta|ingest)/,
           replacement: "/mock/$1",
         },
       ],
