@@ -116,3 +116,19 @@ async def test_degrada_campos_faltantes_a_none() -> None:
     assert res.suministro.direccion is None
     assert res.medidor.numero is None
     assert res.medidor.fase == "Desconocido"
+
+
+async def test_nansen_no_soporta_perfiles() -> None:
+    reader = FakeCuentaReader({"SRV-2817670": _raw(telemedible="NANSEN")})
+    uc, _ = _build(reader)
+    res = await uc.ejecutar("demo", "SRV-2817670")
+    assert res is not None
+    assert res.medidor.soporta_perfiles is False
+
+
+async def test_clou_soporta_perfiles() -> None:
+    reader = FakeCuentaReader({"SRV-2817670": _raw(telemedible="CLOU")})
+    uc, _ = _build(reader)
+    res = await uc.ejecutar("demo", "SRV-2817670")
+    assert res is not None
+    assert res.medidor.soporta_perfiles is True
