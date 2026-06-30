@@ -78,6 +78,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [estadoObj, setEstadoObj] = useState<ObjetivoEstadoResponse | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +108,17 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
     return () => { cancelled = true; };
   }, [token, suministroId, retryCount]);
 
+  function abrirModal() {
+    setErrorMsg(null);
+    setInputKwh(objetivo ? String(objetivo.valor_kwh) : "");
+    setModalAbierto(true);
+  }
+
+  function cerrarModal() {
+    setErrorMsg(null);
+    setModalAbierto(false);
+  }
+
   async function handleGuardar() {
     const valor = parseFloat(inputKwh);
     if (isNaN(valor) || valor <= 0) {
@@ -119,6 +131,7 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
       const nuevo = await setObjetivo(token, valor);
       setObjetivoState(nuevo);
       setEstado("con_objetivo");
+      setModalAbierto(false);
       const mes = mesActualYYYYMM();
       const est = await fetchObjetivoEstado(token, mes).catch(() => null);
       setEstadoObj(est);
@@ -200,22 +213,17 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
 
           {(estado === "con_objetivo" || estado === "sin_objetivo" || estado === "guardando") && (
             <>
-              {/* Row 1 — Hero: objetivo vigente a todo el ancho */}
-              <HeroObjetivo objetivo={objetivo} />
+              {/* Row 1 — Hero: objetivo vigente + boton Modificar */}
+              <HeroObjetivo objetivo={objetivo} onModificar={abrirModal} />
 
               {/* Row 2 — Resumen del mes (KPIs), directamente bajo el objetivo */}
               {estadoObj && estadoObj.consumo_acumulado_kwh != null && objetivo && (
                 <ResumenMesCard estadoObj={estadoObj} objetivo={objetivo} />
               )}
 
-              {/* Row 3 — Grilla de dos cards: ritmo | consumo acumulado (semaforo temporal) */}
+              {/* Row 3 — Cards apiladas: ritmo y consumo acumulado (semaforo temporal) */}
               {tieneDatosMes && (
-                <div style={{
-                  display:             "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                  gap:                 space[4],
-                  marginBottom:        space[4],
-                }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: space[4], marginBottom: space[4] }}>
                   {estadoObj!.dias_objetivo_consumidos != null && (
                     <RitmoCard estadoObj={estadoObj!} sem={sem} diasRestantes={diasRestantes} />
                   )}
@@ -232,15 +240,17 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
                 </div>
               )}
 
-              {/* Row 4 — Card de edición / configuración */}
-              <EditorObjetivo
-                objetivo={objetivo}
-                inputKwh={inputKwh}
-                errorMsg={errorMsg}
-                guardando={estado === "guardando"}
-                onChange={setInputKwh}
-                onGuardar={handleGuardar}
-              />
+              {modalAbierto && (
+                <ModalObjetivo
+                  objetivo={objetivo}
+                  inputKwh={inputKwh}
+                  errorMsg={errorMsg}
+                  guardando={estado === "guardando"}
+                  onChange={setInputKwh}
+                  onGuardar={handleGuardar}
+                  onCancelar={cerrarModal}
+                />
+              )}
             </>
           )}
         </div>
@@ -252,45 +262,70 @@ export function ObjetivosPage({ token, suministroId, onLogout }: ObjetivosPagePr
 // ---------------------------------------------------------------------------
 // Row 1 — Hero objetivo vigente
 // ---------------------------------------------------------------------------
-function HeroObjetivo({ objetivo }: { objetivo: ObjetivoResponse | null }) {
+function HeroObjetivo({ objetivo, onModificar }: { objetivo: ObjetivoResponse | null; onModificar: () => void }) {
   return (
     <section
       aria-label="Objetivo vigente"
       style={{
-        background:   bg.surfaceFeat,
-        borderRadius: `${radius.lg}px`,
-        boxShadow:    shadow.sm,
-        padding:      `${space[6]}px`,
-        marginBottom: space[4],
-        fontFamily:   font.sans,
+        background:     bg.surfaceFeat,
+        borderRadius:   `${radius.lg}px`,
+        boxShadow:      shadow.sm,
+        padding:        `${space[6]}px`,
+        marginBottom:   space[4],
+        fontFamily:     font.sans,
+        display:        "flex",
+        alignItems:     "center",
+        justifyContent: "space-between",
+        gap:            space[4],
       }}
     >
-      <Label>{`Tu objetivo de ${mesActualLabel()}`}</Label>
-      {objetivo ? (
-        <>
-          <p style={{
-            margin:        `${space[2]}px 0 0`,
-            fontFamily:    font.technical,
-            fontSize:      fontSize["3xl"],
-            fontWeight:    fontWeight.light,
-            color:         fg.link,
-            lineHeight:    1.1,
-            letterSpacing: "-0.02em",
-          }}>
-            {objetivo.valor_kwh}
-            <span style={{ fontFamily: font.sans, fontSize: fontSize.lg, fontWeight: fontWeight.regular, color: fg.secondary, marginLeft: space[2] }}>
-              kWh / mes
-            </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Label>{`Tu objetivo de ${mesActualLabel()}`}</Label>
+        {objetivo ? (
+          <>
+            <p style={{
+              margin:        `${space[2]}px 0 0`,
+              fontFamily:    font.technical,
+              fontSize:      fontSize["3xl"],
+              fontWeight:    fontWeight.light,
+              color:         fg.link,
+              lineHeight:    1.1,
+              letterSpacing: "-0.02em",
+            }}>
+              {objetivo.valor_kwh}
+              <span style={{ fontFamily: font.sans, fontSize: fontSize.lg, fontWeight: fontWeight.regular, color: fg.secondary, marginLeft: space[2] }}>
+                kWh / mes
+              </span>
+            </p>
+            <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
+              Configurado el {new Date(objetivo.vigente_desde).toLocaleDateString("es-AR")}
+            </p>
+          </>
+        ) : (
+          <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
+            Sin objetivo definido — definí una meta mensual para empezar a medir tu ritmo.
           </p>
-          <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
-            Configurado el {new Date(objetivo.vigente_desde).toLocaleDateString("es-AR")}
-          </p>
-        </>
-      ) : (
-        <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.md, color: fg.muted }}>
-          Sin objetivo definido — configurá una meta mensual abajo.
-        </p>
-      )}
+        )}
+      </div>
+
+      <button
+        onClick={onModificar}
+        style={{
+          flexShrink:   0,
+          padding:      `${space[3]}px ${space[6]}px`,
+          background:   color.green700,
+          color:        fg.onDark,
+          border:       "none",
+          borderRadius: radius.md,
+          fontSize:     fontSize.sm,
+          fontWeight:   fontWeight.semibold,
+          fontFamily:   font.sans,
+          cursor:       "pointer",
+          whiteSpace:   "nowrap",
+        }}
+      >
+        {objetivo ? "Modificar" : "Definir objetivo"}
+      </button>
     </section>
   );
 }
@@ -557,10 +592,10 @@ function Kpi({ label, value, sub, accent }: { label: string; value: string; sub:
 }
 
 // ---------------------------------------------------------------------------
-// Row 5 — Editor del objetivo
+// Modal — editar / configurar el objetivo
 // ---------------------------------------------------------------------------
-function EditorObjetivo({
-  objetivo, inputKwh, errorMsg, guardando, onChange, onGuardar,
+function ModalObjetivo({
+  objetivo, inputKwh, errorMsg, guardando, onChange, onGuardar, onCancelar,
 }: {
   objetivo: ObjetivoResponse | null;
   inputKwh: string;
@@ -568,62 +603,124 @@ function EditorObjetivo({
   guardando: boolean;
   onChange: (v: string) => void;
   onGuardar: () => void;
+  onCancelar: () => void;
 }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !guardando) onCancelar();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancelar, guardando]);
+
   return (
-    <Card>
-      <Label>{objetivo ? "Modificar objetivo" : "Configurar objetivo"}</Label>
-      <p style={{ fontSize: fontSize.sm, color: fg.secondary, margin: `${space[2]}px 0 ${space[4]}px` }}>
-        Establecé tu meta mensual en kWh para recibir alertas cuando te acercás al límite.
-      </p>
-      <div style={{ display: "flex", gap: space[3], alignItems: "flex-start", maxWidth: 420 }}>
-        <div style={{ flex: 1 }}>
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={inputKwh}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="ej. 150"
-            aria-label="Objetivo en kWh"
-            style={{
-              width:        "100%",
-              padding:      `${space[3]}px ${space[4]}px`,
-              border:       `1px solid ${errorMsg ? color.errorDark : border.default}`,
-              borderRadius: radius.md,
-              fontSize:     fontSize.base,
-              fontFamily:   font.technical,
-              outline:      "none",
-              boxSizing:    "border-box",
-              background:   bg.surface,
-              color:        fg.primary,
-            }}
-          />
-          {errorMsg && (
-            <p style={{ color: color.errorDark, fontSize: fontSize.xs, margin: `${space[1]}px 0 0` }}>
-              {errorMsg}
-            </p>
-          )}
+    <div
+      onClick={() => { if (!guardando) onCancelar(); }}
+      style={{
+        position:       "fixed",
+        inset:          0,
+        background:     "rgba(28,20,16,0.45)",
+        display:        "flex",
+        alignItems:     "center",
+        justifyContent: "center",
+        padding:        `${space[4]}px`,
+        zIndex:         1000,
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={objetivo ? "Modificar objetivo" : "Configurar objetivo"}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width:        "100%",
+          maxWidth:     440,
+          background:   bg.surfaceFeat,
+          borderRadius: `${radius.lg}px`,
+          boxShadow:    shadow.xl,
+          padding:      `${space[6]}px`,
+          fontFamily:   font.sans,
+        }}
+      >
+        <Label>{objetivo ? "Modificar objetivo" : "Configurar objetivo"}</Label>
+        <p style={{ fontSize: fontSize.sm, color: fg.secondary, margin: `${space[2]}px 0 ${space[4]}px`, lineHeight: 1.5 }}>
+          Establecé tu meta mensual en kWh para recibir alertas cuando te acercás al límite.
+        </p>
+
+        <div style={{ display: "flex", gap: space[3], alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={inputKwh}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !guardando) onGuardar(); }}
+              placeholder="ej. 150"
+              aria-label="Objetivo en kWh"
+              autoFocus
+              style={{
+                width:        "100%",
+                padding:      `${space[3]}px ${space[4]}px`,
+                border:       `1px solid ${errorMsg ? color.errorDark : border.default}`,
+                borderRadius: radius.md,
+                fontSize:     fontSize.base,
+                fontFamily:   font.technical,
+                outline:      "none",
+                boxSizing:    "border-box",
+                background:   bg.surface,
+                color:        fg.primary,
+              }}
+            />
+            {errorMsg && (
+              <p style={{ color: color.errorDark, fontSize: fontSize.xs, margin: `${space[1]}px 0 0` }}>
+                {errorMsg}
+              </p>
+            )}
+          </div>
+          <span style={{ color: fg.muted, fontFamily: font.sans, fontSize: fontSize.sm, paddingTop: space[3] }}>kWh</span>
         </div>
-        <span style={{ color: fg.muted, fontFamily: font.sans, fontSize: fontSize.sm, paddingTop: space[3] }}>kWh</span>
-        <button
-          onClick={onGuardar}
-          disabled={guardando}
-          style={{
-            padding:      `${space[3]}px ${space[6]}px`,
-            background:   color.green700,
-            color:        fg.onDark,
-            border:       "none",
-            borderRadius: radius.md,
-            fontSize:     fontSize.sm,
-            fontWeight:   fontWeight.semibold,
-            cursor:       guardando ? "wait" : "pointer",
-            whiteSpace:   "nowrap",
-          }}
-        >
-          {guardando ? "Guardando…" : "Guardar"}
-        </button>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: space[3], marginTop: space[6] }}>
+          <button
+            onClick={onCancelar}
+            disabled={guardando}
+            style={{
+              padding:      `${space[3]}px ${space[6]}px`,
+              background:   "transparent",
+              color:        fg.secondary,
+              border:       `1px solid ${border.default}`,
+              borderRadius: radius.md,
+              fontSize:     fontSize.sm,
+              fontWeight:   fontWeight.semibold,
+              fontFamily:   font.sans,
+              cursor:       guardando ? "not-allowed" : "pointer",
+              whiteSpace:   "nowrap",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onGuardar}
+            disabled={guardando}
+            style={{
+              padding:      `${space[3]}px ${space[6]}px`,
+              background:   color.green700,
+              color:        fg.onDark,
+              border:       "none",
+              borderRadius: radius.md,
+              fontSize:     fontSize.sm,
+              fontWeight:   fontWeight.semibold,
+              fontFamily:   font.sans,
+              cursor:       guardando ? "wait" : "pointer",
+              whiteSpace:   "nowrap",
+            }}
+          >
+            {guardando ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ObjetivosPage } from "./ObjetivosPage";
 import * as objetivosApi from "../api/objetivos";
 import type { ObjetivoEstadoResponse } from "../api/types";
@@ -161,6 +161,55 @@ describe("ObjetivosPage — días restantes + semáforo temporal", () => {
       const alert = screen.getByRole("alert");
       expect(alert.textContent).toMatch(/superado/i);
     });
+  });
+});
+
+describe("ObjetivosPage — modal Modificar objetivo", () => {
+  it("ya no muestra la card fija de edición; arranca con el modal cerrado", async () => {
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modificar" })).not.toBeNull());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByLabelText("Objetivo en kWh")).toBeNull();
+  });
+
+  it("abre el modal con input y botones al hacer click en 'Modificar' del hero", async () => {
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modificar" })).not.toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Modificar" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Objetivo en kWh")).not.toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Guardar" })).not.toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Cancelar" })).not.toBeNull();
+  });
+
+  it("cierra el modal al hacer click en 'Cancelar'", async () => {
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modificar" })).not.toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Modificar" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("guarda el nuevo objetivo y cierra el modal", async () => {
+    const nuevo = { valor_kwh: 250, origen: "manual", vigente_desde: "2026-06-29" };
+    vi.mocked(objetivosApi.setObjetivo).mockResolvedValue(nuevo);
+
+    render(<ObjetivosPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modificar" })).not.toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Modificar" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Objetivo en kWh"), { target: { value: "250" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(vi.mocked(objetivosApi.setObjetivo)).toHaveBeenCalledWith(TOKEN, 250)
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
 
