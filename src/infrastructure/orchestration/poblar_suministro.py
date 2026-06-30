@@ -56,8 +56,8 @@ class PoblarSuministroUseCase:
         self._session_factory = session_factory
         self._bulk_reader = bulk_reader
 
-    async def ejecutar(self, suministro_id: str) -> None:
-        logger.info("[PoblarSuministro] Iniciando para %s", suministro_id)
+    async def ejecutar(self, suministro_id: str, forzar: bool = False) -> None:
+        logger.info("[PoblarSuministro] Iniciando para %s (forzar=%s)", suministro_id, forzar)
 
         # 1. Metadata de Oracle (sin sesión SQLite)
         meta = await self._meta_reader.leer_meta(suministro_id)
@@ -110,7 +110,7 @@ class PoblarSuministroUseCase:
                 suministro_id
             )
 
-        if ultima_fecha is not None and (date.today() - ultima_fecha).days <= 1:
+        if not forzar and ultima_fecha is not None and (date.today() - ultima_fecha).days <= 1:
             logger.info(
                 "[PoblarSuministro] Datos frescos para %s (ultimo: %s) — saltando ingesta",
                 suministro_id,

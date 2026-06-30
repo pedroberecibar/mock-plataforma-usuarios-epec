@@ -3,6 +3,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -10,11 +11,14 @@ import {
 } from "recharts";
 import type { MesTotal } from "../utils/consumo";
 import { chartColor, fg } from "../design-tokens";
+import { ChartLegend } from "./ChartLegend";
 
 interface Props {
   serie: MesTotal[];
   onClickMes?: (mes: string) => void;
   mesDestacado?: string; // "YYYY-MM" a resaltar (ej. mes actual)
+  /** Promedio del período (kWh/mes) — se dibuja como línea de referencia. */
+  promedio?: number | null;
 }
 
 const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -30,7 +34,7 @@ function nombreMesLargo(mes: string): string {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-export function GraficoConsumoMensual({ serie, onClickMes, mesDestacado }: Props) {
+export function GraficoConsumoMensual({ serie, onClickMes, mesDestacado, promedio }: Props) {
   if (serie.length === 0) {
     return (
       <div style={{ padding: 24, textAlign: "center", color: fg.muted }}>
@@ -39,7 +43,13 @@ export function GraficoConsumoMensual({ serie, onClickMes, mesDestacado }: Props
     );
   }
 
+  const promedioLabel =
+    promedio != null && promedio > 0
+      ? `Promedio: ${promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`
+      : null;
+
   return (
+    <>
     <ResponsiveContainer width="100%" height={260}>
       <BarChart
         data={serie}
@@ -86,7 +96,19 @@ export function GraficoConsumoMensual({ serie, onClickMes, mesDestacado }: Props
             />
           ))}
         </Bar>
+        {promedioLabel != null && (
+          <ReferenceLine
+            y={promedio!}
+            stroke={chartColor.axisText}
+            strokeWidth={1.5}
+            strokeDasharray="6 3"
+          />
+        )}
       </BarChart>
     </ResponsiveContainer>
+    {promedioLabel != null && (
+      <ChartLegend items={[{ label: promedioLabel, color: chartColor.axisText, dashed: true }]} />
+    )}
+    </>
   );
 }

@@ -53,18 +53,18 @@ async def test_total_kwh_suma_correctamente() -> None:
     assert resultado.mismo_mes_anio_anterior.total_kwh == 360.0
 
 
-async def test_variacion_pct_a_igual_periodo() -> None:
-    """El % compara el mes en curso contra la misma cantidad de días
-    (matcheando por día calendario), no contra el mes completo."""
+async def test_variacion_pct_vs_mes_completo() -> None:
+    """El % compara el acumulado del mes en curso contra el TOTAL del mes/año
+    de comparación completo (no a igual período)."""
     repo = await _repo_con_junio_2026()
     uc = ObtenerComparacionHistoricaUseCase(repo)
 
     resultado = await uc.ejecutar("S1", mes=date(2026, 6, 1))
 
-    # Junio 1-15 = 150. Mayo 1-15 (igual período) = 15×8 = 120 → +25%.
-    assert resultado.vs_mes_anterior_pct == 25.0
-    # Junio 2025 1-15 (igual período) = 15×12 = 180 → (150-180)/180 = -16.67%.
-    assert resultado.vs_anio_anterior_pct == -16.67
+    # Junio 1-15 = 150. Mayo completo = 31×8 = 248 → (150-248)/248 = -39.52%.
+    assert resultado.vs_mes_anterior_pct == -39.52
+    # Junio 2025 completo = 30×12 = 360 → (150-360)/360 = -58.33%.
+    assert resultado.vs_anio_anterior_pct == -58.33
 
 
 async def test_variacion_pct_none_sin_datos_de_comparacion() -> None:

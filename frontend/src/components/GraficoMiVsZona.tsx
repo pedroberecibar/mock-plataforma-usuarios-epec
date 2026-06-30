@@ -2,7 +2,6 @@ import {
   Bar,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -12,6 +11,7 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import { chartColor, color, fg, font, fontSize } from "../design-tokens";
+import { ChartLegend, type ChartLegendItem } from "./ChartLegend";
 
 export interface MiVsZonaPunto {
   x: string; // clave del eje X (fecha "YYYY-MM-DD" o mes "YYYY-MM")
@@ -68,6 +68,12 @@ export function GraficoMiVsZona({ data, xTickFormatter, tooltipTitle, objetivo =
     );
   }
 
+  const legendItems: ChartLegendItem[] = [
+    { label: "Mi consumo", color: chartColor.primary },
+    ...(tieneZona ? [{ label: "Promedio vecinos", color: color.info }] : []),
+    ...(objetivo != null ? [{ label: objetivo.label, color: color.warning, dashed: true }] : []),
+  ];
+
   return (
     <div style={{ marginTop: 20 }}>
       <ResponsiveContainer width="100%" height={height}>
@@ -88,11 +94,6 @@ export function GraficoMiVsZona({ data, xTickFormatter, tooltipTitle, objetivo =
             width={68}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontFamily: font.sans, fontSize: fontSize.xs, paddingTop: 8 }}
-          />
 
           <Bar
             dataKey="miConsumo"
@@ -122,17 +123,11 @@ export function GraficoMiVsZona({ data, xTickFormatter, tooltipTitle, objetivo =
               stroke={color.warning}
               strokeWidth={1.5}
               strokeDasharray="6 3"
-              label={{
-                value:      objetivo.label,
-                position:   "insideTopRight",
-                fontSize:   fontSize.xs,
-                fill:       color.warningDark,
-                fontFamily: font.sans,
-              }}
             />
           )}
         </ComposedChart>
       </ResponsiveContainer>
+      <ChartLegend items={legendItems} />
     </div>
   );
 }

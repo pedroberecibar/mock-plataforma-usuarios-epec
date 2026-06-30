@@ -3,6 +3,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -10,12 +11,15 @@ import {
 } from "recharts";
 import type { PuntoSerie } from "../api/types";
 import { chartColor, fg } from "../design-tokens";
+import { ChartLegend } from "./ChartLegend";
 
 interface Props {
   serie: PuntoSerie[];
   onClickBarra?: (fecha: string) => void;
   maxFecha?: string;
   minFecha?: string;
+  /** Promedio del período (kWh/día) — se dibuja como línea de referencia. */
+  promedio?: number | null;
 }
 
 function formatFecha(fecha: string): string {
@@ -35,7 +39,7 @@ function barColor(fecha: string, maxFecha?: string, minFecha?: string): string {
   return chartColor.primary;
 }
 
-export function GraficoConsumoDiario({ serie, onClickBarra, maxFecha, minFecha }: Props) {
+export function GraficoConsumoDiario({ serie, onClickBarra, maxFecha, minFecha, promedio }: Props) {
   if (serie.length === 0) {
     return (
       <div style={{ padding: 24, textAlign: "center", color: fg.muted }}>
@@ -44,7 +48,13 @@ export function GraficoConsumoDiario({ serie, onClickBarra, maxFecha, minFecha }
     );
   }
 
+  const promedioLabel =
+    promedio != null && promedio > 0
+      ? `Promedio: ${promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kWh`
+      : null;
+
   return (
+    <>
     <ResponsiveContainer width="100%" height={260}>
       <BarChart
         data={serie}
@@ -91,7 +101,19 @@ export function GraficoConsumoDiario({ serie, onClickBarra, maxFecha, minFecha }
             />
           ))}
         </Bar>
+        {promedioLabel != null && (
+          <ReferenceLine
+            y={promedio!}
+            stroke={chartColor.axisText}
+            strokeWidth={1.5}
+            strokeDasharray="6 3"
+          />
+        )}
       </BarChart>
     </ResponsiveContainer>
+    {promedioLabel != null && (
+      <ChartLegend items={[{ label: promedioLabel, color: chartColor.axisText, dashed: true }]} />
+    )}
+    </>
   );
 }

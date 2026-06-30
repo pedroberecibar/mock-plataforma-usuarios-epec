@@ -2,7 +2,7 @@ import calendar
 from dataclasses import dataclass
 from datetime import date
 
-from domain.comparacion_periodo import dias_con_dato, total_en_dias, variacion_pct
+from domain.comparacion_periodo import variacion_pct
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.vecinos_repository import VecinosRepository
 
@@ -81,14 +81,12 @@ class ObtenerComparacionHistoricaUseCase:
             suministro_id, actual, mes_actual.total_kwh, len(mes_actual.serie)
         )
 
-        # Variación a igual período: comparar el mes en curso contra los mismos
-        # días calendario del mes anterior / año anterior (no el mes completo).
-        dias_actuales = dias_con_dato(mes_actual.serie)
-        vs_mes_anterior_pct = variacion_pct(
-            mes_actual.total_kwh, total_en_dias(mes_anterior.serie, dias_actuales)
-        )
+        # Variación vs período completo: el acumulado del mes en curso se compara
+        # contra el TOTAL del mes anterior / mismo mes del año anterior completo.
+        # El % se va actualizando a medida que avanza el mes (la nota lo aclara en la UI).
+        vs_mes_anterior_pct = variacion_pct(mes_actual.total_kwh, mes_anterior.total_kwh or 0.0)
         vs_anio_anterior_pct = variacion_pct(
-            mes_actual.total_kwh, total_en_dias(mismo_mes_anio_anterior.serie, dias_actuales)
+            mes_actual.total_kwh, mismo_mes_anio_anterior.total_kwh or 0.0
         )
 
         return ComparacionHistorica(

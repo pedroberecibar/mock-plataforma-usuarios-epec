@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from application.use_cases.calcular_proyeccion_mensual import CalcularProyeccionMensualUseCase
-from domain.comparacion_periodo import dias_con_dato, total_en_dias, variacion_pct
+from domain.comparacion_periodo import variacion_pct
 from domain.ports.consumo_diario_repository import ConsumoDiarioRepository
 from domain.ports.proyeccion_repository import ProyeccionRepository
 from domain.ports.vecinos_repository import VecinosRepository
@@ -65,10 +65,10 @@ class ObtenerHomeUseCase:
         dias_transcurridos = len(current_serie)
 
         vs_mes_anterior_pct = await self._calcular_vs_mes_anterior(
-            suministro_id, mes_inicio, current_serie, total_kwh, dias_transcurridos
+            suministro_id, mes_inicio, total_kwh, dias_transcurridos
         )
         vs_anio_anterior_pct = await self._calcular_vs_anio_anterior(
-            suministro_id, mes_inicio, current_serie, total_kwh, dias_transcurridos
+            suministro_id, mes_inicio, total_kwh, dias_transcurridos
         )
 
         consumo_mes = ConsumoMes(
@@ -108,7 +108,6 @@ class ObtenerHomeUseCase:
         self,
         suministro_id: str,
         mes_inicio: date,
-        current_serie: list[tuple[date, float]],
         total_kwh: float | None,
         dias_transcurridos: int,
     ) -> float | None:
@@ -120,14 +119,13 @@ class ObtenerHomeUseCase:
         else:
             prev_inicio = date(mes_inicio.year, mes_inicio.month - 1, 1)
 
-        base = await self._total_mismo_periodo(suministro_id, prev_inicio, current_serie)
+        base = await self._total_mes_completo(suministro_id, prev_inicio)
         return variacion_pct(total_kwh, base)
 
     async def _calcular_vs_anio_anterior(
         self,
         suministro_id: str,
         mes_inicio: date,
-        current_serie: list[tuple[date, float]],
         total_kwh: float | None,
         dias_transcurridos: int,
     ) -> float | None:
@@ -135,21 +133,19 @@ class ObtenerHomeUseCase:
             return None
 
         last_year_inicio = mes_inicio.replace(year=mes_inicio.year - 1)
-        base = await self._total_mismo_periodo(suministro_id, last_year_inicio, current_serie)
+        base = await self._total_mes_completo(suministro_id, last_year_inicio)
         return variacion_pct(total_kwh, base)
 
-    async def _total_mismo_periodo(
+    async def _total_mes_completo(
         self,
         suministro_id: str,
         mes_inicio_comparacion: date,
-        current_serie: list[tuple[date, float]],
     ) -> float:
-        """Total del mes de comparación restringido a los mismos días calendario
-        que tienen dato en el mes en curso (comparación a igual período)."""
+        """Total del mes de comparación COMPLETO (todos sus días)."""
         days = calendar.monthrange(mes_inicio_comparacion.year, mes_inicio_comparacion.month)[1]
         fin = mes_inicio_comparacion.replace(day=days)
         serie = await self._consumo_repo.get_serie(suministro_id, mes_inicio_comparacion, fin)
-        return total_en_dias(serie, dias_con_dato(current_serie))
+        return sum(kwh for _, kwh in serie)
 
     async def _calcular_zona(
         self,

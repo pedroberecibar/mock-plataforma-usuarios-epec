@@ -3,9 +3,11 @@ import { render, screen, waitFor, within, fireEvent } from "@testing-library/rea
 import { ConsumoPage } from "./ConsumoPage";
 import * as consumoApi from "../api/consumo";
 import * as objetivosApi from "../api/objetivos";
+import * as ingestApi from "../api/ingest";
 
 vi.mock("../api/consumo");
 vi.mock("../api/objetivos");
+vi.mock("../api/ingest");
 
 const TOKEN = "tok";
 const SUMINISTRO = "S001";
@@ -43,6 +45,7 @@ beforeEach(() => {
     kwh_promedio_zona: 9.5,
     n_vecinos: 5,
   });
+  vi.mocked(ingestApi.refrescarConsumo).mockResolvedValue({ ok: true, datos_hasta: null });
 });
 
 describe("ConsumoPage", () => {
@@ -92,18 +95,27 @@ describe("ConsumoPage", () => {
     expect(screen.getByText("Mismo mes año anterior")).not.toBeNull();
   });
 
-  it("el chip 'vs mes anterior' usa el % a igual período que envía el backend", async () => {
+  it("el chip 'vs mes anterior' usa el % que envía el backend (vs mes completo)", async () => {
     vi.mocked(consumoApi.fetchComparacion).mockResolvedValue({
       ...COMPARACION_VACIA,
       mes_actual:   { mes: "2026-06-01", serie: [], total_kwh: 295 },
       mes_anterior: { mes: "2026-05-01", serie: [], total_kwh: 292 },
-      vs_mes_anterior_pct: 17.5, // backend ya prorrateó a igual período
+      vs_mes_anterior_pct: 17.5, // el backend ya lo calculó vs el mes anterior completo
     });
     render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
-    // Muestra el % del backend, NO (295-292)/292 ≈ +1%.
+    // Muestra el % del backend tal cual, sin recalcular en el front.
     expect(screen.getByText(/17\.5%/)).not.toBeNull();
-    expect(screen.queryByText(/1\.0%/)).toBeNull();
+  });
+
+  it("muestra la nota aclaratoria de la comparación en el mes en curso", async () => {
+    vi.mocked(consumoApi.fetchComparacion).mockResolvedValue({
+      ...COMPARACION_VACIA,
+      mes_actual: { mes: "2026-06-01", serie: [], total_kwh: 252.8 },
+    });
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    expect(screen.getByText(/se ajusta a medida que avanza el mes/i)).not.toBeNull();
   });
 
   it("no duplica 'Promedio diario' en el resumen del mes", async () => {
@@ -161,6 +173,30 @@ describe("ConsumoPage", () => {
     await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
     fireEvent.click(screen.getByText(/Editar objetivo/i));
     expect(onEditarObjetivo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ConsumoPage — botón Actualizar", () => {
+  it("el header muestra 'Actualizar' y ya no 'Exportar CSV'", async () => {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    expect(screen.getByTestId("btn-actualizar")).not.toBeNull();
+    expect(screen.queryByText("Exportar CSV")).toBeNull();
+  });
+
+  it("al hacer click en Actualizar, fuerza el refresco y re-fetchea la serie", async () => {
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    vi.mocked(consumoApi.fetchSerieDiaria).mockClear();
+
+    fireEvent.click(screen.getByTestId("btn-actualizar"));
+
+    await waitFor(() =>
+      expect(vi.mocked(ingestApi.refrescarConsumo)).toHaveBeenCalledWith(TOKEN),
+    );
+    await waitFor(() =>
+      expect(vi.mocked(consumoApi.fetchSerieDiaria)).toHaveBeenCalled(),
+    );
   });
 });
 

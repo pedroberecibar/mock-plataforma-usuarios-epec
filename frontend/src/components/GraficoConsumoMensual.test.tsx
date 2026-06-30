@@ -12,4 +12,14 @@ describe("GraficoConsumoMensual", () => {
     render(<GraficoConsumoMensual serie={[{ mes: "2026-01", kwh: 100 }, { mes: "2026-02", kwh: 120 }]} />);
     expect(screen.queryByText(/Sin datos de consumo/)).toBeNull();
   });
+
+  it("renderiza con la línea de promedio sin romper", () => {
+    render(
+      <GraficoConsumoMensual
+        serie={[{ mes: "2026-01", kwh: 100 }, { mes: "2026-02", kwh: 120 }]}
+        promedio={110}
+      />,
+    );
+    expect(screen.queryByText(/Sin datos de consumo/)).toBeNull();
+  });
 });

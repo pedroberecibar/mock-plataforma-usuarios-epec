@@ -366,5 +366,6 @@ def create_app() -> FastAPI:
 
         app.dependency_overrides[get_medicion_reader] = _oracle_no_configurado
         app.dependency_overrides[get_cuenta_reader] = _oracle_no_configurado
+        app.dependency_overrides[get_poblar_use_case] = _oracle_no_configurado
 
     return app

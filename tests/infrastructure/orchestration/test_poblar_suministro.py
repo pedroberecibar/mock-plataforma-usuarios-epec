@@ -163,6 +163,56 @@ async def test_poblar_con_lecturas_persiste_consumo(db_session_factory: object) 
     assert count == 5  # 5 días entre d0 y d1
 
 
+@pytest.mark.asyncio
+async def test_poblar_datos_frescos_no_reingesta(db_session_factory: object) -> None:
+    """Con datos frescos (hoy) y forzar=False (default), no se re-ingestan lecturas propias."""
+    from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
+
+    async with db_session_factory() as session:  # type: ignore[attr-defined]
+        await SQLiteConsumoDiarioRepository(session).upsert_consumo("SRV-TEST", date.today(), 10.0)
+        await session.commit()
+
+    meta_reader = MagicMock()
+    meta_reader.leer_meta = AsyncMock(return_value=_meta(medidor="99000001"))
+    strategy = _FakeStrategy([_lectura()], nombre="CHUPETE")
+    strategy.leer_lecturas = AsyncMock(return_value=[_lectura()])  # type: ignore[method-assign]
+
+    uc = PoblarSuministroUseCase(
+        meta_reader=meta_reader,
+        selector=_make_selector(strategy),
+        vecinos_repo=FakeVecinosRepository({"SRV-TEST": []}),
+        session_factory=db_session_factory,  # type: ignore[arg-type]
+    )
+    await uc.ejecutar("SRV-TEST")
+
+    strategy.leer_lecturas.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_poblar_forzar_reingesta_aunque_fresco(db_session_factory: object) -> None:
+    """Con forzar=True, se re-ingestan lecturas aunque los datos sean frescos (botón Actualizar)."""
+    from infrastructure.sqlite.consumo_diario_repository import SQLiteConsumoDiarioRepository
+
+    async with db_session_factory() as session:  # type: ignore[attr-defined]
+        await SQLiteConsumoDiarioRepository(session).upsert_consumo("SRV-TEST", date.today(), 10.0)
+        await session.commit()
+
+    meta_reader = MagicMock()
+    meta_reader.leer_meta = AsyncMock(return_value=_meta(medidor="99000001"))
+    strategy = _FakeStrategy([_lectura()], nombre="CHUPETE")
+    strategy.leer_lecturas = AsyncMock(return_value=[_lectura()])  # type: ignore[method-assign]
+
+    uc = PoblarSuministroUseCase(
+        meta_reader=meta_reader,
+        selector=_make_selector(strategy),
+        vecinos_repo=FakeVecinosRepository({"SRV-TEST": []}),
+        session_factory=db_session_factory,  # type: ignore[arg-type]
+    )
+    await uc.ejecutar("SRV-TEST", forzar=True)
+
+    strategy.leer_lecturas.assert_called_once()
+
+
 async def test_poblar_persiste_telemedible(db_session_factory: object) -> None:
     """El tipo de telemedición de Oracle se persiste en suministros (ADR-003)."""
     from sqlalchemy import text

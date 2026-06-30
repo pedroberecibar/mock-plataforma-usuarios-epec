@@ -67,3 +67,25 @@ async def poblar_suministro(
     """Dispara en background la carga de datos del suministro autenticado desde Oracle."""
     background_tasks.add_task(use_case.ejecutar, suministro_id)
     return PoblarResponse(estado="iniciando")
+
+
+class RefrescoResponse(BaseModel):
+    ok: bool
+    datos_hasta: date | None
+
+
+@router.post("/refrescar", response_model=RefrescoResponse)
+async def refrescar_consumo(
+    suministro_id: str = Depends(get_suministro_actual),
+    use_case: PoblarUseCase = Depends(get_poblar_use_case),
+    consumo_repo: ConsumoDiarioRepository = Depends(get_consumo_repo),
+) -> RefrescoResponse:
+    """Refresco síncrono (botón "Actualizar"): trae las nuevas mediciones desde Oracle
+    forzando el bypass del chequeo de frescura y devuelve la última fecha disponible.
+
+    Espera a que termine la ingesta para que el frontend pueda re-fetchear los datos ya
+    actualizados. El reader Oracle corre en threadpool (no bloquea el event loop).
+    """
+    await use_case.ejecutar(suministro_id, forzar=True)
+    datos_hasta = await consumo_repo.get_ultima_fecha(suministro_id)
+    return RefrescoResponse(ok=True, datos_hasta=datos_hasta)

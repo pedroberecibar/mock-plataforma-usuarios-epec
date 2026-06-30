@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAnomalia, fetchComparacion, fetchComparacionAnual, fetchDetalleDia, fetchSerieDiaria, fetchSerieHoraria } from "../api/consumo";
 import { fetchObjetivo, fetchObjetivoEstado, type ObjetivoResponse } from "../api/objetivos";
+import { refrescarConsumo } from "../api/ingest";
 import type { AnomaliaResponse, ComparacionResponse, DetalleDiaResponse, DiarioResponse, ObjetivoEstadoResponse, PuntoSerie, SerieHorariaResponse } from "../api/types";
 import { CartelLatencia } from "../components/CartelLatencia";
 import { Card, CardLabel } from "../components/Card";
@@ -18,7 +19,7 @@ import { PageHeader } from "../components/PageHeader";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { AlertBanner } from "../components/AlertBanner";
 import { listaMeses, primerDiaDeMes, ultimoDiaConDatos } from "../utils/meses";
-import { agregarComparacionAnual, mesesDelAnio, totalEnMismosDias, type ComparacionAnual, type MesTotal } from "../utils/consumo";
+import { agregarComparacionAnual, mesesDelAnio, type ComparacionAnual, type MesTotal } from "../utils/consumo";
 import {
   bg,
   brand,
@@ -75,7 +76,7 @@ function HeroConsumoMes({
   return (
     <section
       aria-label="consumo acumulado del mes"
-      style={{ ...cardFeaturedStyle, marginBottom: space[6] }}
+      style={cardFeaturedStyle}
     >
       <CardLabel>{label}</CardLabel>
       <p style={{ margin: `${space[1]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
@@ -216,7 +217,9 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [anomalia, setAnomalia] = useState<AnomaliaResponse | null>(null);
-  const [descargandoCsv, setDescargandoCsv] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
+  const [refrescoError, setRefrescoError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const [detalleDia, setDetalleDia] = useState<DetalleDiaResponse | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
@@ -239,7 +242,7 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
       .then((obj) => { if (!cancelado) setObjetivo(obj); })
       .catch(() => { if (!cancelado) setObjetivo(null); });
     return () => { cancelado = true; };
-  }, [token, suministroId]);
+  }, [token, suministroId, refreshKey]);
 
   // Indicadores dependientes del mes seleccionado.
   useEffect(() => {
@@ -270,7 +273,7 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
       .finally(() => { if (!cancelado) setLoading(false); });
 
     return () => { cancelado = true; };
-  }, [token, suministroId, mesSeleccionado]);
+  }, [token, suministroId, mesSeleccionado, refreshKey]);
 
   // Vista "Por mes": comparación anual con vecinos (agregada de las mensuales).
   // De acá salen tanto el gráfico mensual propio como los KPIs vs zona del año.
@@ -316,22 +319,14 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
       .catch(() => setDetalleHorario(null));
   }
 
-  function handleExportarCsv() {
-    setDescargandoCsv(true);
-    const desde = primerDiaDeMes(mesSeleccionado);
-    const hasta = ultimoDiaConDatos(mesSeleccionado, hoy());
-    const url = `/consumo/export/csv?desde=${desde}&hasta=${hasta}`;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.blob())
-      .then((blob) => {
-        const href = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = href;
-        a.download = `consumo_${suministroId}_${desde}_${hasta}.csv`;
-        a.click();
-        URL.revokeObjectURL(href);
-      })
-      .finally(() => setDescargandoCsv(false));
+  // Trae las nuevas mediciones desde Oracle (forzado) y refresca lo que se muestra.
+  function handleActualizar() {
+    setActualizando(true);
+    setRefrescoError(null);
+    refrescarConsumo(token)
+      .then(() => setRefreshKey((k) => k + 1))
+      .catch(() => setRefrescoError("No se pudieron actualizar los datos. Intentá de nuevo."))
+      .finally(() => setActualizando(false));
   }
 
   function handleCerrarDetalle() {
@@ -340,12 +335,13 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
     setDetalleHorario(null);
   }
 
-  const exportButton = (
+  const actualizarButton = (
     <button
-      onClick={handleExportarCsv}
-      disabled={descargandoCsv}
-      data-testid="btn-exportar-csv"
-      className="export-csv-btn"
+      onClick={handleActualizar}
+      disabled={actualizando}
+      data-testid="btn-actualizar"
+      className="actualizar-btn"
+      title="Traer las nuevas mediciones desde el sistema de medición"
       style={{
         padding:      `${space[2]}px ${space[4]}px`,
         background:   brand.primary,
@@ -355,17 +351,17 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
         fontSize:     fontSize.sm,
         fontWeight:   fontWeight.medium,
         fontFamily:   font.sans,
-        cursor:       descargandoCsv ? "wait" : "pointer",
+        cursor:       actualizando ? "wait" : "pointer",
       }}
     >
-      {descargandoCsv ? "Descargando..." : "Exportar CSV"}
+      {actualizando ? "Actualizando..." : "Actualizar"}
     </button>
   );
 
   if (loading && !diario) {
     return (
       <div style={{ background: bg.page, minHeight: "100%" }}>
-        <PageHeader title="Mi Consumo" actions={exportButton} />
+        <PageHeader title="Mi Consumo" actions={actualizarButton} />
         <div style={{ padding: `${space[10]}px`, maxWidth: 1400, margin: "0 auto" }}>
           <LoadingSkeleton variant="card" />
           <div style={{ height: space[6] }} />
@@ -378,7 +374,7 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
   if (error) {
     return (
       <div style={{ background: bg.page, minHeight: "100%" }}>
-        <PageHeader title="Mi Consumo" actions={exportButton} />
+        <PageHeader title="Mi Consumo" actions={actualizarButton} />
         <div style={{ padding: `${space[10]}px`, maxWidth: 1400, margin: "0 auto" }}>
           <AlertBanner variant="error">Error: {error}</AlertBanner>
         </div>
@@ -396,50 +392,69 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
     : mesLabelCorto.charAt(0).toUpperCase() + mesLabelCorto.slice(1);
 
   const totalMesActual = comparacion?.mes_actual.total_kwh ?? null;
-  // Variación a igual período (mismos días calendario): la calcula el backend.
+  // % vs el TOTAL del mes/año anterior completo (lo calcula el backend).
   const vsMesAnterior = comparacion?.vs_mes_anterior_pct ?? null;
   const vsAnioAnterior = comparacion?.vs_anio_anterior_pct ?? null;
 
-  // Nota explicativa: contra qué se compara (base a igual período) y total del
-  // mes anterior completo, para que el % no se lea como contradictorio.
-  const serieActual = comparacion?.mes_actual.serie ?? [];
-  const baseMesAnterior = comparacion
-    ? totalEnMismosDias(comparacion.mes_anterior.serie, serieActual)
-    : 0;
-  const totalMesAnteriorCompleto = comparacion?.mes_anterior.total_kwh ?? null;
-  const comparacionParcial =
-    baseMesAnterior > 0 &&
-    totalMesAnteriorCompleto !== null &&
-    Math.abs(baseMesAnterior - totalMesAnteriorCompleto) > 0.05;
+  // Nota: el % compara el acumulado del mes en curso contra el total del mes
+  // anterior completo, por eso se va actualizando con los días. Solo en el mes en curso.
   const notaComparacion =
-    vsMesAnterior !== null && baseMesAnterior > 0
-      ? comparacionParcial
-        ? `Comparado a igual período: ${fmtKwh(baseMesAnterior)} kWh del mes anterior ` +
-          `(${serieActual.length} días). Mes anterior completo: ${fmtKwh(totalMesAnteriorCompleto!)} kWh.`
-        : `Comparado contra el mes anterior completo (${fmtKwh(baseMesAnterior)} kWh).`
+    esMesActual && totalMesActual !== null
+      ? "Compara tu consumo del mes contra el total del mes anterior; se ajusta a medida que avanza el mes."
       : null;
 
   const serieMensual: MesTotal[] =
     comparacionAnual?.meses.map((m) => ({ mes: m.mes, kwh: m.miKwh ?? 0 })) ?? [];
 
+  // Promedio mensual del año filtrado (solo meses con dato), para la línea de referencia.
+  const mesesConDato = serieMensual.filter((m) => m.kwh > 0);
+  const promedioMensual = mesesConDato.length
+    ? mesesConDato.reduce((s, m) => s + m.kwh, 0) / mesesConDato.length
+    : null;
+
   return (
     <div style={{ minHeight: "100%", background: bg.page, fontFamily: font.sans }}>
-      <PageHeader title="Mi Consumo" actions={exportButton} />
+      <PageHeader title="Mi Consumo" actions={actualizarButton} />
 
       <main aria-label="consumo del cliente">
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${space[10]}px` }}>
 
+          {refrescoError && (
+            <div style={{ marginBottom: space[4] }}>
+              <AlertBanner variant="error">{refrescoError}</AlertBanner>
+            </div>
+          )}
+
           <CartelLatencia datosHasta={datosHasta} />
 
-          {/* Hero: consumo acumulado del mes — lo primero y más grande */}
-          <HeroConsumoMes
-            label={mesLabelTitulo}
-            sublabel={formatMes(mesSeleccionado)}
-            kwh={totalMesActual}
-            vsMesAnterior={vsMesAnterior}
-            vsAnioAnterior={vsAnioAnterior}
-            nota={notaComparacion}
-          />
+          {/* Fila 1 — consumos: hero destacado + comparación mes/año anterior apiladas */}
+          <div style={{
+            display:             "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap:                 space[4],
+            marginBottom:        space[6],
+          }}>
+            <HeroConsumoMes
+              label={mesLabelTitulo}
+              sublabel={formatMes(mesSeleccionado)}
+              kwh={totalMesActual}
+              vsMesAnterior={vsMesAnterior}
+              vsAnioAnterior={vsAnioAnterior}
+              nota={notaComparacion}
+            />
+            <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: space[4] }}>
+              <KpiCard
+                label="Mes anterior"
+                sublabel={comparacion ? formatMes(comparacion.mes_anterior.mes) : ""}
+                kwh={comparacion?.mes_anterior.total_kwh ?? null}
+              />
+              <KpiCard
+                label="Mismo mes año anterior"
+                sublabel={comparacion ? formatMes(comparacion.mismo_mes_anio_anterior.mes) : ""}
+                kwh={comparacion?.mismo_mes_anio_anterior.total_kwh ?? null}
+              />
+            </div>
+          </div>
 
           <ObjetivoResumenCard
             objetivo={objetivo}
@@ -459,33 +474,12 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
             </div>
           )}
 
-          {/* Resumen del mes: comparación histórica + stats del mes */}
+          {/* Fila 3 — stats del mes (día más alto / más bajo / promedio) */}
           <section style={{ marginBottom: space[8] }}>
-            {/* Fila superior: comparación histórica (mes anterior / año anterior) */}
-            <div style={{
-              display:             "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap:                 space[3],
-              marginBottom:        space[3],
-            }}>
-              <KpiCard
-                label="Mes anterior"
-                sublabel={comparacion ? formatMes(comparacion.mes_anterior.mes) : ""}
-                kwh={comparacion?.mes_anterior.total_kwh ?? null}
-              />
-              <KpiCard
-                label="Mismo mes año anterior"
-                sublabel={comparacion ? formatMes(comparacion.mismo_mes_anio_anterior.mes) : ""}
-                kwh={comparacion?.mismo_mes_anio_anterior.total_kwh ?? null}
-              />
-            </div>
-
-            {/* Fila inferior: stats del mes actual */}
             <div style={{
               display:             "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
               gap:                 space[3],
-              marginBottom:        space[6],
             }}>
               <StatFeatCard
                 label="Día más alto"
@@ -548,12 +542,14 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
                 onClickBarra={handleClickBarra}
                 maxFecha={stats.maxPunto?.fecha}
                 minFecha={stats.minPunto?.fecha}
+                promedio={stats.promedio}
               />
             ) : (
               <GraficoConsumoMensual
                 serie={serieMensual}
                 onClickMes={handleClickMes}
                 mesDestacado={mesActualStr()}
+                promedio={promedioMensual}
               />
             )}
           </section>

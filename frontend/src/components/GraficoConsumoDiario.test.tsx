@@ -16,4 +16,13 @@ describe("GraficoConsumoDiario", () => {
     render(<GraficoConsumoDiario serie={serie} />);
     expect(screen.queryByText(/Sin datos de consumo/)).toBeNull();
   });
+
+  it("renderiza con la línea de promedio sin romper", () => {
+    const serie = [
+      { fecha: "2026-06-01", kwh: 10 },
+      { fecha: "2026-06-02", kwh: 20 },
+    ];
+    render(<GraficoConsumoDiario serie={serie} promedio={15} />);
+    expect(screen.queryByText(/Sin datos de consumo/)).toBeNull();
+  });
 });

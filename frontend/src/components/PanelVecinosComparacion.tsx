@@ -34,9 +34,9 @@ export function DimensionCard({ label, miValor, promedioVecinos, diferenciaPct, 
       style={{
         flex:         1,
         minWidth:     200,
-        padding:      `${space[4]}px ${space[5]}px`,
+        padding:      `${space[5]}px`,
         borderRadius: `${radius.lg}px`,
-        background:   bg.surface,
+        background:   bg.surfaceFeat,
         boxShadow:    shadow.sm,
         fontFamily:   font.sans,
       }}
