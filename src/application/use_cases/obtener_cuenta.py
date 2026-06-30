@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from domain.cuenta import componer_direccion, enmascarar, normalizar_fase
+from domain.perfiles import soporta_perfiles
 from domain.ports.cuenta_reader import CuentaReader
 from domain.ports.cuenta_sensible_repository import CuentaSensibleRepository
 from domain.ports.pii_cipher import PiiCipher
@@ -55,6 +56,7 @@ class MedidorResult:
     marca: str | None
     fase: str
     inteligente_desde: date | None
+    soporta_perfiles: bool
 
 
 @dataclass(frozen=True)
@@ -119,5 +121,6 @@ class ObtenerCuentaUseCase:
                 marca=raw.telemedible,
                 fase=normalizar_fase(raw.medidor_fases),
                 inteligente_desde=raw.telemedible_desde,
+                soporta_perfiles=soporta_perfiles(raw.telemedible),
             ),
         )
