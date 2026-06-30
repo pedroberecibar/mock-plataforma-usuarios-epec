@@ -15,6 +15,26 @@ export function mesesDelAnio(anio: number, hoy: Date = new Date()): string[] {
   return meses;
 }
 
+/** Día-del-mes (1..31) de una fecha "YYYY-MM-DD". */
+function diaDelMes(fecha: string): number {
+  return parseInt(fecha.slice(8, 10), 10);
+}
+
+/**
+ * Total de `serieComparacion` restringido a los mismos días calendario que
+ * tienen dato en `serieActual` (comparación a igual período). Espeja el helper
+ * de backend `domain.comparacion_periodo.total_en_dias`.
+ */
+export function totalEnMismosDias(
+  serieComparacion: { fecha: string; kwh: number }[],
+  serieActual: { fecha: string; kwh: number }[],
+): number {
+  const dias = new Set(serieActual.map((p) => diaDelMes(p.fecha)));
+  return serieComparacion
+    .filter((p) => dias.has(diaDelMes(p.fecha)))
+    .reduce((s, p) => s + p.kwh, 0);
+}
+
 // ---------------------------------------------------------------------------
 // Comparación anual con vecinos — agregada a partir de las comparaciones
 // mensuales (el backend solo expone zona a nivel mensual).

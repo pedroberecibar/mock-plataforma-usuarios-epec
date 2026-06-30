@@ -49,6 +49,9 @@ export interface ComparacionResponse {
   mismo_mes_anio_anterior: PeriodoConsumo;
   zona_mes_actual: ComparacionZonaResponse | null;
   datos_hasta: string | null;
+  // Variación a igual período (mismos días calendario que el mes en curso).
+  vs_mes_anterior_pct: number | null;
+  vs_anio_anterior_pct: number | null;
 }
 
 export interface FacturaDocumento {

@@ -18,7 +18,7 @@ import { PageHeader } from "../components/PageHeader";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { AlertBanner } from "../components/AlertBanner";
 import { listaMeses, primerDiaDeMes, ultimoDiaConDatos } from "../utils/meses";
-import { agregarComparacionAnual, mesesDelAnio, type ComparacionAnual, type MesTotal } from "../utils/consumo";
+import { agregarComparacionAnual, mesesDelAnio, totalEnMismosDias, type ComparacionAnual, type MesTotal } from "../utils/consumo";
 import {
   bg,
   brand,
@@ -66,16 +66,11 @@ function fmtKwh(kwh: number): string {
   return kwh.toLocaleString("es-AR", { maximumFractionDigits: 1 });
 }
 
-function pctDelta(actual: number | null | undefined, previo: number | null | undefined): number | null {
-  if (actual == null || previo == null || previo === 0) return null;
-  return ((actual - previo) / previo) * 100;
-}
-
 // Hero: consumo acumulado del mes — lo primero y más grande de la página.
 function HeroConsumoMes({
-  label, sublabel, kwh, vsMesAnterior, vsAnioAnterior,
+  label, sublabel, kwh, vsMesAnterior, vsAnioAnterior, nota,
 }: {
-  label: string; sublabel: string; kwh: number | null; vsMesAnterior: number | null; vsAnioAnterior: number | null;
+  label: string; sublabel: string; kwh: number | null; vsMesAnterior: number | null; vsAnioAnterior: number | null; nota?: string | null;
 }) {
   return (
     <section
@@ -108,6 +103,11 @@ function HeroConsumoMes({
         <DeltaChip value={vsMesAnterior} label="vs mes anterior" />
         <DeltaChip value={vsAnioAnterior} label="vs año anterior" />
       </div>
+      {nota && (
+        <p style={{ margin: `${space[2]}px 0 0`, fontSize: fontSize.xs, color: fg.muted }}>
+          {nota}
+        </p>
+      )}
     </section>
   );
 }
@@ -396,8 +396,29 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
     : mesLabelCorto.charAt(0).toUpperCase() + mesLabelCorto.slice(1);
 
   const totalMesActual = comparacion?.mes_actual.total_kwh ?? null;
-  const vsMesAnterior = pctDelta(totalMesActual, comparacion?.mes_anterior.total_kwh);
-  const vsAnioAnterior = pctDelta(totalMesActual, comparacion?.mismo_mes_anio_anterior.total_kwh);
+  // Variación a igual período (mismos días calendario): la calcula el backend.
+  const vsMesAnterior = comparacion?.vs_mes_anterior_pct ?? null;
+  const vsAnioAnterior = comparacion?.vs_anio_anterior_pct ?? null;
+
+  // Nota explicativa: contra qué se compara (base a igual período) y total del
+  // mes anterior completo, para que el % no se lea como contradictorio.
+  const serieActual = comparacion?.mes_actual.serie ?? [];
+  const baseMesAnterior = comparacion
+    ? totalEnMismosDias(comparacion.mes_anterior.serie, serieActual)
+    : 0;
+  const totalMesAnteriorCompleto = comparacion?.mes_anterior.total_kwh ?? null;
+  const comparacionParcial =
+    baseMesAnterior > 0 &&
+    totalMesAnteriorCompleto !== null &&
+    Math.abs(baseMesAnterior - totalMesAnteriorCompleto) > 0.05;
+  const notaComparacion =
+    vsMesAnterior !== null && baseMesAnterior > 0
+      ? comparacionParcial
+        ? `Comparado a igual período: ${fmtKwh(baseMesAnterior)} kWh del mes anterior ` +
+          `(${serieActual.length} días). Mes anterior completo: ${fmtKwh(totalMesAnteriorCompleto!)} kWh.`
+        : `Comparado contra el mes anterior completo (${fmtKwh(baseMesAnterior)} kWh).`
+      : null;
+
   const serieMensual: MesTotal[] =
     comparacionAnual?.meses.map((m) => ({ mes: m.mes, kwh: m.miKwh ?? 0 })) ?? [];
 
@@ -417,6 +438,7 @@ export function ConsumoPage({ token, suministroId, onEditarObjetivo }: Props) {
             kwh={totalMesActual}
             vsMesAnterior={vsMesAnterior}
             vsAnioAnterior={vsAnioAnterior}
+            nota={notaComparacion}
           />
 
           <ObjetivoResumenCard

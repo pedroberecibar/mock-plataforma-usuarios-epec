@@ -1,6 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { agregarComparacionAnual, mesesDelAnio } from "./consumo";
-import type { ComparacionResponse, ComparacionZonaResponse, PeriodoConsumo } from "../api/types";
+import { agregarComparacionAnual, mesesDelAnio, totalEnMismosDias } from "./consumo";
+import type { ComparacionResponse, ComparacionZonaResponse, PeriodoConsumo, PuntoSerie } from "../api/types";
+
+describe("totalEnMismosDias", () => {
+  const punto = (fecha: string, kwh: number): PuntoSerie => ({ fecha, kwh });
+
+  it("suma la comparación solo en los días-del-mes presentes en la serie actual", () => {
+    const actual = [punto("2026-06-01", 10), punto("2026-06-02", 10), punto("2026-06-28", 10)];
+    const comparacion = [
+      punto("2026-05-01", 5),
+      punto("2026-05-02", 5),
+      punto("2026-05-03", 100), // día 3 no está en la serie actual → no suma
+      punto("2026-05-28", 5),
+    ];
+    expect(totalEnMismosDias(comparacion, actual)).toBe(15);
+  });
+
+  it("ignora días que no existen en el mes de comparación", () => {
+    const actual = [punto("2026-05-31", 10)]; // día 31
+    const comparacion = [punto("2026-06-01", 7), punto("2026-06-30", 7)]; // junio no tiene 31
+    expect(totalEnMismosDias(comparacion, actual)).toBe(0);
+  });
+});
 
 describe("mesesDelAnio", () => {
   it("no incluye meses futuros del año en curso", () => {
@@ -32,6 +53,8 @@ function comp(mes: string, mio: number | null, zonaKwh: number | null, n: number
     mismo_mes_anio_anterior: periodo("2000-01-01", null),
     zona_mes_actual: zona(zonaKwh, n),
     datos_hasta: null,
+    vs_mes_anterior_pct: null,
+    vs_anio_anterior_pct: null,
   };
 }
 

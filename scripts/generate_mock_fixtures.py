@@ -43,6 +43,26 @@ def get_serie(
     return [(date.fromisoformat(r[0]), float(r[1])) for r in rows]
 
 
+def _total_mismo_periodo(
+    conn: sqlite3.Connection, sid: str, mes_comparacion: date, current_serie: list
+) -> float:
+    """Total del mes de comparación restringido a los mismos días calendario que
+    tienen dato en el mes en curso (espeja domain.comparacion_periodo).
+
+    No usar min(len(serie), días): un hueco en la serie desalinea las ventanas.
+    """
+    dias_actuales = {d.day for d, _ in current_serie}
+    last_day = calendar.monthrange(mes_comparacion.year, mes_comparacion.month)[1]
+    serie = get_serie(conn, sid, mes_comparacion, mes_comparacion.replace(day=last_day))
+    return sum(kwh for d, kwh in serie if d.day in dias_actuales)
+
+
+def _variacion_pct(actual: float | None, base: float) -> float | None:
+    if actual is None or base <= 0:
+        return None
+    return round((actual - base) / base * 100, 2)
+
+
 def get_ultima_fecha(conn: sqlite3.Connection, sid: str) -> date | None:
     row = conn.execute(
         "SELECT MAX(fecha) FROM consumo_diario WHERE suministro_id=?", (sid,)
@@ -121,26 +141,18 @@ def build_home(conn: sqlite3.Connection, sid: str, mes: date) -> dict:
     dias_transcurridos = len(current_serie)
 
     vs_mes_anterior_pct = None
+    vs_anio_anterior_pct = None
     if total_kwh is not None and dias_transcurridos > 0:
         prev_inicio = (
             date(mes.year, mes.month - 1, 1) if mes.month > 1 else date(mes.year - 1, 12, 1)
         )
-        days_in_prev = calendar.monthrange(prev_inicio.year, prev_inicio.month)[1]
-        prev_fin = prev_inicio.replace(day=min(dias_transcurridos, days_in_prev))
-        prev_serie = get_serie(conn, sid, prev_inicio, prev_fin)
-        prev_total = sum(kwh for _, kwh in prev_serie) if prev_serie else 0.0
-        if prev_total > 0:
-            vs_mes_anterior_pct = round((total_kwh - prev_total) / prev_total * 100, 2)
-
-    vs_anio_anterior_pct = None
-    if total_kwh is not None and dias_transcurridos > 0:
-        ly_inicio = mes.replace(year=mes.year - 1)
-        days_in_ly = calendar.monthrange(ly_inicio.year, ly_inicio.month)[1]
-        ly_fin = ly_inicio.replace(day=min(dias_transcurridos, days_in_ly))
-        ly_serie = get_serie(conn, sid, ly_inicio, ly_fin)
-        ly_total = sum(kwh for _, kwh in ly_serie) if ly_serie else 0.0
-        if ly_total > 0:
-            vs_anio_anterior_pct = round((total_kwh - ly_total) / ly_total * 100, 2)
+        vs_mes_anterior_pct = _variacion_pct(
+            total_kwh, _total_mismo_periodo(conn, sid, prev_inicio, current_serie)
+        )
+        vs_anio_anterior_pct = _variacion_pct(
+            total_kwh,
+            _total_mismo_periodo(conn, sid, mes.replace(year=mes.year - 1), current_serie),
+        )
 
     vecinos = get_vecinos(conn, sid)
     n_vecinos = len(vecinos)
@@ -266,15 +278,29 @@ def build_comparacion(conn: sqlite3.Connection, sid: str, mes: date) -> dict:
         }
 
     anterior = date(mes.year, mes.month - 1, 1) if mes.month > 1 else date(mes.year - 1, 12, 1)
+    anio_anterior = mes.replace(year=mes.year - 1)
     datos_hasta = get_ultima_fecha(conn, sid)
     mes_actual = get_periodo(mes)
     zona = build_zona_mes_actual(conn, sid, mes, mes_actual["total_kwh"], len(mes_actual["serie"]))
+
+    # Variación a igual período (mismos días calendario que el mes en curso).
+    current_serie = get_serie(
+        conn, sid, mes, mes.replace(day=calendar.monthrange(mes.year, mes.month)[1])
+    )
+    vs_mes_anterior_pct = _variacion_pct(
+        mes_actual["total_kwh"], _total_mismo_periodo(conn, sid, anterior, current_serie)
+    )
+    vs_anio_anterior_pct = _variacion_pct(
+        mes_actual["total_kwh"], _total_mismo_periodo(conn, sid, anio_anterior, current_serie)
+    )
     return {
         "mes_actual": mes_actual,
         "mes_anterior": get_periodo(anterior),
-        "mismo_mes_anio_anterior": get_periodo(mes.replace(year=mes.year - 1)),
+        "mismo_mes_anio_anterior": get_periodo(anio_anterior),
         "zona_mes_actual": zona,
         "datos_hasta": datos_hasta.isoformat() if datos_hasta else None,
+        "vs_mes_anterior_pct": vs_mes_anterior_pct,
+        "vs_anio_anterior_pct": vs_anio_anterior_pct,
     }
 
 

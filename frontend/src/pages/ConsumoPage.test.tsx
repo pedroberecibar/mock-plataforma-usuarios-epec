@@ -17,6 +17,8 @@ const COMPARACION_VACIA = {
   mismo_mes_anio_anterior: { mes: "2025-06-01", serie: [], total_kwh: null },
   zona_mes_actual: { promedio_vecinos_kwh: null, n_vecinos: 0, diferencia_pct: null, serie: [] },
   datos_hasta: null,
+  vs_mes_anterior_pct: null,
+  vs_anio_anterior_pct: null,
 };
 
 const SERIE_HORARIA_RESP = {
@@ -80,12 +82,28 @@ describe("ConsumoPage", () => {
       mismo_mes_anio_anterior: { mes: "2025-06-01", serie: [], total_kwh: 444.7 },
       zona_mes_actual:         { promedio_vecinos_kwh: null, n_vecinos: 0, diferencia_pct: null, serie: [] },
       datos_hasta: null,
+      vs_mes_anterior_pct: -24.2,
+      vs_anio_anterior_pct: -43.2,
     };
     vi.mocked(consumoApi.fetchComparacion).mockResolvedValue(COMPARACION_CON_DATOS);
     render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
     await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
     expect(screen.getByText("Mes anterior")).not.toBeNull();
     expect(screen.getByText("Mismo mes año anterior")).not.toBeNull();
+  });
+
+  it("el chip 'vs mes anterior' usa el % a igual período que envía el backend", async () => {
+    vi.mocked(consumoApi.fetchComparacion).mockResolvedValue({
+      ...COMPARACION_VACIA,
+      mes_actual:   { mes: "2026-06-01", serie: [], total_kwh: 295 },
+      mes_anterior: { mes: "2026-05-01", serie: [], total_kwh: 292 },
+      vs_mes_anterior_pct: 17.5, // backend ya prorrateó a igual período
+    });
+    render(<ConsumoPage token={TOKEN} suministroId={SUMINISTRO} />);
+    await waitFor(() => expect(screen.queryByTestId("skeleton-block")).toBeNull());
+    // Muestra el % del backend, NO (295-292)/292 ≈ +1%.
+    expect(screen.getByText(/17\.5%/)).not.toBeNull();
+    expect(screen.queryByText(/1\.0%/)).toBeNull();
   });
 
   it("no duplica 'Promedio diario' en el resumen del mes", async () => {
@@ -253,6 +271,8 @@ describe("ConsumoPage — toggle día / mes del gráfico", () => {
         mismo_mes_anio_anterior: { mes: "2025-06-01", serie: [], total_kwh: null },
         zona_mes_actual:         { promedio_vecinos_kwh: 90, n_vecinos: 6, diferencia_pct: 11, serie: [] },
         datos_hasta: null,
+        vs_mes_anterior_pct: null,
+        vs_anio_anterior_pct: null,
       })),
     );
     await renderListo();

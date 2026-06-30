@@ -1,8 +1,8 @@
 {
   "consumo_mes": {
     "total_kwh": 277.0,
-    "vs_mes_anterior_pct": 21.0,
-    "vs_anio_anterior_pct": 48.9
+    "vs_mes_anterior_pct": 17.53,
+    "vs_anio_anterior_pct": 46.04
   },
   "comparacion_zona": {
     "promedio_vecinos_kwh": 263.4,

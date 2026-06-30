@@ -20,5 +20,7 @@
     "diferencia_pct": 5.2,
     "serie": []
   },
-  "datos_hasta": "2026-06-25"
+  "datos_hasta": "2026-06-25",
+  "vs_mes_anterior_pct": 17.53,
+  "vs_anio_anterior_pct": 46.04
 }
