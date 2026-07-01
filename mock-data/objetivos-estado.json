@@ -1,14 +1,14 @@
 {
-  "objetivo_kwh": null,
-  "promedio_vecinos_kwh": null,
-  "n_vecinos": 0,
-  "diferencia_pct": null,
+  "objetivo_kwh": 299.0,
+  "promedio_vecinos_kwh": 308.21,
+  "n_vecinos": 189,
+  "diferencia_pct": -2.988222315953402,
   "dias_transcurridos": 30,
-  "dias_objetivo_consumidos": null,
-  "texto_dinamico": "sin_objetivo",
-  "excedente_kwh": null,
-  "consumo_diario_real_kwh": null,
-  "consumo_diario_objetivo_kwh": null,
-  "consumo_acumulado_kwh": null,
-  "consumo_promedio_diario_kwh": null
+  "dias_objetivo_consumidos": 30,
+  "texto_dinamico": "agotado",
+  "excedente_kwh": 8.0,
+  "consumo_diario_real_kwh": 5.0,
+  "consumo_diario_objetivo_kwh": 9.966666666666667,
+  "consumo_acumulado_kwh": 307.0,
+  "consumo_promedio_diario_kwh": 10.59
 }

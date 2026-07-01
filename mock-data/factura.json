@@ -1,7 +1,15 @@
 {
-  "total_deuda": 0,
-  "pago_online": false,
-  "cliente_id": null,
-  "contrato_id": null,
-  "documentos": []
+  "total_deuda": 133372.9,
+  "pago_online": true,
+  "cliente_id": "1109294",
+  "contrato_id": "0281767003",
+  "documentos": [
+    {
+      "periodo": "07/2026",
+      "importe": 133372.9,
+      "fecha_vencimiento": "2026-06-30",
+      "estado": "vencido",
+      "url_pdf": "https://www.epec.com.ar/api/reportes/e5871ccc5e30f12446c2eec96050c38a78a33c5474aa97b71a4d14622a03c79bbe564239aa128619ff3b820a65c256460c3171cac325f20ab34e01bc9f116e616f8c037a0f3fe676dca1a05d26ea46322f22d808b22b7973210928dbb9783e24ac638c6b5e74951421b145ec75cf4b931195c3b45523f062"
+    }
+  ]
 }
