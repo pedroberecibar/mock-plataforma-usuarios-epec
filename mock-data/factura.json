@@ -1,3 +1,7 @@
 {
-  "fecha_vencimiento": null
+  "total_deuda": 0,
+  "pago_online": false,
+  "cliente_id": null,
+  "contrato_id": null,
+  "documentos": []
 }
