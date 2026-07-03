@@ -25,14 +25,12 @@
       #root { min-height: 100vh; display: flex; flex-direction: column; }
       /* AppShell responsive nav */
       .app-sidebar   { display: flex; }
-      .app-bottomnav { display: none; }
       .app-topbar    { display: none; }
       .app-content   { margin-left: 256px; }
       @media (max-width: 767px) {
         .app-sidebar   { display: none; }
-        .app-bottomnav { display: flex; }
         .app-topbar    { display: flex; }
-        .app-content   { margin-left: 0; padding-top: 60px; padding-bottom: 60px; }
+        .app-content   { margin-left: 0; padding-top: 60px; }
       }
       /* Page transition — fade between views */
       @keyframes pageFadeIn {
@@ -40,6 +38,12 @@
         to   { opacity: 1; transform: translateY(0); }
       }
       .page-fade { animation: pageFadeIn 200ms ease-out; }
+      /* Mobile drawer — slide in from the left */
+      @keyframes drawerSlideIn {
+        from { transform: translateX(-100%); }
+        to   { transform: translateX(0); }
+      }
+      .drawer-panel-anim { animation: drawerSlideIn 200ms ease-out; }
       /* LoginPage: left decorative panel hidden on mobile; right panel fills full width */
       .login-panel-left { display: flex; }
       .login-panel-right { width: 50%; }
@@ -52,7 +56,7 @@
         .export-csv-btn { display: inline-flex !important; align-items: center; gap: 6px; }
       }
     </style>
-    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-DFqTvjQx.js"></script>
+    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-BgeN07C-.js"></script>
   </head>
   <body>
     <div id="root"></div>
