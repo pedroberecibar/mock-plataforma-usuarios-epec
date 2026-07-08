@@ -38,6 +38,9 @@
         to   { opacity: 1; transform: translateY(0); }
       }
       .page-fade { animation: pageFadeIn 200ms ease-out; }
+      @media (prefers-reduced-motion: reduce) {
+        .page-fade, .drawer-panel-anim { animation: none; }
+      }
       /* Mobile drawer — slide in from the left */
       @keyframes drawerSlideIn {
         from { transform: translateX(-100%); }
@@ -51,12 +54,31 @@
         .login-panel-left  { display: none; }
         .login-panel-right { width: 100%; padding: 40px 24px !important; }
       }
-      /* CU-C07: Exportar CSV visible solo en viewport web (≥ 768px) */
-      @media (min-width: 768px) {
-        .export-csv-btn { display: inline-flex !important; align-items: center; gap: 6px; }
+      /* Anillo de foco de marca para controles interactivos custom (breadcrumb, chips de hitos) */
+      .focus-ring:focus-visible {
+        outline: 2px solid #165131;
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      /* ConsumoPage — dashboard: lienzo + ancla de números arriba, fila de seguimiento full-width abajo.
+         Sin sticky en el ancla: con el layout compacto no aportaba fijado real y provocaba que la fila
+         de cards de abajo se solapara con el ancla al scrollear. Todo scrollea como un solo plano. */
+      .consumo-grid  { display: grid; gap: 24px; align-items: start;
+                       grid-template-columns: minmax(0, 1fr) 340px;
+                       grid-template-areas: "chart anchor" "cards cards"; }
+      .cg-chart      { grid-area: chart; min-width: 0; }
+      .cg-anchor     { grid-area: anchor;
+                       display: flex; flex-direction: column; gap: 16px; }
+      .cg-cards      { grid-area: cards; display: grid; gap: 16px; align-items: start;
+                       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+      @media (max-width: 1199px) {
+        .consumo-grid { grid-template-columns: 1fr;
+                        grid-template-areas: "anchor" "chart" "cards"; }
+        .cg-anchor    { display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
       }
     </style>
-    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-BgeN07C-.js"></script>
+    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-BhMEBpXr.js"></script>
   </head>
   <body>
     <div id="root"></div>
