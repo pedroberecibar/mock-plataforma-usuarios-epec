@@ -1,21 +1,21 @@
 {
   "consumo_mes": {
-    "total_kwh": 162.0,
-    "vs_mes_anterior_pct": -25.69,
-    "vs_anio_anterior_pct": 18.25
+    "total_kwh": 197.0,
+    "vs_mes_anterior_pct": -24.23,
+    "vs_anio_anterior_pct": 20.12
   },
   "comparacion_zona": {
-    "promedio_vecinos_kwh": 207.07,
+    "promedio_vecinos_kwh": 250.13,
     "n_vecinos": 189,
-    "diferencia_pct": -21.76
+    "diferencia_pct": -21.24
   },
   "proyeccion": {
     "mes": "2026-07-01",
     "metodo_aplicado": "interanual",
     "bandera_confianza": "alta",
-    "rango_inferior_kwh": 250.09,
-    "rango_superior_kwh": 305.67
+    "rango_inferior_kwh": 254.06,
+    "rango_superior_kwh": 310.52
   },
-  "datos_hasta": "2026-07-19",
-  "timestamp": "2026-07-20T15:17:47.405754+00:00"
+  "datos_hasta": "2026-07-23",
+  "timestamp": "2026-07-24T10:35:51.459395+00:00"
 }
