@@ -50,9 +50,55 @@
       /* LoginPage: left decorative panel hidden on mobile; right panel fills full width */
       .login-panel-left { display: flex; }
       .login-panel-right { width: 50%; }
+      /* El logo vive en el panel izquierdo. En el derecho solo aparece en mobile,
+         donde ese panel se oculta, para no duplicar la marca en desktop. */
+      .login-logo-mobile { display: none; }
+      /* El panel izquierdo (logo + progreso del alta) se oculta en mobile: estos
+         elementos lo reemplazan para no dejar al usuario sin contexto. */
+      .auth-mobile-only { display: none; }
       @media (max-width: 767px) {
         .login-panel-left  { display: none; }
         .login-panel-right { width: 100%; padding: 40px 24px !important; }
+        .login-logo-mobile { display: block; }
+        .auth-mobile-only  { display: block; }
+      }
+      /* Foco visible en los formularios de auth: los inputs llevan outline:none inline,
+         así que sin esto la navegación por teclado queda sin indicador. */
+      .login-panel-right input:focus-visible {
+        border-color: #165131;
+        box-shadow: 0 0 0 3px rgba(22, 81, 49, 0.15);
+        outline: none;
+      }
+      .login-panel-right input::placeholder { color: #8C7A63; }
+      .auth-submit:hover:not(:disabled) { background: #00361d !important; }
+      .auth-submit:active:not(:disabled) { transform: translateY(1px); }
+      /* Contenido solo para lectores de pantalla y navegacion por teclado.
+         El grafico lo usa para exponer un boton por punto y la tabla alternativa:
+         las barras de Recharts no son focusables, asi que sin esto la unica forma
+         de bajar a un dia era el mouse (fallaba WCAG 2.1.1). */
+      .sr-only {
+        position: absolute;
+        width: 1px; height: 1px;
+        padding: 0; margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+      /* Al recibir foco por teclado, el boton del punto se vuelve visible. */
+      .sr-only-focusable:focus-visible {
+        position: static;
+        width: auto; height: auto;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        clip-path: none;
+        white-space: normal;
+        padding: 4px 8px;
+        background: #FDFCF9;
+        border: 1px solid #124e2f;
+        border-radius: 4px;
       }
       /* Anillo de foco de marca para controles interactivos custom (breadcrumb, chips de hitos) */
       .focus-ring:focus-visible {
@@ -60,27 +106,23 @@
         outline-offset: 2px;
         border-radius: 4px;
       }
-      /* ConsumoPage — dashboard: lienzo + ancla de números arriba, fila de seguimiento full-width abajo.
-         Sin sticky en el ancla: con el layout compacto no aportaba fijado real y provocaba que la fila
-         de cards de abajo se solapara con el ancla al scrollear. Todo scrollea como un solo plano. */
+      /* Dashboard de Consumo en tres capas de ancho completo:
+         1) la respuesta  2) la evidencia (gráfico)  3) el detalle comparable.
+         Se eliminó el rail de 340 px: dejaba el lienzo angosto, el borde inferior
+         desalineado y ~250 px de página vacía al pie. */
       .consumo-grid  { display: grid; gap: 24px; align-items: start;
-                       grid-template-columns: minmax(0, 1fr) 340px;
-                       grid-template-areas: "chart anchor" "cards cards"; }
+                       grid-template-areas: "resumen" "chart" "cards"; }
+      .cg-resumen    { grid-area: resumen; min-width: 0; }
       .cg-chart      { grid-area: chart; min-width: 0; }
-      .cg-anchor     { grid-area: anchor;
-                       display: flex; flex-direction: column; gap: 16px; }
-      .cg-cards      { grid-area: cards; display: grid; gap: 16px; align-items: start;
-                       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-      @media (max-width: 1199px) {
-        .consumo-grid { grid-template-columns: 1fr;
-                        grid-template-areas: "anchor" "chart" "cards"; }
-        .cg-anchor    { display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+      .cg-cards      { grid-area: cards; display: grid; gap: 16px; align-items: stretch;
+                       grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      @media (max-width: 899px) {
+        .cg-cards    { grid-template-columns: 1fr; }
       }
     </style>
-    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-BhMEBpXr.js"></script>
+    <script type="module" crossorigin src="/mock-plataforma-usuarios-epec/assets/index-uA9P4wx3.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>

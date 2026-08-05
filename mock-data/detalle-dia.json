@@ -1,10 +1,94 @@
 {
+  "2026-08-04": {
+    "fecha": "2026-08-04",
+    "kwh_dia": 7.0,
+    "kwh_mismo_dia_anio_ant": 5.0,
+    "kwh_promedio_zona": 10.61,
+    "n_vecinos": 125
+  },
+  "2026-08-03": {
+    "fecha": "2026-08-03",
+    "kwh_dia": 7.0,
+    "kwh_mismo_dia_anio_ant": 5.0,
+    "kwh_promedio_zona": 8.74,
+    "n_vecinos": 184
+  },
+  "2026-08-02": {
+    "fecha": "2026-08-02",
+    "kwh_dia": 5.0,
+    "kwh_mismo_dia_anio_ant": 9.0,
+    "kwh_promedio_zona": 8.9,
+    "n_vecinos": 184
+  },
+  "2026-08-01": {
+    "fecha": "2026-08-01",
+    "kwh_dia": 7.0,
+    "kwh_mismo_dia_anio_ant": 6.0,
+    "kwh_promedio_zona": 8.93,
+    "n_vecinos": 184
+  },
+  "2026-07-31": {
+    "fecha": "2026-07-31",
+    "kwh_dia": 9.0,
+    "kwh_mismo_dia_anio_ant": 6.0,
+    "kwh_promedio_zona": 9.04,
+    "n_vecinos": 184
+  },
+  "2026-07-30": {
+    "fecha": "2026-07-30",
+    "kwh_dia": 7.0,
+    "kwh_mismo_dia_anio_ant": 7.0,
+    "kwh_promedio_zona": 9.53,
+    "n_vecinos": 184
+  },
+  "2026-07-29": {
+    "fecha": "2026-07-29",
+    "kwh_dia": 9.0,
+    "kwh_mismo_dia_anio_ant": 9.0,
+    "kwh_promedio_zona": 9.37,
+    "n_vecinos": 184
+  },
+  "2026-07-28": {
+    "fecha": "2026-07-28",
+    "kwh_dia": 9.0,
+    "kwh_mismo_dia_anio_ant": 9.0,
+    "kwh_promedio_zona": 9.5,
+    "n_vecinos": 184
+  },
+  "2026-07-27": {
+    "fecha": "2026-07-27",
+    "kwh_dia": 8.0,
+    "kwh_mismo_dia_anio_ant": 8.0,
+    "kwh_promedio_zona": 9.56,
+    "n_vecinos": 184
+  },
+  "2026-07-26": {
+    "fecha": "2026-07-26",
+    "kwh_dia": 6.0,
+    "kwh_mismo_dia_anio_ant": 12.0,
+    "kwh_promedio_zona": 10.07,
+    "n_vecinos": 184
+  },
+  "2026-07-25": {
+    "fecha": "2026-07-25",
+    "kwh_dia": 7.0,
+    "kwh_mismo_dia_anio_ant": 10.0,
+    "kwh_promedio_zona": 10.59,
+    "n_vecinos": 184
+  },
+  "2026-07-24": {
+    "fecha": "2026-07-24",
+    "kwh_dia": 7.0,
+    "kwh_mismo_dia_anio_ant": 9.0,
+    "kwh_promedio_zona": 11.12,
+    "n_vecinos": 184
+  },
   "2026-07-23": {
     "fecha": "2026-07-23",
     "kwh_dia": 8.0,
     "kwh_mismo_dia_anio_ant": 7.0,
-    "kwh_promedio_zona": 12.5,
-    "n_vecinos": 136
+    "kwh_promedio_zona": 11.23,
+    "n_vecinos": 183
   },
   "2026-07-22": {
     "fecha": "2026-07-22",
@@ -333,90 +417,6 @@
     "kwh_dia": 11.0,
     "kwh_mismo_dia_anio_ant": 7.0,
     "kwh_promedio_zona": 9.84,
-    "n_vecinos": 184
-  },
-  "2026-06-05": {
-    "fecha": "2026-06-05",
-    "kwh_dia": 14.0,
-    "kwh_mismo_dia_anio_ant": 7.0,
-    "kwh_promedio_zona": 9.41,
-    "n_vecinos": 184
-  },
-  "2026-06-04": {
-    "fecha": "2026-06-04",
-    "kwh_dia": 14.0,
-    "kwh_mismo_dia_anio_ant": 6.0,
-    "kwh_promedio_zona": 10.1,
-    "n_vecinos": 184
-  },
-  "2026-06-03": {
-    "fecha": "2026-06-03",
-    "kwh_dia": 12.0,
-    "kwh_mismo_dia_anio_ant": 5.0,
-    "kwh_promedio_zona": 9.96,
-    "n_vecinos": 184
-  },
-  "2026-06-02": {
-    "fecha": "2026-06-02",
-    "kwh_dia": 13.0,
-    "kwh_mismo_dia_anio_ant": 4.0,
-    "kwh_promedio_zona": 10.22,
-    "n_vecinos": 184
-  },
-  "2026-06-01": {
-    "fecha": "2026-06-01",
-    "kwh_dia": 12.0,
-    "kwh_mismo_dia_anio_ant": 5.0,
-    "kwh_promedio_zona": 10.0,
-    "n_vecinos": 184
-  },
-  "2026-05-31": {
-    "fecha": "2026-05-31",
-    "kwh_dia": 12.0,
-    "kwh_mismo_dia_anio_ant": 8.0,
-    "kwh_promedio_zona": 9.68,
-    "n_vecinos": 184
-  },
-  "2026-05-30": {
-    "fecha": "2026-05-30",
-    "kwh_dia": 10.0,
-    "kwh_mismo_dia_anio_ant": 7.0,
-    "kwh_promedio_zona": 9.62,
-    "n_vecinos": 184
-  },
-  "2026-05-29": {
-    "fecha": "2026-05-29",
-    "kwh_dia": 9.0,
-    "kwh_mismo_dia_anio_ant": 6.0,
-    "kwh_promedio_zona": 9.51,
-    "n_vecinos": 184
-  },
-  "2026-05-28": {
-    "fecha": "2026-05-28",
-    "kwh_dia": 10.0,
-    "kwh_mismo_dia_anio_ant": 5.0,
-    "kwh_promedio_zona": 10.33,
-    "n_vecinos": 184
-  },
-  "2026-05-27": {
-    "fecha": "2026-05-27",
-    "kwh_dia": 11.0,
-    "kwh_mismo_dia_anio_ant": 5.0,
-    "kwh_promedio_zona": 9.66,
-    "n_vecinos": 184
-  },
-  "2026-05-26": {
-    "fecha": "2026-05-26",
-    "kwh_dia": 11.0,
-    "kwh_mismo_dia_anio_ant": 6.0,
-    "kwh_promedio_zona": 9.96,
-    "n_vecinos": 184
-  },
-  "2026-05-25": {
-    "fecha": "2026-05-25",
-    "kwh_dia": 8.0,
-    "kwh_mismo_dia_anio_ant": 5.0,
-    "kwh_promedio_zona": 10.3,
     "n_vecinos": 184
   }
 }

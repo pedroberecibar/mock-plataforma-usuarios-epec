@@ -23,9 +23,10 @@
     "tension": "Baja tensión"
   },
   "medidor": {
-    "numero": "CL-0099821",
-    "marca": "CLOU",
+    "numero": "91013486",
+    "marca": "NANSEN",
     "fase": "Monofásico",
-    "inteligente_desde": "2023-03-10"
+    "inteligente_desde": "2023-03-10",
+    "soporta_perfiles": false
   }
 }

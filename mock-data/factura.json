@@ -8,8 +8,8 @@
       "periodo": "08/2026",
       "importe": 163915.7,
       "fecha_vencimiento": "2026-08-03",
-      "estado": "pagar",
-      "url_pdf": "https://www.epec.com.ar/api/reportes/e5871ccc5e30f12446c2eec96050c38a78a33c5474aa97b71a4d14622a03c79bbe564239aa128619ff3b820a65c256460c3171cac325f20a11796b04a4ff283bec435b58253f8e84d709c9c3787dcf653e7fea355536e83e084cfa71097dd8be3a8580f5a4730cbd66a07f78a28a500933b7769153d9da9f"
+      "estado": "vencido",
+      "url_pdf": "https://www.epec.com.ar/api/reportes/e5871ccc5e30f12446c2eec96050c38a78a33c5474aa97b71a4d14622a03c79bbe564239aa128619ff3b820a65c256460c3171cac325f20a11796b04a4ff283bec435b58253f8e84d709c9c3787dcf653e7fea355536e83e3a6705c1b9c755d80d5ca13384580efdd8db9b6c7c02e5fc270b5184fa307321"
     }
   ]
 }
