@@ -863,8 +863,12 @@
     {
       "fecha": "2026-08-04",
       "kwh": 7.0
+    },
+    {
+      "fecha": "2026-08-05",
+      "kwh": 7.0
     }
   ],
-  "datos_hasta": "2026-08-04",
+  "datos_hasta": "2026-08-05",
   "soporta_perfiles": false
 }
